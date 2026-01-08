@@ -1,0 +1,9 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: database
+    environment:
+      allowPublicKeyRetrieval: true
+      MYSQL_ROOT_PASSWORD: root123
+    ports:
+      - "3306:3306"

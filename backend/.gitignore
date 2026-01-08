@@ -1,0 +1,11 @@
+node_modules
+dist/
+.env
+.serverless/
+config.dev.json
+coverage/
+settings.json
+uploads/
+.vscode/
+
+

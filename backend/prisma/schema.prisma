@@ -1,0 +1,320 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleName {
+  ADMIN
+  CPPD_MEMBER
+  DOCENTE
+}
+
+model User {
+  idUser       Int       @id @default(autoincrement())
+  name         String    @db.VarChar(120)
+  email        String    @unique @db.VarChar(180)
+  phone        String?   @db.VarChar(20)
+  city         String?
+  uf           String?
+  cpf          String    @unique @db.VarChar(14)
+  passwordHash String    @db.VarChar(200)
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  deletedDate  DateTime?
+  updatedAt    DateTime  @updatedAt
+
+  roles                UserRole[]
+  docente              DocenteProfile?
+  CareerProcess        CareerProcess[]
+  ProcessStatusHistory ProcessStatusHistory[]
+  evidenceFiles        EvidenceFile[]
+  passwordResetCodes   PasswordResetCode[]
+
+  @@map("user")
+}
+
+//tabela separada para facilitar futuras expansões (ex: grupos de permissões)
+model Role {
+  idRole      BigInt     @id @default(autoincrement())
+  name        RoleName   @unique
+  createdAt   DateTime   @default(now())
+  deletedDate DateTime?
+  updatedAt   DateTime   @updatedAt
+  users       UserRole[]
+
+  @@map("role")
+}
+
+model UserRole {
+  userId      Int
+  roleId      BigInt
+  assignedAt  DateTime  @default(now())
+  deletedDate DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [idUser], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [idRole], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_role")
+}
+
+//tabela com dados específicos do docente, para permitir perfil de docente e membro da CPPD
+model DocenteProfile {
+  idDocente            Int        @id @default(autoincrement())
+  userId               Int        @unique
+  siape                String     @db.VarChar(30)
+  classLevel           ClassLevel
+  start_interstice     DateTime //data do início do interstício atual
+  educationLevel       String     @db.VarChar(120)
+  improvement          String?    @db.VarChar(120)
+  specialization       String?    @db.VarChar(120)
+  mastersDegree        String?    @db.VarChar(120)
+  doctorate            String?    @db.VarChar(120)
+  assignment           String?    @db.VarChar(120)
+  department           String?    @db.VarChar(120)
+  division             String?    @db.VarChar(120)
+  role                 String?    @db.VarChar(120)
+  immediate_supervisor String?    @db.VarChar(120)
+  user                 User       @relation(fields: [userId], references: [idUser], onDelete: Cascade)
+  createdAt            DateTime   @default(now())
+  deletedDate          DateTime?
+  updatedAt            DateTime   @updatedAt
+
+  @@map("docente_profile")
+}
+
+enum ClassLevel {
+  A1
+  B1
+  B2
+  B3
+  B4
+  C1
+  C2
+  C3
+  C4
+  D1
+}
+
+model ScoringTable {
+  idScoringTable    Int                @id @default(autoincrement())
+  name              String             @db.VarChar(120)
+  startsOn          DateTime?
+  endsOn            DateTime?
+  minRequiredPoints Decimal?           @db.Decimal(10, 2)
+  status            ScoringTableStatus @default(DRAFT)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  deletedDate       DateTime?
+
+  nodes         ScoringNode[]
+  items         ScoringItem[]
+  CareerProcess CareerProcess[]
+
+  @@map("scoring_table")
+}
+
+enum ScoringTableStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+}
+
+model ScoringNode {
+  idScoringNode     Int                @id @default(autoincrement())
+  scoringTableId    Int
+  parentId          Int?
+  name              String             @db.VarChar(150)
+  code              String?            @db.VarChar(50)
+  sortOrder         Int                @default(0)
+  active            Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  deletedDate       DateTime?
+  hasFormula        Boolean            @default(false)
+  formulaExpression String?            @db.VarChar(255)
+  table             ScoringTable       @relation(fields: [scoringTableId], references: [idScoringTable], onDelete: Cascade)
+  parent            ScoringNode?       @relation("NodeChildren", fields: [parentId], references: [idScoringNode], onDelete: Cascade)
+  children          ScoringNode[]      @relation("NodeChildren")
+  items             ScoringItem[]
+  nodeScores        ProcessNodeScore[] // relação com a tabela nova
+
+  @@unique([scoringTableId, parentId, name], name: "uq_sibling_name")
+  @@index([scoringTableId, parentId, sortOrder])
+  @@map("scoring_node")
+}
+
+model ScoringItem {
+  idScoringItem  Int       @id @default(autoincrement())
+  scoringTableId Int
+  nodeId         Int
+  description    String    @db.VarChar(255)
+  points         Decimal   @db.Decimal(10, 2)
+  unit           String?   @db.VarChar(30)
+  hasMaxPoints   Boolean   @default(false)
+  maxPoints      Decimal?  @db.Decimal(10, 2)
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedDate    DateTime?
+  formulaKey     String?   @db.VarChar(30)
+
+  table        ScoringTable   @relation(fields: [scoringTableId], references: [idScoringTable], onDelete: Cascade)
+  node         ScoringNode    @relation(fields: [nodeId], references: [idScoringNode], onDelete: Cascade)
+  ProcessScore ProcessScore[]
+
+  @@index([nodeId])
+  @@map("scoring_item")
+}
+
+model ProcessNodeScore {
+  idProcessNodeScore   Int       @id @default(autoincrement())
+  processId            Int
+  nodeId               Int
+  totalPoints          Decimal   @db.Decimal(10, 2)
+  evaluatorTotalPoints Decimal?  @db.Decimal(10, 2)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedDate          DateTime?
+
+  process CareerProcess @relation(fields: [processId], references: [idProcess], onDelete: Cascade)
+  node    ScoringNode   @relation(fields: [nodeId], references: [idScoringNode], onDelete: Cascade)
+
+  @@unique([processId, nodeId])
+  @@map("process_node_score")
+}
+
+enum ProcessType {
+  PROGRESSAO
+  PROMOCAO
+}
+
+enum ProcessStatus {
+  DRAFT //rascunho do docente
+  SUBMITTED //enviado pelo docente
+  UNDER_REVIEW //em análise pela CPPD
+  APPROVED
+  REJECTED
+  RETURNED //devolvido ao docente para ajustes
+}
+
+model CareerProcess {
+  idProcess       Int           @id @default(autoincrement())
+  userId          Int
+  scoringTableId  Int //TABELA VIGENTE “fixada” no momento da abertura
+  type            ProcessType
+  status          ProcessStatus @default(DRAFT)
+  submittedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedDate     DateTime?
+  campus          String        @db.VarChar(255)
+  cidadeUF        String        @db.VarChar(255)
+  intersticeStart DateTime
+  intersticeEnd   DateTime
+  classeOrigem    String        @db.VarChar(20)
+  nivelOrigem     String        @db.VarChar(20)
+  classeDestino   String        @db.VarChar(20)
+  nivelDestino    String        @db.VarChar(20)
+
+  user              User         @relation(fields: [userId], references: [idUser], onDelete: Restrict)
+  table             ScoringTable @relation(fields: [scoringTableId], references: [idScoringTable], onDelete: Restrict)
+  finalPoints       Decimal?     @db.Decimal(10, 2)
+  evaluationOpinion String?      @db.Text
+  evaluatorUserIds  Json?
+
+  scores               ProcessScore[]
+  ProcessStatusHistory ProcessStatusHistory[]
+  processNodeScores    ProcessNodeScore[]
+
+  @@index([userId, status])
+  @@index([scoringTableId])
+  @@map("process")
+}
+
+model ProcessScore {
+  idProcessScore Int @id @default(autoincrement())
+  processId      Int
+  itemId         Int
+
+  quantity      Int     @default(0)
+  awardedPoints Decimal @db.Decimal(10, 2)
+
+  evidenceFileId Int?
+  evidenceFile   EvidenceFile? @relation(fields: [evidenceFileId], references: [idEvidenceFile], onDelete: Restrict)
+
+  evaluatorAwardedPoints Decimal? @db.Decimal(10, 2)
+  evaluatorComment       String?  @db.VarChar(500)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedDate DateTime?
+
+  process CareerProcess @relation(fields: [processId], references: [idProcess], onDelete: Cascade)
+  item    ScoringItem   @relation(fields: [itemId], references: [idScoringItem], onDelete: Restrict)
+
+  @@unique([processId, itemId])
+  @@index([itemId])
+  @@map("process_score")
+}
+
+model ProcessStatusHistory {
+  idStatusHist Int            @id @default(autoincrement())
+  processId    Int
+  fromStatus   ProcessStatus?
+  toStatus     ProcessStatus
+  changedById  Int
+  note         String?        @db.VarChar(500)
+  updatedAt    DateTime       @default(now())
+  createdAt    DateTime       @default(now())
+  deletedDate  DateTime?
+
+  process   CareerProcess @relation(fields: [processId], references: [idProcess], onDelete: Cascade)
+  changedBy User          @relation(fields: [changedById], references: [idUser], onDelete: Restrict)
+
+  @@index([processId, updatedAt])
+  @@map("process_status_history")
+}
+
+model EvidenceFile {
+  idEvidenceFile Int       @id @default(autoincrement())
+  userId         Int
+  originalName   String    @db.VarChar(180)
+  storedName     String    @db.VarChar(180)
+  url            String    @db.VarChar(500)
+  mimeType       String?   @db.VarChar(60)
+  sizeBytes      BigInt?
+  uploadedAt     DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedDate    DateTime?
+
+  user   User           @relation(fields: [userId], references: [idUser], onDelete: Cascade)
+  scores ProcessScore[]
+
+  @@index([userId, deletedDate])
+  @@map("evidence_file")
+}
+
+model PasswordResetCode {
+  idPasswordResetCode Int       @id @default(autoincrement())
+  userId              Int
+  codeHash            String    @db.VarChar(200)
+  expiresAt           DateTime
+  usedAt              DateTime?
+  createdAt           DateTime  @default(now())
+
+  updatedAt   DateTime  @updatedAt
+  deletedDate DateTime?
+
+  user User @relation(fields: [userId], references: [idUser], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("password_reset_code")
+}
