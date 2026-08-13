@@ -8,7 +8,7 @@
 
 Clone o repositorio com o seguinte comando:
 ```bash
-git clone [https://github.com/DiogoBasso/TCC.git](https://github.com/DiogoBasso/SEC-EBTT.git)
+git clone https://github.com/DiogoBasso/SEC-EBTT.git
 ```
 
 ### Configurando o ambiente
