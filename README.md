@@ -20,7 +20,7 @@ npm install
 npm run husky:init
 ```
 
-Crie um arquivo `.env` e copie o conteúdo do arquivo `.env.example`, adaptando conforme necessidade. O arquivo de exemplo contém a DATABASE_URL para se conectar ao banco usando um container docker a partir do arquivo docker-compose.yaml. 
+Crie um arquivo `.env` e copie o conteúdo do arquivo `.env.example` (frontend e backend), adaptando conforme necessidade. O arquivo de exemplo do backend contém a DATABASE_URL para se conectar ao banco usando um container docker a partir do arquivo docker-compose.yaml. 
 
 > Caso queira usar o MySQL instalado na máquina, altere o usuário e a senha na URL de conexão.
 
