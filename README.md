@@ -36,7 +36,7 @@ npm run migrate
 
 ### Teste Manual
 
-Inicie a aplicação em mode de desenvolvimento:
+Inicie o backend em modo de desenvolvimento:
 ```bash
 npm run start:dev
 ```
@@ -45,3 +45,9 @@ Para popular o banco de dados:
 ```bash
 npm run seeds
 ```
+
+Inicie o frontend em modo de desenvolvimento:
+```bash
+npm run dev
+```
+

@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs"
-import { prisma } from "../infra/prismaClient"
 import { sendMail } from "../util/mailer"
+import { PasswordResetRepository } from "../repository/passwordResetRepository"
 
 function onlyDigits(value: string) {
   return (value || "").replace(/\D/g, "")
@@ -27,6 +27,8 @@ function getAppUrl() {
 type ResetContext = "RESET" | "INVITE"
 
 export class PasswordResetService {
+  constructor(private readonly repository: PasswordResetRepository) {}
+
   private async createResetCode(userId: number, context: ResetContext) {
     const ttlMin =
       context === "INVITE"
@@ -35,22 +37,13 @@ export class PasswordResetService {
 
     const codeLen = intEnv("PASSWORD_RESET_CODE_LENGTH", 6)
 
-    await prisma.passwordResetCode.updateMany({
-      where: { userId, usedAt: null, expiresAt: { gt: new Date() } },
-      data: { usedAt: new Date() }
-    })
+    await this.repository.invalidateActiveCodes(userId, new Date())
 
     const code = generateNumericCode(codeLen)
     const codeHash = await bcrypt.hash(code, 10)
     const expiresAt = new Date(Date.now() + ttlMin * 60 * 1000)
 
-    await prisma.passwordResetCode.create({
-      data: {
-        userId,
-        codeHash,
-        expiresAt
-      }
-    })
+    await this.repository.createCode(userId, codeHash, expiresAt)
 
     return { code, ttlMin }
   }
@@ -115,10 +108,7 @@ export class PasswordResetService {
   private async issueCodeForCpf(cpf: string, context: ResetContext): Promise<void> {
     const cleanCpf = onlyDigits(cpf)
 
-    const user = await prisma.user.findUnique({
-      where: { cpf: cleanCpf },
-      select: { idUser: true, email: true, name: true, deletedDate: true, active: true, cpf: true }
-    })
+    const user = await this.repository.findUserByCpf(cleanCpf)
 
     if (context === "RESET") {
       if (!user || user.deletedDate || !user.active) return
@@ -150,23 +140,13 @@ export class PasswordResetService {
   async confirmReset(cpf: string, code: string, newPassword: string): Promise<void> {
     const cleanCpf = onlyDigits(cpf)
 
-    const user = await prisma.user.findUnique({
-      where: { cpf: cleanCpf },
-      select: { idUser: true, deletedDate: true, active: true }
-    })
+    const user = await this.repository.findUserByCpf(cleanCpf)
 
     if (!user || user.deletedDate || !user.active) {
       throw new Error("Código inválido ou expirado")
     }
 
-    const record = await prisma.passwordResetCode.findFirst({
-      where: {
-        userId: user.idUser,
-        usedAt: null,
-        expiresAt: { gt: new Date() }
-      },
-      orderBy: { createdAt: "desc" }
-    })
+    const record = await this.repository.findLatestActiveCode(user.idUser, new Date())
 
     if (!record) throw new Error("Código inválido ou expirado")
 
@@ -175,15 +155,11 @@ export class PasswordResetService {
 
     const passwordHash = await bcrypt.hash(newPassword, 10)
 
-    await prisma.$transaction([
-      prisma.user.update({
-        where: { idUser: user.idUser },
-        data: { passwordHash }
-      }),
-      prisma.passwordResetCode.update({
-        where: { idPasswordResetCode: record.idPasswordResetCode },
-        data: { usedAt: new Date() }
-      })
-    ])
+    await this.repository.updatePasswordAndUseCode(
+      user.idUser,
+      passwordHash,
+      record.idPasswordResetCode,
+      new Date()
+    )
   }
 }

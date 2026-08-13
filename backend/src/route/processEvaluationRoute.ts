@@ -1,6 +1,7 @@
 import { Router } from "express"
 import { ProcessEvaluationController } from "../controller/processEvaluationController"
 import { ProcessEvaluationService } from "../service/processEvaluationService"
+import { ProcessEvaluationRepository } from "../repository/processEvaluationRepository"
 import { authMiddleware } from "../middleware/authMiddleware"
 import { validatorMiddleware, ParamType } from "../middleware/validatorMiddleware"
 import {
@@ -14,7 +15,7 @@ export function processEvaluationRoute() {
   const router = Router()
 
   const evaluationController = new ProcessEvaluationController(
-    new ProcessEvaluationService()
+    new ProcessEvaluationService(new ProcessEvaluationRepository())
   )
 
   router.get(

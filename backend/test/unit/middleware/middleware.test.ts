@@ -1,0 +1,76 @@
+import { beforeEach, describe, expect, jest, test } from "@jest/globals"
+import jwt from "jsonwebtoken"
+import Joi from "joi"
+import { authMiddleware } from "../../../src/middleware/authMiddleware"
+import { ParamType, validatorMiddleware } from "../../../src/middleware/validatorMiddleware"
+import * as blacklist from "../../../src/util/tokenBlacklist"
+
+jest.mock("jsonwebtoken", () => ({ verify: jest.fn() }))
+
+function responseMock() {
+  const res: any = { status: jest.fn(), json: jest.fn() }
+  res.status.mockReturnValue(res)
+  return res
+}
+
+describe("middlewares", () => {
+  beforeEach(() => {
+    process.env.JWT_ACCESS_SECRET = "secret"
+    jest.spyOn(blacklist, "isAccessTokenRevoked").mockReturnValue(false)
+  })
+
+  test("auth exige header e formato JWT", () => {
+    let res = responseMock()
+    authMiddleware({ headers: {}, header: jest.fn() }, res, jest.fn())
+    expect(res.status).toHaveBeenCalledWith(400)
+
+    res = responseMock()
+    authMiddleware({ headers: { authorization: "Bearer inválido" } }, res, jest.fn())
+    expect(res.status).toHaveBeenCalledWith(401)
+  })
+
+  test("auth aceita Bearer, atribui usuário e chama next", () => {
+    const next = jest.fn()
+    const req: any = { headers: { authorization: "Bearer aaa.bbb.ccc" } }
+    ;(jwt.verify as jest.Mock).mockReturnValue({ userId: 1 })
+    authMiddleware(req, responseMock(), next)
+    expect(jwt.verify).toHaveBeenCalledWith("aaa.bbb.ccc", "secret")
+    expect(req.user).toEqual({ userId: 1 })
+    expect(next).toHaveBeenCalled()
+  })
+
+  test("auth bloqueia token revogado, segredo ausente e assinatura inválida", () => {
+    const req = { headers: { authorization: "aaa.bbb.ccc" } }
+    let res = responseMock()
+    ;(blacklist.isAccessTokenRevoked as jest.Mock).mockReturnValue(true)
+    authMiddleware(req, res, jest.fn())
+    expect(res.status).toHaveBeenCalledWith(401)
+
+    ;(blacklist.isAccessTokenRevoked as jest.Mock).mockReturnValue(false)
+    delete process.env.JWT_ACCESS_SECRET
+    res = responseMock()
+    authMiddleware(req, res, jest.fn())
+    expect(res.status).toHaveBeenCalledWith(500)
+
+    process.env.JWT_ACCESS_SECRET = "secret"
+    ;(jwt.verify as jest.Mock).mockImplementation(() => { throw new Error("bad") })
+    res = responseMock()
+    authMiddleware(req, res, jest.fn())
+    expect(res.status).toHaveBeenCalledWith(401)
+  })
+
+  test("validator rejeita entrada inválida e substitui por valor sanitizado", () => {
+    const middleware = validatorMiddleware(ParamType.BODY, Joi.object({ age: Joi.number().required() }))
+    let req: any = { body: {} }
+    let res = responseMock()
+    middleware(req, res, jest.fn())
+    expect(res.status).toHaveBeenCalledWith(400)
+
+    req = { body: { age: "12" } }
+    res = responseMock()
+    const next = jest.fn()
+    middleware(req, res, next)
+    expect(req.body.age).toBe(12)
+    expect(next).toHaveBeenCalled()
+  })
+})

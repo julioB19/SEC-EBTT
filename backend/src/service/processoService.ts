@@ -1,5 +1,4 @@
 import dayjs from "dayjs"
-import { prisma } from "../infra/prismaClient"
 import "dayjs/locale/pt-br"
 import utc from "dayjs/plugin/utc"
 import path from "path"
@@ -876,10 +875,7 @@ export class ProcessoService {
       : []
 
     const evaluatorUsers = evaluatorUserIds.length
-      ? await prisma.user.findMany({
-        where: { idUser: { in: evaluatorUserIds }, deletedDate: null },
-        select: { idUser: true, name: true, email: true }
-      })
+      ? await this.userRepo.findSummariesByIds(evaluatorUserIds)
       : []
 
     const history = Array.isArray(p.ProcessStatusHistory) ? p.ProcessStatusHistory : []

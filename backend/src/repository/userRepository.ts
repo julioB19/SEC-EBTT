@@ -91,6 +91,14 @@ export class UserRepository {
     })
   }
 
+  async findSummariesByIds(userIds: number[]) {
+    if (userIds.length === 0) return []
+    return prisma.user.findMany({
+      where: { idUser: { in: userIds }, deletedDate: null },
+      select: { idUser: true, name: true, email: true }
+    })
+  }
+
   async findManyDocentesActive() {
     return prisma.user.findMany({
       where: {

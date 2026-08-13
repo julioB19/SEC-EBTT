@@ -1,7 +1,6 @@
 import dayjs from "dayjs"
 import "dayjs/locale/pt-br"
 import { ClassLevel, ProcessStatus, ProcessType } from "@prisma/client"
-import { prisma } from "../infra/prismaClient"
 import { BusinessRuleError, NotFoundError } from "./processoService"
 import {
   CppdItemScoreDto,
@@ -10,6 +9,13 @@ import {
 } from "../type/dto/processEvaluationDto"
 import { ProcessEvaluationViewDto } from "../type/dto/processEvaluationViewDto"
 import { ParecerPreviewDto, DivergentItemDto } from "../type/dto/processEvaluationParecerDto"
+import {
+  MissingDocenteProfileError,
+  MissingProcessScoreError,
+  ProcessEvaluationRepository
+} from "../repository/processEvaluationRepository"
+import path from "path"
+import fs from "fs"
 
 dayjs.locale("pt-br")
 
@@ -76,14 +82,35 @@ type TreeNode = {
 type CppdDecision = "APPROVED" | "REJECTED"
 
 export class ProcessEvaluationService {
+  constructor(private readonly repository = new ProcessEvaluationRepository()) {}
+
+  async getEvidenceContentForCppd(processId: number, evidenceFileId: number) {
+    const { process: processRecord, file, linked } = await this.repository.findEvidenceLinkedToProcess(
+      processId,
+      evidenceFileId
+    )
+
+    if (!processRecord) throw new NotFoundError("Processo não encontrado")
+    if (!file) throw new NotFoundError("Arquivo de evidência não encontrado")
+    if (!linked) throw new BusinessRuleError("Esta evidência não está vinculada ao processo informado.")
+    if (!file.url || !file.url.startsWith("/uploads/")) {
+      throw new BusinessRuleError("Caminho do arquivo de evidência inválido.")
+    }
+
+    const filePath = path.join(process.cwd(), "uploads", file.url.replace("/uploads/", ""))
+    if (!fs.existsSync(filePath)) {
+      throw new NotFoundError("Arquivo de evidência não encontrado no servidor.")
+    }
+
+    return {
+      filePath,
+      originalName: file.originalName,
+      mimeType: file.mimeType ?? "application/pdf"
+    }
+  }
+
   async getProcessForEvaluation(processId: number): Promise<ProcessEvaluationViewDto> {
-    const process = await prisma.careerProcess.findUnique({
-      where: { idProcess: processId },
-      include: {
-        user: { include: { docente: true } },
-        table: true
-      }
-    })
+    const process = await this.repository.findProcessWithUserAndTable(processId)
 
     if (!process || process.deletedDate) throw new NotFoundError("Process not found")
 
@@ -93,32 +120,8 @@ export class ProcessEvaluationService {
 
     const scoringTableId = process.scoringTableId
 
-    const [nodes, items, scores, nodeScores] = await Promise.all([
-      prisma.scoringNode.findMany({
-        where: { scoringTableId, deletedDate: null, active: true },
-        orderBy: { sortOrder: "asc" },
-        select: {
-          idScoringNode: true,
-          parentId: true,
-          name: true,
-          code: true,
-          sortOrder: true,
-          hasFormula: true,
-          formulaExpression: true
-        }
-      }),
-      prisma.scoringItem.findMany({
-        where: { scoringTableId, deletedDate: null, active: true }
-      }),
-      prisma.processScore.findMany({
-        where: { processId, deletedDate: null },
-        include: { item: true, evidenceFile: true },
-        orderBy: { idProcessScore: "asc" }
-      }),
-      prisma.processNodeScore.findMany({
-        where: { processId, deletedDate: null }
-      })
-    ])
+    const { nodes, items, scores, nodeScores } =
+      await this.repository.findEvaluationData(processId, scoringTableId, true)
 
     const minRequiredPoints =
       process.table.minRequiredPoints !== null && process.table.minRequiredPoints !== undefined
@@ -191,7 +194,7 @@ export class ProcessEvaluationService {
   }
 
   async updateItemScores(processId: number, updates: CppdItemScoreDto[]) {
-    const process = await prisma.careerProcess.findUnique({ where: { idProcess: processId } })
+    const process = await this.repository.findProcess(processId)
     if (!process || process.deletedDate) throw new NotFoundError("Process not found")
 
     if (process.status !== ProcessStatus.SUBMITTED && process.status !== ProcessStatus.UNDER_REVIEW) {
@@ -200,38 +203,28 @@ export class ProcessEvaluationService {
 
     if (!updates || updates.length === 0) return this.getProcessForEvaluation(processId)
 
-    await prisma.$transaction(async tx => {
-      for (const u of updates) {
-        const itemId = Number(u.itemId)
-        if (!Number.isFinite(itemId) || itemId <= 0) continue
+    const normalizedUpdates = updates
+      .map(u => ({
+        itemId: Number(u.itemId),
+        evaluatorAwardedPoints: normalizeDecimalString(u.evaluatorAwardedPoints),
+        evaluatorComment: u.evaluatorComment === undefined ? null : u.evaluatorComment
+      }))
+      .filter(u => Number.isFinite(u.itemId) && u.itemId > 0)
 
-        const existing = await tx.processScore.findUnique({
-          where: { processId_itemId: { processId, itemId } }
-        })
-
-        if (!existing || existing.deletedDate) {
-          throw new BusinessRuleError(
-            "Não foi possível avaliar este item porque não existe pontuação registrada pelo docente para ele."
-          )
-        }
-
-        const normalized = normalizeDecimalString(u.evaluatorAwardedPoints)
-
-        await tx.processScore.update({
-          where: { processId_itemId: { processId, itemId } },
-          data: {
-            evaluatorAwardedPoints: normalized,
-            evaluatorComment: u.evaluatorComment === undefined ? null : u.evaluatorComment
-          }
-        })
-      }
-    })
+    try {
+      await this.repository.updateItemScores(processId, normalizedUpdates)
+    } catch (error) {
+      if (!(error instanceof MissingProcessScoreError)) throw error
+      throw new BusinessRuleError(
+        "Não foi possível avaliar este item porque não existe pontuação registrada pelo docente para ele."
+      )
+    }
 
     return this.recalculateEvaluationTotals(processId)
   }
 
   async setEvaluationEvaluators(processId: number, currentUserId: number, evaluatorUserIds: number[]) {
-    const process = await prisma.careerProcess.findUnique({ where: { idProcess: processId } })
+    const process = await this.repository.findProcess(processId)
     if (!process || process.deletedDate) throw new NotFoundError("Process not found")
 
     if (process.status !== ProcessStatus.SUBMITTED && process.status !== ProcessStatus.UNDER_REVIEW) {
@@ -244,10 +237,7 @@ export class ProcessEvaluationService {
 
     const unique = Array.from(new Set([currentUserId, ...sanitized]))
 
-    await prisma.careerProcess.update({
-      where: { idProcess: processId },
-      data: { evaluatorUserIds: unique }
-    })
+    await this.repository.setEvaluators(processId, unique)
 
     return this.getProcessForEvaluation(processId)
   }
@@ -272,13 +262,7 @@ export class ProcessEvaluationService {
 
     await this.recalculateEvaluationTotals(processId)
 
-    const refreshed = await prisma.careerProcess.findUnique({
-      where: { idProcess: processId },
-      include: {
-        user: { include: { docente: true } },
-        table: true
-      }
-    })
+    const refreshed = await this.repository.findProcessWithUserAndTable(processId)
     if (!refreshed || refreshed.deletedDate) throw new NotFoundError("Process not found")
 
     const { totalsDocente, totalsCppd } = await this.computeOverallTotals(processId)
@@ -327,13 +311,7 @@ export class ProcessEvaluationService {
   }
 
   async finalizeEvaluation(processId: number, currentUserId: number, dto: FinalizeEvaluationDto) {
-    const processFull = await prisma.careerProcess.findUnique({
-      where: { idProcess: processId },
-      include: {
-        user: { include: { docente: true } },
-        table: true
-      }
-    })
+    const processFull = await this.repository.findProcessWithUserAndTable(processId)
     if (!processFull || processFull.deletedDate) throw new NotFoundError("Process not found")
 
     if (processFull.status !== ProcessStatus.SUBMITTED && processFull.status !== ProcessStatus.UNDER_REVIEW) {
@@ -387,51 +365,26 @@ export class ProcessEvaluationService {
             decision: dto.decision
           })
 
-    const result = await prisma.$transaction(async tx => {
-      const fromStatus = processFull.status
-
-      const updated = await tx.careerProcess.update({
-        where: { idProcess: processId },
-        data: {
-          status: toStatus,
-          finalPoints: totalsCppd.toFixed(2),
-          evaluationOpinion: opinion,
-          evaluatorUserIds
-        }
+    let result
+    try {
+      result = await this.repository.finalizeEvaluation({
+        processId,
+        userId: processFull.userId,
+        fromStatus: processFull.status,
+        toStatus,
+        finalPoints: totalsCppd.toFixed(2),
+        evaluationOpinion: opinion,
+        evaluatorUserIds,
+        changedById: currentUserId,
+        targetLevel: toStatus === ProcessStatus.APPROVED
+          ? this.toClassLevel(processFull.classeDestino, processFull.nivelDestino)
+          : null,
+        intersticeEnd: processFull.intersticeEnd
       })
-
-      await tx.processStatusHistory.create({
-        data: {
-          processId,
-          fromStatus,
-          toStatus,
-          changedById: currentUserId,
-          note: null
-        }
-      })
-
-      if (toStatus === ProcessStatus.APPROVED) {
-        const docente = await tx.docenteProfile.findUnique({
-          where: { userId: processFull.userId }
-        })
-
-        if (!docente || docente.deletedDate) {
-          throw new BusinessRuleError("DocenteProfile não encontrado para atualizar progressão/promoção.")
-        }
-
-        const targetLevel = this.toClassLevel(processFull.classeDestino, processFull.nivelDestino)
-
-        await tx.docenteProfile.update({
-          where: { userId: processFull.userId },
-          data: {
-            classLevel: targetLevel,
-            start_interstice: processFull.intersticeEnd
-          }
-        })
-      }
-
-      return updated
-    })
+    } catch (error) {
+      if (!(error instanceof MissingDocenteProfileError)) throw error
+      throw new BusinessRuleError("DocenteProfile não encontrado para atualizar progressão/promoção.")
+    }
 
     return {
       idProcess: result.idProcess,
@@ -444,32 +397,13 @@ export class ProcessEvaluationService {
 
 
   private async recalculateEvaluationTotals(processId: number) {
-    const process = await prisma.careerProcess.findUnique({ where: { idProcess: processId } })
+    const process = await this.repository.findProcess(processId)
     if (!process || process.deletedDate) throw new NotFoundError("Process not found")
 
     const scoringTableId = process.scoringTableId
 
-    const [nodes, items, scores] = await Promise.all([
-      prisma.scoringNode.findMany({
-        where: { scoringTableId, deletedDate: null, active: true },
-        select: {
-          idScoringNode: true,
-          parentId: true,
-          name: true,
-          code: true,
-          sortOrder: true,
-          hasFormula: true,
-          formulaExpression: true
-        },
-        orderBy: { sortOrder: "asc" }
-      }),
-      prisma.scoringItem.findMany({
-        where: { scoringTableId, deletedDate: null, active: true }
-      }),
-      prisma.processScore.findMany({
-        where: { processId, deletedDate: null }
-      })
-    ])
+    const { nodes, items, scores } =
+      await this.repository.findEvaluationData(processId, scoringTableId)
 
     const scoreByItemId = new Map<number, typeof scores[number]>()
     scores.forEach(s => scoreByItemId.set(s.itemId, s))
@@ -563,19 +497,12 @@ export class ProcessEvaluationService {
     treeRoots.forEach(root => computeNodeCppd(root))
 
     for (const [nodeId, totals] of nodeTotals.entries()) {
-      await prisma.processNodeScore.upsert({
-        where: { processId_nodeId: { processId, nodeId } },
-        create: {
-          processId,
-          nodeId,
-          totalPoints: totals.docente.toFixed(2),
-          evaluatorTotalPoints: totals.cppd !== null ? totals.cppd.toFixed(2) : null
-        },
-        update: {
-          totalPoints: totals.docente.toFixed(2),
-          evaluatorTotalPoints: totals.cppd !== null ? totals.cppd.toFixed(2) : null
-        }
-      })
+      await this.repository.upsertNodeTotals(
+        processId,
+        nodeId,
+        totals.docente.toFixed(2),
+        totals.cppd !== null ? totals.cppd.toFixed(2) : null
+      )
     }
 
     const finalCppd = treeRoots.reduce((acc, root) => {
@@ -583,10 +510,7 @@ export class ProcessEvaluationService {
       return acc + safeNumber(t ?? 0)
     }, 0)
 
-    await prisma.careerProcess.update({
-      where: { idProcess: processId },
-      data: { finalPoints: finalCppd.toFixed(2) }
-    })
+    await this.repository.updateFinalPoints(processId, finalCppd.toFixed(2))
 
     return this.getProcessForEvaluation(processId)
   }
@@ -699,29 +623,11 @@ export class ProcessEvaluationService {
   }
 
   private async computeOverallTotals(processId: number) {
-    const process = await prisma.careerProcess.findUnique({ where: { idProcess: processId } })
+    const process = await this.repository.findProcess(processId)
     if (!process || process.deletedDate) throw new NotFoundError("Process not found")
 
-    const [nodes, items, scores] = await Promise.all([
-      prisma.scoringNode.findMany({
-        where: { scoringTableId: process.scoringTableId, deletedDate: null, active: true },
-        select: {
-          idScoringNode: true,
-          parentId: true,
-          name: true,
-          code: true,
-          sortOrder: true,
-          hasFormula: true,
-          formulaExpression: true
-        }
-      }),
-      prisma.scoringItem.findMany({
-        where: { scoringTableId: process.scoringTableId, deletedDate: null, active: true }
-      }),
-      prisma.processScore.findMany({
-        where: { processId, deletedDate: null }
-      })
-    ])
+    const { nodes, items, scores } =
+      await this.repository.findEvaluationData(processId, process.scoringTableId)
 
     const scoreByItemId = new Map<number, typeof scores[number]>()
     scores.forEach(s => scoreByItemId.set(s.itemId, s))
@@ -789,11 +695,7 @@ export class ProcessEvaluationService {
   }
 
   private async getDivergentItems(processId: number): Promise<DivergentItemDto[]> {
-    const scores = await prisma.processScore.findMany({
-      where: { processId, deletedDate: null },
-      include: { item: true },
-      orderBy: { idProcessScore: "asc" }
-    })
+    const scores = await this.repository.findScoresWithItems(processId)
 
     const divergent: DivergentItemDto[] = []
 
@@ -900,13 +802,7 @@ export class ProcessEvaluationService {
   }
 
   async getProcessForEvaluationReadOnly(processId: number): Promise<ProcessEvaluationViewDto> {
-    const process = await prisma.careerProcess.findUnique({
-      where: { idProcess: processId },
-      include: {
-        user: { include: { docente: true } },
-        table: true
-      }
-    })
+    const process = await this.repository.findProcessWithUserAndTable(processId)
 
     if (!process || process.deletedDate) throw new NotFoundError("Process not found")
 
@@ -924,32 +820,8 @@ export class ProcessEvaluationService {
 
     const scoringTableId = process.scoringTableId
 
-    const [nodes, items, scores, nodeScores] = await Promise.all([
-      prisma.scoringNode.findMany({
-        where: { scoringTableId, deletedDate: null, active: true },
-        orderBy: { sortOrder: "asc" },
-        select: {
-          idScoringNode: true,
-          parentId: true,
-          name: true,
-          code: true,
-          sortOrder: true,
-          hasFormula: true,
-          formulaExpression: true
-        }
-      }),
-      prisma.scoringItem.findMany({
-        where: { scoringTableId, deletedDate: null, active: true }
-      }),
-      prisma.processScore.findMany({
-        where: { processId, deletedDate: null },
-        include: { item: true, evidenceFile: true },
-        orderBy: { idProcessScore: "asc" }
-      }),
-      prisma.processNodeScore.findMany({
-        where: { processId, deletedDate: null }
-      })
-    ])
+    const { nodes, items, scores, nodeScores } =
+      await this.repository.findEvaluationData(processId, scoringTableId, true)
 
     const minRequiredPoints =
       process.table.minRequiredPoints !== null && process.table.minRequiredPoints !== undefined

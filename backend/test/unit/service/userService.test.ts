@@ -38,7 +38,9 @@ describe("UserService", () => {
     email: "fulano@if.edu.br",
     cpf: "11122233344",
     passwordHash: "hashed",
-    phone: "(11) 99888-7766", // 👈 phone no mock
+    phone: "(11) 99888-7766",
+    city: null,
+    uf: null,
     active: true,
     createdAt: now,
     deletedDate: null,
@@ -46,8 +48,7 @@ describe("UserService", () => {
     docente: {
       idDocente: 7,
       siape: "1234567",
-      class: "D I",
-      level: "1",
+      classLevel: "D1",
       start_interstice: new Date("2024-01-01T00:00:00Z"),
       educationLevel: "Mestrado",
       improvement: null,
@@ -94,7 +95,9 @@ describe("UserService", () => {
     name: u.name,
     email: u.email,
     cpf: u.cpf,
-    phone: u.phone ?? null, // 👈 incluir phone
+    phone: u.phone ?? null,
+    city: u.city ?? null,
+    uf: u.uf ?? null,
     active: Boolean(u.active),
     createdAt: u.createdAt,
     deletedDate: u.deletedDate ?? null,
@@ -103,8 +106,7 @@ describe("UserService", () => {
       ? {
           idDocente: u.docente.idDocente,
           siape: u.docente.siape,
-          class: u.docente.class,
-          level: u.docente.level,
+          classLevel: u.docente.classLevel,
           startInterstice: u.docente.start_interstice,
           educationLevel: u.docente.educationLevel,
           improvement: u.docente.improvement,
@@ -294,8 +296,7 @@ describe("UserService", () => {
         roles: [RoleName.ADMIN, RoleName.DOCENTE],
         docenteProfile: {
           siape: "1234567",
-          class: "D I",
-          level: "1",
+          classLevel: "D1",
           startInterstice: new Date("2024-01-01T00:00:00Z"),
           educationLevel: "Mestrado"
         }
@@ -312,8 +313,7 @@ describe("UserService", () => {
         roles: dto.roles,
         docenteProfile: expect.objectContaining({
           siape: "1234567",
-          class: "D I",
-          level: "1"
+          classLevel: "D1"
         })
       }))
       expect(out).toEqual(mapResponse(dbUser))
@@ -368,8 +368,7 @@ describe("UserService", () => {
         roles: [RoleName.ADMIN, RoleName.DOCENTE],
         docenteProfile: {
           siape: "",
-          class: "",
-          level: "",
+          classLevel: "" as any,
           startInterstice: undefined as any,
           educationLevel: ""
         } as any

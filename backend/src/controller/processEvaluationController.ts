@@ -1,6 +1,4 @@
-import path from "path"
 import fs from "fs"
-import { prisma } from "../infra/prismaClient"
 import { RequestHandler } from "express"
 import { RoleName } from "@prisma/client"
 import { ProcessEvaluationService } from "../service/processEvaluationService"
@@ -239,33 +237,11 @@ export class ProcessEvaluationController {
         return
       }
 
-      const careerProcess = await prisma.careerProcess.findFirst({
-        where: { idProcess: processId, deletedDate: null }
-      })
-      if (!careerProcess) throw new NotFoundError("Processo não encontrado")
+      const { filePath, originalName, mimeType } =
+        await this.service.getEvidenceContentForCppd(processId, evidenceFileId)
 
-      const file = await prisma.evidenceFile.findFirst({
-        where: { idEvidenceFile: evidenceFileId, deletedDate: null }
-      })
-      if (!file) throw new NotFoundError("Arquivo de evidência não encontrado")
-
-      const score = await prisma.processScore.findFirst({
-        where: { processId, evidenceFileId, deletedDate: null }
-      })
-      if (!score) throw new BusinessRuleError("Esta evidência não está vinculada ao processo informado.")
-
-      if (!file.url || !file.url.startsWith("/uploads/")) {
-        throw new BusinessRuleError("Caminho do arquivo de evidência inválido.")
-      }
-
-      const uploadsRoot = path.join(process.cwd(), "uploads")
-      const relativePath = file.url.replace("/uploads/", "")
-      const filePath = path.join(uploadsRoot, relativePath)
-
-      if (!fs.existsSync(filePath)) throw new NotFoundError("Arquivo de evidência não encontrado no servidor.")
-
-      res.setHeader("Content-Type", file.mimeType ?? "application/pdf")
-      res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(file.originalName)}"`)
+      res.setHeader("Content-Type", mimeType)
+      res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(originalName)}"`)
 
       const stream = fs.createReadStream(filePath)
       stream.on("error", err => {
