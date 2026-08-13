@@ -21,19 +21,50 @@ permissions:
   checks: write
 
 jobs:
-  unit:
+  backend-unit:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
         working-directory: ./backend
 
       - name: Run unit tests
         run: npm run test:unit
         working-directory: ./backend
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./frontend
+
+      - name: Run frontend checks
+        run: npm test
+        working-directory: ./frontend
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: ./frontend
+        env:
+          BACKEND_URL: http://127.0.0.1:3001
