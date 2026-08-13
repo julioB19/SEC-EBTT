@@ -13,6 +13,7 @@ export function CppdNavLinks() {
 
   return (
     <div className="relative flex items-center">
+      {/* DESKTOP */}
       <div className="hidden md:flex items-center gap-2">
         <Link href="/cppd" className={desktopLinkClass}>
           Início
@@ -22,14 +23,17 @@ export function CppdNavLinks() {
           Processos
         </Link>
 
-        <Link
-          href="/cppd/tabelas"
-          className={desktopLinkClass}
-        >
+        <Link href="/cppd/tabelas" className={desktopLinkClass}>
           Tabela de Pontuação
+        </Link>
+
+        {/* 🔹 NOVO LINK */}
+        <Link href="/cppd/usuarios" className={desktopLinkClass}>
+          Docentes
         </Link>
       </div>
 
+      {/* BOTÃO MOBILE */}
       <button
         type="button"
         onClick={() => setOpen(prev => !prev)}
@@ -43,6 +47,7 @@ export function CppdNavLinks() {
         <span className="block h-[2px] w-5 rounded bg-[var(--navbar-text)]" />
       </button>
 
+      {/* MENU MOBILE */}
       {open && (
         <div
           className="absolute right-0 top-full mt-2 w-60 rounded-xl
@@ -71,6 +76,15 @@ export function CppdNavLinks() {
             onClick={() => setOpen(false)}
           >
             Tabelas de Pontuação
+          </Link>
+
+          {/* 🔹 NOVO LINK */}
+          <Link
+            href="/cppd/usuarios"
+            className="block px-4 py-2.5 text-sm hover:bg-[var(--navbar-item-hover-bg)]"
+            onClick={() => setOpen(false)}
+          >
+            Docentes
           </Link>
 
           <div className="my-1 h-px bg-[var(--border-subtle)]" />

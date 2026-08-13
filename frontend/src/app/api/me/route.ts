@@ -1,19 +1,35 @@
 import { NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
 
-const backend = process.env.BACKEND_URL || ""
-const ME_PATH = "/me"
+export const dynamic = "force-dynamic"
 
-async function accessTokenOrError() {
+const backend = process.env.BACKEND_URL || ""
+const ME_PATH = "/users/me"
+
+type AccessTokenResult =
+  | { ok: true; token: string; usedKey: string }
+  | { ok: false; cookieKeys: string[] }
+
+async function getAccessTokenFromCookies(): Promise<AccessTokenResult> {
   const jar = await cookies()
-  const access = jar.get("accessToken")?.value
-  if (!access) {
-    return {
-      ok: false as const,
-      res: NextResponse.json({ message: "Não autenticado" }, { status: 401 })
+
+  const candidates = [
+    "accessToken",
+    "access_token",
+    "token",
+    "jwt",
+    "access"
+  ]
+
+  for (const key of candidates) {
+    const v = jar.get(key)?.value
+    if (v && String(v).trim()) {
+      return { ok: true, token: String(v).trim(), usedKey: key }
     }
   }
-  return { ok: true as const, access }
+
+  const cookieKeys = jar.getAll().map(c => c.name)
+  return { ok: false, cookieKeys }
 }
 
 export async function GET() {
@@ -21,15 +37,24 @@ export async function GET() {
     return NextResponse.json({ message: "BACKEND_URL não configurada" }, { status: 500 })
   }
 
-  const auth = await accessTokenOrError()
-  if (!auth.ok) return auth.res
+  const auth = await getAccessTokenFromCookies()
+  if (!auth.ok) {
+    return NextResponse.json(
+      {
+        message: "Usuário não autenticado",
+        cookieKeys: auth.cookieKeys
+      },
+      { status: 401 }
+    )
+  }
 
   try {
     const r = await fetch(`${backend}${ME_PATH}`, {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${auth.access}`
-      }
+        Authorization: `Bearer ${auth.token}`
+      },
+      cache: "no-store"
     })
 
     const text = await r.text()
@@ -38,6 +63,14 @@ export async function GET() {
       json = JSON.parse(text)
     } catch {
       json = { raw: text }
+    }
+
+    if (json && typeof json === "object") {
+      json._debug = {
+        usedCookieKey: auth.usedKey,
+        backendUrl: backend,
+        path: ME_PATH
+      }
     }
 
     return NextResponse.json(json, { status: r.status })
@@ -54,8 +87,16 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ message: "BACKEND_URL não configurada" }, { status: 500 })
   }
 
-  const auth = await accessTokenOrError()
-  if (!auth.ok) return auth.res
+  const auth = await getAccessTokenFromCookies()
+  if (!auth.ok) {
+    return NextResponse.json(
+      {
+        message: "Usuário não autenticado",
+        cookieKeys: auth.cookieKeys
+      },
+      { status: 401 }
+    )
+  }
 
   const body = await req.text()
 
@@ -63,15 +104,20 @@ export async function PUT(req: NextRequest) {
     const r = await fetch(`${backend}${ME_PATH}`, {
       method: "PUT",
       headers: {
-        Authorization: `Bearer ${auth.access}`,
+        Authorization: `Bearer ${auth.token}`,
         "Content-Type": req.headers.get("content-type") ?? "application/json"
       },
-      body
+      body,
+      cache: "no-store"
     })
 
     const text = await r.text()
     const contentType = r.headers.get("content-type") ?? "application/json"
-    return new NextResponse(text, { status: r.status, headers: { "Content-Type": contentType } })
+
+    return new NextResponse(text, {
+      status: r.status,
+      headers: { "Content-Type": contentType }
+    })
   } catch (e: any) {
     return NextResponse.json(
       { message: "Erro ao conectar com o servidor", error: e?.message ?? "unknown" },

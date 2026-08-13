@@ -12,7 +12,17 @@ import { revokeAccessToken, revokeRefreshToken, isLikelyJwt } from "../util/toke
 
 function getAuthUser(req: any): { userId: number; roles: RoleName[] } | null {
   const u = req?.user
-  const userId = Number(u?.userId ?? u?.idUser ?? u?.id)
+
+  const rawUserId =
+    u?.userId ??
+    u?.idUser ??
+    u?.id ??
+    u?.sub ??
+    u?.user_id ??
+    u?.uid
+
+  const userId = Number(rawUserId)
+
   const roles = Array.isArray(u?.roles) ? u.roles : []
   if (!userId || Number.isNaN(userId)) return null
   return { userId, roles }
@@ -213,6 +223,43 @@ export class UserController {
     } catch (error: any) {
       if (error instanceof UserNotFound) {
         return HttpResponse.notFound(res, StatusCodeDescription.USER_NOT_FOUND, error.message, null)
+      }
+      return HttpResponse.internalError(res)
+    }
+  }
+
+  async getMyProfile(req: any, res: any): Promise<void> {
+    try {
+      const auth = getAuthUser(req)
+      if (!auth) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Usuário não autenticado", null)
+
+      const me = await this.userService.getUserById(auth.userId)
+      return HttpResponse.ok(res, "Perfil recuperado", me)
+    } catch (error: any) {
+      if (error instanceof UserNotFound) {
+        return HttpResponse.notFound(res, StatusCodeDescription.USER_NOT_FOUND, error.message, null)
+      }
+      return HttpResponse.internalError(res)
+    }
+  }
+
+  async updateMyProfile(req: any, res: any): Promise<void> {
+    try {
+      const auth = getAuthUser(req)
+      if (!auth) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Usuário não autenticado", null)
+
+      if (!hasRole(auth.roles, RoleName.DOCENTE) && req.body?.docenteProfile) {
+        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Apenas DOCENTE pode editar docenteProfile", null)
+      }
+
+      const updated = await this.userService.updateOwnProfile(auth.userId, req.body)
+      return HttpResponse.ok(res, "Perfil atualizado", updated)
+    } catch (error: any) {
+      if (error instanceof UserNotFound) {
+        return HttpResponse.notFound(res, StatusCodeDescription.USER_NOT_FOUND, error.message, null)
+      }
+      if (error?.code === "P2002") {
+        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Email já utilizado", null)
       }
       return HttpResponse.internalError(res)
     }

@@ -61,10 +61,8 @@ export default function ScoringTableBlockBuilderPage() {
 
   const [mounted, setMounted] = useState(false)
 
- 
   const [nodes, setNodes] = useState<UiNode[]>([])
 
- 
   const [selectedBlockDraftId, setSelectedBlockDraftId] = useState<string>("")
 
   const [saving, setSaving] = useState(false)
@@ -128,7 +126,6 @@ export default function ScoringTableBlockBuilderPage() {
         itemsByNode.get(nodeId)!.push(it)
       }
 
-   
       const draftByDbId = new Map<number, string>()
       for (const n of rawNodes) {
         const id = Number(n?.idScoringNode ?? n?.id ?? 0)
@@ -173,8 +170,6 @@ export default function ScoringTableBlockBuilderPage() {
       } else {
         setSelectedBlockDraftId("")
       }
-
-      setInfoMessage("Estrutura carregada do banco.")
     } catch (err: any) {
       console.error("Erro ao carregar estrutura:", err)
       setError(err?.message ?? "Erro ao carregar estrutura.")
@@ -212,7 +207,7 @@ export default function ScoringTableBlockBuilderPage() {
       draftId: makeDraftId("node"),
       name: "",
       code: "",
-      parentDraftId: selectedBlockDraftId, 
+      parentDraftId: selectedBlockDraftId,
       sortOrder: visibleNodes.length + 1,
       hasFormula: false,
       formulaExpression: "",
@@ -264,7 +259,6 @@ export default function ScoringTableBlockBuilderPage() {
     setInfoMessage(null)
 
     if (value === "__NEW__") {
-      // cria um bloco novo vazio (nó raiz)
       const root = emptyRootNode()
       setNodes(prev => [...prev, root])
       setSelectedBlockDraftId(root.draftId)
@@ -433,8 +427,8 @@ export default function ScoringTableBlockBuilderPage() {
   if (!mounted) {
     return (
       <main className="min-h-[60vh]">
-        <div className="px-4 md:px-6 lg:px-8 py-6">
-          <p className="text-[var(--text-secondary)]">Carregando builder...</p>
+        <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-6">
+          <p className="text-sm text-[var(--text-secondary)]">Carregando builder...</p>
         </div>
       </main>
     )
@@ -443,8 +437,10 @@ export default function ScoringTableBlockBuilderPage() {
   if (!Number.isFinite(tableId)) {
     return (
       <main className="min-h-[60vh]">
-        <div className="px-4 md:px-6 lg:px-8 py-6">
-          <p className="text-[var(--state-danger-text)] text-sm">tableId inválido.</p>
+        <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-6">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            tableId inválido.
+          </div>
         </div>
       </main>
     )
@@ -452,60 +448,73 @@ export default function ScoringTableBlockBuilderPage() {
 
   return (
     <main className="min-h-[60vh]">
-      <div className="px-4 md:px-6 lg:px-8 py-6 space-y-6">
-        <header className="flex flex-wrap gap-3 justify-between items-center">
+      <div className="max-w-6xl mx-auto space-y-6 px-4 md:px-6 lg:px-8 py-6">
+        <header className="space-y-3">
           <div>
-            <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Cadastro de Tabela de Pontuação</h1>
+            <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Builder da Tabela de Pontuação</h1>
             <p className="text-sm text-[var(--text-secondary)]">Tabela #{tableId} · editar por bloco</p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 w-full">
             <Link
-              href="/admin"
-              className="px-4 py-2 rounded-full border border-[var(--btn-secondary-border)]
-                         text-xs text-[var(--btn-secondary-text)]
-                         hover:bg-[var(--btn-secondary-hover-bg)] transition"
+              href="/admin/tabelas-pontuacao"
+              className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                         bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
+                         hover:bg-[var(--btn-primary-hover-bg)] transition-[background]"
             >
               Voltar
             </Link>
 
-            <button
-              type="button"
-              onClick={addNode}
-              disabled={saving || loadingStructure || !selectedBlockDraftId}
-              className="px-4 py-2 rounded-full border border-[var(--btn-secondary-border)]
-                         text-xs text-[var(--btn-secondary-text)]
-                         hover:bg-[var(--btn-secondary-hover-bg)] transition
-                         disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              Adicionar SubItem
-            </button>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={addNode}
+                disabled={saving || loadingStructure || !selectedBlockDraftId}
+                className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                           border border-[var(--border-subtle)]
+                           hover:bg-[var(--surface-bg-2)] transition
+                           disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Adicionar subitem
+              </button>
 
-            <button
-              type="button"
-              onClick={handleSalvarTudo}
-              disabled={saving || loadingStructure || !selectedBlockDraftId}
-              className="inline-flex items-center rounded-full px-6 py-2 text-xs font-semibold
-                         bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
-                         hover:bg-[var(--btn-primary-hover-bg)]
-                         disabled:opacity-60 disabled:cursor-not-allowed transition"
-            >
-              {saving ? "Salvando..." : "Salvar alterações"}
-            </button>
+              <button
+                type="button"
+                onClick={handleSalvarTudo}
+                disabled={saving || loadingStructure || !selectedBlockDraftId}
+                className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                           bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
+                           hover:bg-[var(--btn-primary-hover-bg)] transition-[background]
+                           disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {saving ? "Salvando..." : "Salvar alterações"}
+              </button>
+            </div>
           </div>
         </header>
 
         {(infoMessage || error) && (
           <div className="space-y-2">
-            {infoMessage && <p className="text-xs text-[var(--state-success-text)]">{infoMessage}</p>}
-            {error && <p className="text-xs text-[var(--state-danger-text)]">{error}</p>}
+            {infoMessage && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+                {infoMessage}
+              </div>
+            )}
+
+            {error && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {error}
+              </div>
+            )}
 
             {details && details.length > 0 && (
-              <div className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl p-3">
-                <div className="text-[11px] font-semibold text-[var(--text-primary)] mb-1">Detalhes</div>
+              <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4">
+                <div className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)] mb-2">
+                  Detalhes
+                </div>
                 <ul className="list-disc pl-5 space-y-1">
                   {details.map((d, i) => (
-                    <li key={i} className="text-[11px] text-[var(--text-secondary)]">
+                    <li key={i} className="text-sm text-[var(--text-secondary)]">
                       {d}
                     </li>
                   ))}
@@ -514,35 +523,40 @@ export default function ScoringTableBlockBuilderPage() {
             )}
           </div>
         )}
-        <section className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl p-4 shadow-sm space-y-2">
-          <label className="block text-[11px] text-[var(--text-secondary)]">Selecione o bloco</label>
 
-          <select
-            className="w-full text-sm rounded-full border border-[var(--border-subtle)]
-                       bg-[var(--surface-bg)] px-4 py-2
-                       text-[var(--text-primary)]
-                       focus:outline-none focus:border-[var(--border-strong)]"
-            value={selectedBlockDraftId || ""}
-            onChange={e => handleSelectBlock(e.target.value)}
-            disabled={saving || loadingStructure}
-          >
-            <option value="">(selecione…)</option>
+        <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4 space-y-3">
+          <div className="space-y-1">
+            <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+              Selecione o bloco
+            </label>
 
-            {blocks.map(b => (
-              <option key={b.draftId} value={b.draftId}>
-                {b.name?.trim() ? `${b.name} (${b.code || "sem código"})` : b.draftId}
-              </option>
-            ))}
+            <select
+              className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
+                         px-3 py-2 text-sm text-[var(--text-primary)] outline-none
+                         disabled:opacity-60 disabled:cursor-not-allowed"
+              value={selectedBlockDraftId || ""}
+              onChange={e => handleSelectBlock(e.target.value)}
+              disabled={saving || loadingStructure}
+            >
+              <option value="">(selecione…)</option>
 
-            <option value="__NEW__">+ Novo bloco</option>
-          </select>
+              {blocks.map(b => (
+                <option key={b.draftId} value={b.draftId}>
+                  {b.name?.trim() ? `${b.name} (${b.code || "sem código"})` : b.draftId}
+                </option>
+              ))}
 
-          {!selectedBlockDraftId && (
-            <p className="text-[11px] text-[var(--text-secondary)]">
-              Selecione um bloco existente para editar, ou escolha <b>Novo bloco</b> para cadastrar um do zero.
-            </p>
-          )}
+              <option value="__NEW__">+ Novo bloco</option>
+            </select>
+
+            {!selectedBlockDraftId && (
+              <p className="text-sm text-[var(--text-secondary)]">
+                Selecione um bloco existente para editar, ou escolha <b>Novo bloco</b> para cadastrar um do zero.
+              </p>
+            )}
+          </div>
         </section>
+
         {selectedBlockDraftId && (
           <section className="space-y-4">
             {visibleNodes.map((node, nodeIndex) => {
@@ -554,13 +568,15 @@ export default function ScoringTableBlockBuilderPage() {
               return (
                 <div
                   key={node.draftId}
-                  className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl p-4 shadow-sm space-y-3"
+                  className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 space-y-4"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="text-sm font-semibold text-[var(--text-primary)]">
-                        {isRootBlock ? "Bloco (raiz)" : `SubItem ${nodeIndex + 1}`}
-                        {isPersisted ? ` · #${node.idScoringNode}` : " · (novo)"}
+                      <div className="text-base font-semibold text-[var(--text-primary)]">
+                        {isRootBlock ? "Bloco (raiz)" : `Subitem ${nodeIndex + 1}`}
+                        <span className="text-sm font-normal text-[var(--text-secondary)]">
+                          {isPersisted ? ` · #${node.idScoringNode}` : " · (novo)"}
+                        </span>
                       </div>
                     </div>
 
@@ -575,123 +591,130 @@ export default function ScoringTableBlockBuilderPage() {
                             ? "Remoção de nó já salvo não está implementada (sem delete no backend)."
                             : ""
                       }
-                      className="px-4 py-2 rounded-full border border-[var(--border-subtle)]
-                                 text-[11px] font-medium text-[var(--text-secondary)]
-                                 hover:bg-[var(--surface-muted)] disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                                 border border-[var(--border-subtle)]
+                                 hover:bg-[var(--surface-bg-2)] transition
+                                 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       Remover
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="space-y-1">
-                      <label className="block text-[11px] text-[var(--text-secondary)]">Nome</label>
-                      <input
-                        className="w-full text-sm rounded-full border border-[var(--border-subtle)]
-                                   bg-[var(--surface-bg)] px-4 py-2
-                                   text-[var(--text-primary)]
-                                   focus:outline-none focus:border-[var(--border-strong)]"
-                        value={node.name}
-                        onChange={e => updateNode(node.draftId, { name: e.target.value })}
-                        disabled={saving || loadingStructure}
-                      />
-                    </div>
+                  <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4 space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                          Nome
+                        </label>
+                        <input
+                          className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
+                                     px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
+                          value={node.name}
+                          onChange={e => updateNode(node.draftId, { name: e.target.value })}
+                          disabled={saving || loadingStructure}
+                        />
+                      </div>
 
-                    <div className="space-y-1">
-                      <label className="block text-[11px] text-[var(--text-secondary)]">Código</label>
-                      <input
-                        className="w-full text-sm rounded-full border border-[var(--border-subtle)]
-                                   bg-[var(--surface-bg)] px-4 py-2
-                                   text-[var(--text-primary)]
-                                   focus:outline-none focus:border-[var(--border-strong)]"
-                        value={node.code}
-                        onChange={e => updateNode(node.draftId, { code: e.target.value })}
-                        placeholder="Ex: DOC"
-                        disabled={saving || loadingStructure}
-                      />
-                    </div>
+                      <div>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                          Código
+                        </label>
+                        <input
+                          className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
+                                     px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
+                          value={node.code}
+                          onChange={e => updateNode(node.draftId, { code: e.target.value })}
+                          placeholder="Ex: DOC"
+                          disabled={saving || loadingStructure}
+                        />
+                      </div>
 
-                    <div className="space-y-1">
-                      <label className="block text-[11px] text-[var(--text-secondary)]">Ordem</label>
-                      <input
-                        className="w-full text-sm rounded-full border border-[var(--border-subtle)]
-                                   bg-[var(--surface-bg)] px-4 py-2
-                                   text-[var(--text-primary)]
-                                   focus:outline-none focus:border-[var(--border-strong)]"
-                        value={String(node.sortOrder)}
-                        onChange={e => updateNode(node.draftId, { sortOrder: Number(e.target.value) })}
-                        disabled={saving || loadingStructure}
-                      />
-                    </div>
+                      <div>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                          Ordem
+                        </label>
+                        <input
+                          className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
+                                     px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
+                          value={String(node.sortOrder)}
+                          onChange={e => updateNode(node.draftId, { sortOrder: Number(e.target.value) })}
+                          disabled={saving || loadingStructure}
+                        />
+                      </div>
 
-                    <div className="space-y-1 md:col-span-2">
-                      <label className="block text-[11px] text-[var(--text-secondary)]">Pai</label>
+                      <div className="md:col-span-2">
+                        <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                          Pai
+                        </label>
 
-                      <select
-                        className="w-full text-sm rounded-full border border-[var(--border-subtle)]
-                                   bg-[var(--surface-bg)] px-4 py-2
-                                   text-[var(--text-primary)]
-                                   focus:outline-none focus:border-[var(--border-strong)]"
-                        value={node.parentDraftId ?? ""}
-                        onChange={e => updateNode(node.draftId, { parentDraftId: e.target.value || null })}
-                        disabled={saving || loadingStructure || isRootBlock}
-                      >
-                        <option value="">(raiz)</option>
-                        {parentOptions.map(n => (
-                          <option key={n.draftId} value={n.draftId}>
-                            {n.name?.trim() ? `${n.name} (${n.code || "sem código"})` : n.draftId}
-                          </option>
-                        ))}
-                      </select>
+                        <select
+                          className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
+                                     px-3 py-2 text-sm text-[var(--text-primary)] outline-none
+                                     disabled:opacity-60 disabled:cursor-not-allowed"
+                          value={node.parentDraftId ?? ""}
+                          onChange={e => updateNode(node.draftId, { parentDraftId: e.target.value || null })}
+                          disabled={saving || loadingStructure || isRootBlock}
+                        >
+                          <option value="">(raiz)</option>
+                          {parentOptions.map(n => (
+                            <option key={n.draftId} value={n.draftId}>
+                              {n.name?.trim() ? `${n.name} (${n.code || "sem código"})` : n.draftId}
+                            </option>
+                          ))}
+                        </select>
 
-                      {isRootBlock && (
-                        <p className="text-[11px] text-[var(--text-secondary)]">
-                          O bloco raiz sempre fica como “raiz”.
-                        </p>
+                        {isRootBlock && (
+                          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                            O bloco raiz sempre fica como “raiz”.
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                          Fórmula
+                        </label>
+                        <div className="mt-2 flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={node.hasFormula}
+                            onChange={e => updateNode(node.draftId, { hasFormula: e.target.checked })}
+                            disabled={saving || loadingStructure}
+                          />
+                          <span className="text-[var(--text-primary)]">Possui fórmula</span>
+                        </div>
+                      </div>
+
+                      {node.hasFormula && (
+                        <div className="md:col-span-3">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                            Expressão
+                          </label>
+                          <input
+                            className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
+                                       px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
+                            value={node.formulaExpression}
+                            onChange={e => updateNode(node.draftId, { formulaExpression: e.target.value })}
+                            placeholder="Ex: A * 0.5 + B"
+                            disabled={saving || loadingStructure}
+                          />
+                        </div>
                       )}
                     </div>
+                  </section>
 
-                    <div className="space-y-1">
-                      <label className="block text-[11px] text-[var(--text-secondary)]">Fórmula</label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={node.hasFormula}
-                          onChange={e => updateNode(node.draftId, { hasFormula: e.target.checked })}
-                          disabled={saving || loadingStructure}
-                        />
-                        <span className="text-xs text-[var(--text-primary)]">Possui fórmula</span>
-                      </div>
-                    </div>
-
-                    {node.hasFormula && (
-                      <div className="space-y-1 md:col-span-3">
-                        <label className="block text-[11px] text-[var(--text-secondary)]">Expressão</label>
-                        <input
-                          className="w-full text-sm rounded-full border border-[var(--border-subtle)]
-                                     bg-[var(--surface-bg)] px-4 py-2
-                                     text-[var(--text-primary)]
-                                     focus:outline-none focus:border-[var(--border-strong)]"
-                          value={node.formulaExpression}
-                          onChange={e => updateNode(node.draftId, { formulaExpression: e.target.value })}
-                          placeholder="Ex: A * 0.5 + B"
-                          disabled={saving || loadingStructure}
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="pt-3 border-t border-[var(--border-subtle)] space-y-3">
+                  <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-semibold text-[var(--text-primary)]">Itens</div>
+                      <h3 className="text-base font-semibold text-[var(--text-primary)]">Itens</h3>
 
                       <button
                         type="button"
                         onClick={() => addItem(node.draftId)}
                         disabled={saving || loadingStructure}
-                        className="px-4 py-2 rounded-full border border-[var(--border-subtle)]
-                                   text-[11px] font-medium text-[var(--text-secondary)]
-                                   hover:bg-[var(--surface-muted)] disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                                   border border-[var(--border-subtle)]
+                                   hover:bg-[var(--surface-bg-2)] transition
+                                   disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         Adicionar item
                       </button>
@@ -703,11 +726,14 @@ export default function ScoringTableBlockBuilderPage() {
                       return (
                         <div
                           key={item.idScoringItem ? `db_${item.idScoringItem}` : idx}
-                          className="border border-[var(--border-subtle)] rounded-2xl p-3 bg-[var(--surface-muted-bg)] space-y-3"
+                          className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4 space-y-3"
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="text-xs font-semibold text-[var(--text-primary)]">
-                              Item {idx + 1} {itemPersisted ? `· #${item.idScoringItem}` : "· (novo)"}
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="text-sm font-semibold text-[var(--text-primary)]">
+                              Item {idx + 1}{" "}
+                              <span className="text-sm font-normal text-[var(--text-secondary)]">
+                                {itemPersisted ? `· #${item.idScoringItem}` : "· (novo)"}
+                              </span>
                             </div>
 
                             <button
@@ -715,87 +741,90 @@ export default function ScoringTableBlockBuilderPage() {
                               onClick={() => removeItem(node.draftId, idx)}
                               disabled={saving || loadingStructure || itemPersisted}
                               title={itemPersisted ? "Remoção de item já salvo não está implementada (sem delete no backend)." : ""}
-                              className="px-4 py-2 rounded-full border border-[var(--border-subtle)]
-                                         text-[11px] font-medium text-[var(--text-secondary)]
-                                         hover:bg-[var(--surface-muted)] disabled:opacity-60 disabled:cursor-not-allowed"
+                              className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                                         border border-[var(--border-subtle)]
+                                         hover:bg-[var(--surface-bg-2)] transition
+                                         disabled:opacity-60 disabled:cursor-not-allowed"
                             >
                               Remover
                             </button>
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div className="space-y-1 md:col-span-2">
-                              <label className="block text-[11px] text-[var(--text-secondary)]">Descrição</label>
+                            <div className="md:col-span-2">
+                              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                                Descrição
+                              </label>
                               <input
-                                className="w-full text-sm rounded-full border border-[var(--border-subtle)]
-                                           bg-[var(--surface-bg)] px-4 py-2
-                                           text-[var(--text-primary)]
-                                           focus:outline-none focus:border-[var(--border-strong)]"
+                                className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
+                                           px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
                                 value={item.description}
                                 onChange={e => updateItem(node.draftId, idx, { description: e.target.value })}
                                 disabled={saving || loadingStructure}
                               />
                             </div>
 
-                            <div className="space-y-1">
-                              <label className="block text-[11px] text-[var(--text-secondary)]">Unidade</label>
+                            <div>
+                              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                                Unidade
+                              </label>
                               <input
-                                className="w-full text-sm rounded-full border border-[var(--border-subtle)]
-                                           bg-[var(--surface-bg)] px-4 py-2
-                                           text-[var(--text-primary)]
-                                           focus:outline-none focus:border-[var(--border-strong)]"
+                                className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
+                                           px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
                                 value={item.unit}
                                 onChange={e => updateItem(node.draftId, idx, { unit: e.target.value })}
                                 disabled={saving || loadingStructure}
                               />
                             </div>
 
-                            <div className="space-y-1">
-                              <label className="block text-[11px] text-[var(--text-secondary)]">Pontos</label>
+                            <div>
+                              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                                Pontos
+                              </label>
                               <input
-                                className="w-full text-sm rounded-full border border-[var(--border-subtle)]
-                                           bg-[var(--surface-bg)] px-4 py-2
-                                           text-[var(--text-primary)]
-                                           focus:outline-none focus:border-[var(--border-strong)]"
+                                className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
+                                           px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
                                 value={item.points}
                                 onChange={e => updateItem(node.draftId, idx, { points: e.target.value })}
                                 disabled={saving || loadingStructure}
                               />
                             </div>
 
-                            <div className="space-y-1">
-                              <label className="block text-[11px] text-[var(--text-secondary)]">Máximo</label>
-                              <div className="flex items-center gap-2">
+                            <div>
+                              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                                Máximo
+                              </label>
+                              <div className="mt-2 flex items-center gap-2 text-sm">
                                 <input
                                   type="checkbox"
                                   checked={item.hasMaxPoints}
                                   onChange={e => updateItem(node.draftId, idx, { hasMaxPoints: e.target.checked })}
                                   disabled={saving || loadingStructure}
                                 />
-                                <span className="text-xs text-[var(--text-primary)]">Possui pontuação máxima</span>
+                                <span className="text-[var(--text-primary)]">Possui pontuação máxima</span>
                               </div>
                             </div>
 
-                            <div className="space-y-1">
-                              <label className="block text-[11px] text-[var(--text-secondary)]">Pontuação máxima</label>
+                            <div>
+                              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                                Pontuação máxima
+                              </label>
                               <input
-                                className="w-full text-sm rounded-full border border-[var(--border-subtle)]
-                                           bg-[var(--surface-bg)] px-4 py-2
-                                           text-[var(--text-primary)]
-                                           focus:outline-none focus:border-[var(--border-strong)]"
+                                className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
+                                           px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
                                 value={item.maxPoints}
                                 onChange={e => updateItem(node.draftId, idx, { maxPoints: e.target.value })}
                                 disabled={saving || loadingStructure || !item.hasMaxPoints}
                               />
                             </div>
 
-                            <div className="space-y-1">
-                              <label className="block text-[11px] text-[var(--text-secondary)]">Variável da expressão</label>
+                            <div>
+                              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                                Variável da expressão
+                              </label>
                               <input
-                                className="w-full text-sm rounded-full border border-[var(--border-subtle)]
-                                           bg-[var(--surface-bg)] px-4 py-2
-                                           text-[var(--text-primary)]
-                                           focus:outline-none focus:border-[var(--border-strong)]"
+                                className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
+                                           px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
                                 value={item.formulaKey}
                                 onChange={e => updateItem(node.draftId, idx, { formulaKey: e.target.value })}
                                 placeholder="Ex: A"
@@ -808,11 +837,11 @@ export default function ScoringTableBlockBuilderPage() {
                     })}
 
                     {node.items.length === 0 && (
-                      <p className="text-[11px] text-[var(--text-secondary)]">
+                      <p className="text-sm text-[var(--text-secondary)]">
                         Nenhum item cadastrado neste subitem (permitido para subitem pai).
                       </p>
                     )}
-                  </div>
+                  </section>
                 </div>
               )
             })}

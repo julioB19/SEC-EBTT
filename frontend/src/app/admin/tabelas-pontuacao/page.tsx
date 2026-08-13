@@ -98,7 +98,6 @@ export default function AdminTabelasPontuacaoPage() {
   const [status, setStatus] = useState<string>(searchParams.get("status") ?? "")
 
   const [savingId, setSavingId] = useState<number | null>(null)
-
   const [vigenciaEditingId, setVigenciaEditingId] = useState<number | null>(null)
 
   const [confirm, setConfirm] = useState<ConfirmState>({
@@ -301,14 +300,20 @@ export default function AdminTabelasPontuacaoPage() {
 
           <div className="flex flex-wrap gap-2">
             <Link
+              href={`/admin/tabelas-pontuacao/${row.idScoringTable}/mapeamento`}
+              className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                         border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition"
+              title="Consultar os marcadores que devem ser inseridos na planilha"
+            >
+              Campos da planilha
+            </Link>
+
+            <Link
               href={canEditStructure ? `/admin/tabelas-pontuacao/nova/${row.idScoringTable}/builder` : "#"}
               aria-disabled={!canEditStructure}
-              className={
-                "px-4 py-2 rounded-full border text-xs transition " +
-                (canEditStructure
-                  ? "border-[var(--btn-secondary-border)] text-[var(--btn-secondary-text)] hover:bg-[var(--btn-secondary-hover-bg)]"
-                  : "border-[var(--border-subtle)] text-[var(--text-muted)] cursor-not-allowed")
-              }
+              className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                         border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition
+                         disabled:opacity-60 disabled:cursor-not-allowed"
               onClick={e => {
                 if (!canEditStructure) e.preventDefault()
               }}
@@ -353,12 +358,9 @@ export default function AdminTabelasPontuacaoPage() {
                   return
                 }
               }}
-              className={
-                "px-4 py-2 rounded-full border text-xs transition disabled:opacity-60 disabled:cursor-not-allowed " +
-                (isInactive
-                  ? "border-[var(--border-subtle)] text-[var(--text-muted)]"
-                  : "border-[var(--btn-secondary-border)] text-[var(--btn-secondary-text)] hover:bg-[var(--btn-secondary-hover-bg)]")
-              }
+              className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                         border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition
+                         disabled:opacity-60 disabled:cursor-not-allowed"
               title={statusActionTitle}
             >
               {savingId === row.idScoringTable ? "Salvando..." : statusActionLabel}
@@ -371,9 +373,8 @@ export default function AdminTabelasPontuacaoPage() {
                 setError(null)
                 setVigenciaEditingId(prev => (prev === row.idScoringTable ? null : row.idScoringTable))
               }}
-              className="px-4 py-2 rounded-full border border-[var(--btn-secondary-border)]
-                         text-xs text-[var(--btn-secondary-text)]
-                         hover:bg-[var(--btn-secondary-hover-bg)] transition
+              className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                         border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition
                          disabled:opacity-60 disabled:cursor-not-allowed"
               title="Editar datas de vigência"
             >
@@ -398,10 +399,9 @@ export default function AdminTabelasPontuacaoPage() {
                     }
                   })
                 }}
-                className="px-4 py-2 rounded-full border border-[var(--state-danger-border)]
-                           text-xs text-[var(--state-danger-text)]
-                           hover:bg-[var(--state-danger-bg)] transition
-                           disabled:opacity-60 disabled:cursor-not-allowed"
+                className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                           border border-red-200 bg-white text-red-700
+                           hover:bg-red-100 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 title="Excluir tabela (somente rascunho)"
               >
                 {savingId === row.idScoringTable ? "Excluindo..." : "Excluir"}
@@ -453,81 +453,76 @@ export default function AdminTabelasPontuacaoPage() {
         onConfirm={() => confirm.onConfirm?.()}
       />
 
-      <div className="px-4 md:px-6 lg:px-8 py-6 space-y-6">
-        <header className="flex flex-wrap gap-3 justify-between items-center">
+      <div className="max-w-6xl mx-auto space-y-6 px-4 md:px-6 lg:px-8 py-6">
+        <header className="space-y-3">
           <div>
             <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Tabelas de pontuação</h1>
             <p className="text-sm text-[var(--text-secondary)]">
-              Gerencie vigência, status e edição de estrutura (somente em rascunho).
+              Gerencie vigência, status e edição de estrutura.
             </p>
           </div>
 
-          <Link
-            href="/admin/tabelas-pontuacao/nova"
-            className="px-4 py-2 rounded-full border border-[var(--btn-primary-border)]
-                       bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
-                       hover:bg-[var(--btn-primary-hover-bg)] transition text-xs font-semibold"
-          >
-            Criar nova tabela
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link
+              href="/admin"
+              className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                         bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
+                         hover:bg-[var(--btn-primary-hover-bg)] transition-[background]"
+            >
+              Voltar
+            </Link>
+
+            <Link
+              href="/admin/tabelas-pontuacao/nova"
+              className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                         bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
+                         hover:bg-[var(--btn-primary-hover-bg)] transition-[background]"
+            >
+              Criar nova tabela
+            </Link>
+          </div>
         </header>
 
-        <section className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl shadow-sm p-4 space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_220px_auto] gap-3 items-end">
-            <div>
-              <label className="text-xs text-[var(--text-secondary)]">Buscar</label>
-              <input
-                value={q}
-                onChange={e => setQ(e.target.value)}
-                placeholder="Nome da tabela"
-                className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)]
-                           px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
-              />
-            </div>
+        <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4 space-y-3">
+          <div className="grid sm:grid-cols-3 gap-3">
+            <input
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              placeholder="Nome da tabela"
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] px-3 py-2 text-sm"
+            />
 
-            <div>
-              <label className="text-xs text-[var(--text-secondary)]">Status</label>
-              <select
-                value={status}
-                onChange={e => setStatus(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)]
-                           px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
-              >
-                <option value="">Todos</option>
-                <option value="ACTIVE">Ativa</option>
-                <option value="DRAFT">Rascunho</option>
-                <option value="INACTIVE">Inativada</option>
-              </select>
-            </div>
+            <select
+              value={status}
+              onChange={e => setStatus(e.target.value)}
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] px-3 py-2 text-sm"
+            >
+              <option value="">Todos</option>
+              <option value="ACTIVE">Ativa</option>
+              <option value="DRAFT">Rascunho</option>
+              <option value="INACTIVE">Inativada</option>
+            </select>
 
             <button
               type="button"
               onClick={applyFilters}
-              className="px-4 py-2 rounded-full border border-[var(--btn-secondary-border)]
-                         text-xs text-[var(--btn-secondary-text)]
-                         hover:bg-[var(--btn-secondary-hover-bg)] transition"
+              className="rounded-xl border border-[var(--border-subtle)] px-3 py-2 text-sm hover:bg-[var(--surface-bg-2)]"
             >
               Aplicar
             </button>
           </div>
-
-          <div className="text-[11px] text-[var(--text-muted)]">
-            Dica: a edição de estrutura só é permitida enquanto a tabela estiver em rascunho.
-          </div>
         </section>
 
         {error && (
-          <div className="bg-[var(--state-danger-bg)] border border-[var(--state-danger-border)] rounded-2xl p-4">
-            <p className="text-sm text-[var(--state-danger-text)] whitespace-pre-wrap">{error}</p>
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 whitespace-pre-wrap">
+            {error}
           </div>
         )}
 
         {loading ? (
-          <div className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl p-6 text-sm text-[var(--text-secondary)]">
-            Carregando tabelas...
-          </div>
+          <p className="text-sm text-[var(--text-secondary)]">Carregando...</p>
         ) : orderedRows.length === 0 ? (
-          <div className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl p-6 text-sm text-[var(--text-secondary)]">
+          <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-6 text-sm text-[var(--text-secondary)]">
             Nenhuma tabela encontrada.
           </div>
         ) : (
@@ -554,7 +549,7 @@ function EditVigenciaCard(props: {
   }, [props.startsOn, props.endsOn])
 
   return (
-    <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4 space-y-3">
+    <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div className="text-sm font-semibold text-[var(--text-primary)]">Editar vigência</div>
 
@@ -562,16 +557,15 @@ function EditVigenciaCard(props: {
           type="button"
           disabled={props.disabled}
           onClick={props.onCancel}
-          className="px-3 py-1.5 rounded-full border border-[var(--btn-secondary-border)]
-                     text-[11px] text-[var(--btn-secondary-text)]
-                     hover:bg-[var(--btn-secondary-hover-bg)] transition
+          className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                     border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition
                      disabled:opacity-60 disabled:cursor-not-allowed"
         >
           Fechar
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid sm:grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-[var(--text-secondary)]">Data inicial</label>
           <input
@@ -608,9 +602,8 @@ function EditVigenciaCard(props: {
             setEndsOn(toDateInputValue(props.endsOn))
             props.onCancel()
           }}
-          className="px-4 py-2 rounded-full border border-[var(--btn-secondary-border)]
-                     text-xs text-[var(--btn-secondary-text)]
-                     hover:bg-[var(--btn-secondary-hover-bg)] transition
+          className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                     border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition
                      disabled:opacity-60 disabled:cursor-not-allowed"
         >
           Cancelar
@@ -620,9 +613,9 @@ function EditVigenciaCard(props: {
           type="button"
           disabled={props.disabled}
           onClick={() => props.onSave(startsOn, endsOn)}
-          className="px-4 py-2 rounded-full border border-[var(--btn-primary-border)]
+          className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
                      bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
-                     hover:bg-[var(--btn-primary-hover-bg)] transition text-xs font-semibold
+                     hover:bg-[var(--btn-primary-hover-bg)] transition-[background]
                      disabled:opacity-60 disabled:cursor-not-allowed"
         >
           Salvar
@@ -680,9 +673,8 @@ function ConfirmModal(props: {
           <button
             type="button"
             onClick={props.onCancel}
-            className="px-4 py-2 rounded-full border border-[var(--btn-secondary-border)]
-                       text-xs text-[var(--btn-secondary-text)]
-                       hover:bg-[var(--btn-secondary-hover-bg)] transition"
+            className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                       border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition"
           >
             {cancelText}
           </button>
@@ -691,10 +683,10 @@ function ConfirmModal(props: {
             type="button"
             onClick={props.onConfirm}
             className={
-              "px-4 py-2 rounded-full border text-xs font-semibold transition " +
+              "rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide transition " +
               (tone === "danger"
-                ? "border-[var(--state-danger-border)] text-[var(--state-danger-text)] hover:bg-[var(--state-danger-bg)]"
-                : "border-[var(--btn-primary-border)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover-bg)]")
+                ? "border border-red-200 bg-white text-red-700 hover:bg-red-100"
+                : "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover-bg)]")
             }
           >
             {confirmText}

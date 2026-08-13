@@ -7,7 +7,7 @@ import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import ConfirmModal from "@/components/ConfirmModal"
 
-type CppdDecision = "APPROVED" | "REJECTED" | "RETURNED"
+type CppdDecision = "APPROVED" | "REJECTED"
 
 interface ParecerTotalsDto {
   docenteTotal: number
@@ -158,18 +158,14 @@ export default function CppdParecerPage() {
 
   function getConfirmTitle() {
     if (decision === "APPROVED") return "Confirmar deferimento?"
-    if (decision === "REJECTED") return "Confirmar indeferimento?"
-    return "Confirmar devolução para correção?"
+    return "Confirmar indeferimento?"
   }
 
   function getConfirmDescription() {
     if (decision === "APPROVED") {
       return "Ao confirmar, o processo será finalizado como DEFERIDO e o parecer será salvo."
     }
-    if (decision === "REJECTED") {
-      return "Ao confirmar, o processo será finalizado como INDEFERIDO e o parecer será salvo."
-    }
-    return "Ao confirmar, o processo será DEVOLVIDO para correção e o parecer será salvo."
+    return "Ao confirmar, o processo será finalizado como INDEFERIDO e o parecer será salvo."
   }
 
   async function handleCopyParecer() {
@@ -545,7 +541,6 @@ export default function CppdParecerPage() {
                     >
                       <option value="APPROVED">Deferir</option>
                       <option value="REJECTED">Indeferir</option>
-                      <option value="RETURNED">Devolver para correção</option>
                     </select>
                   </div>
 

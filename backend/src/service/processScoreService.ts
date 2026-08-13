@@ -257,7 +257,10 @@ export class ProcessScoreService {
       throw new NotFoundError("Processo não encontrado")
     }
 
-    const scores = await this.scoreRepo.listByProcess(processId) as RepoScore[]
+    const [scores, items] = await Promise.all([
+      this.scoreRepo.listByProcess(processId) as Promise<RepoScore[]>,
+      this.tableRepo.findItemsByTableId(careerProcess.scoringTableId) as Promise<RepoItem[]>
+    ])
 
     const quantityByItemId = new Map<number, number>()
 
@@ -292,10 +295,28 @@ export class ProcessScoreService {
     const workbook = new ExcelJS.Workbook()
     await workbook.xlsx.readFile(templatePath)
 
+    const templateItemIds = this.extrairItemIdsDoTemplate(workbook)
+    const missingItems = items.filter(item => !templateItemIds.has(item.idScoringItem))
+
+    if (missingItems.length > 0) {
+      const missingMarkers = missingItems
+        .map(item => `[[ID${item.idScoringItem}]]`)
+        .join(", ")
+
+      throw new BusinessRuleError(
+        `O modelo da planilha de pontuação está desatualizado. Marcadores ausentes: ${missingMarkers}.`,
+        missingItems.map(item =>
+          `Inclua o marcador [[ID${item.idScoringItem}]] para o item: ${item.description}`
+        )
+      )
+    }
+
     const tags = this.montarTagsIdentificacao(careerProcess)
     this.preencherTagsIdentificacaoNaPlanilha(workbook, tags)
 
     this.preencherQuantidadesNaPlanilha(workbook, quantityByItemId)
+
+    workbook.calcProperties.fullCalcOnLoad = true
 
     this.configurarImpressaoA4UmaFolhaPorAba(workbook)
 
@@ -320,28 +341,24 @@ export class ProcessScoreService {
       throw new NotFoundError("Processo não encontrado")
     }
 
-    const envPath = process.env.SCORE_SPREADSHEET_TEMPLATE_PATH
+    const [nodes, items, scores] = await Promise.all([
+      this.tableRepo.findNodesByTableId(careerProcess.scoringTableId) as Promise<RepoNode[]>,
+      this.tableRepo.findItemsByTableId(careerProcess.scoringTableId) as Promise<RepoItem[]>,
+      this.scoreRepo.listByProcess(processId) as Promise<RepoScore[]>
+    ])
 
-    const candidatePaths = [
-      envPath ? path.resolve(envPath) : null,
-      path.resolve(process.cwd(), "templates", "planilha-pontuacao.xlsx"),
-      path.resolve(process.cwd(), "src", "templates", "planilha-pontuacao.xlsx")
-    ].filter((p): p is string => Boolean(p))
-
-    const templatePath = candidatePaths.find(p => fs.existsSync(p))
-
-    if (!templatePath) {
-      throw new BusinessRuleError(
-        "Template de planilha de pontuação não encontrado no servidor. Coloque o arquivo em /templates/planilha-pontuacao.xlsx ou defina SCORE_SPREADSHEET_TEMPLATE_PATH apontando para o arquivo."
-      )
+    // A ordem e os IDs devem vir da tabela vinculada ao processo. Os IDs gravados
+    // no template podem ficar desatualizados quando uma tabela é recriada/clonada.
+    const itemsByNodeId = new Map<number, RepoItem[]>()
+    for (const item of items) {
+      const nodeItems = itemsByNodeId.get(item.nodeId) ?? []
+      nodeItems.push(item)
+      itemsByNodeId.set(item.nodeId, nodeItems)
     }
 
-    const workbook = new ExcelJS.Workbook()
-    await workbook.xlsx.readFile(templatePath)
-
-    const orderedItemIds = this.extrairOrdemItemIdsDoTemplate(workbook)
-
-    const scores = await this.scoreRepo.listByProcess(processId) as RepoScore[]
+    const orderedItemIds = nodes.flatMap(node =>
+      (itemsByNodeId.get(node.idScoringNode) ?? []).map(item => item.idScoringItem)
+    )
 
     const scoreByItemId = new Map<number, RepoScore>()
     for (const s of scores) {
@@ -379,33 +396,6 @@ export class ProcessScoreService {
       fileName: `comprovantes_pontuacao_processo_${processId}.pdf`,
       fileBuffer: merged
     }
-  }
-
-  private extrairOrdemItemIdsDoTemplate(workbook: ExcelJS.Workbook) {
-    const placeholderRegex = /\[\[ID(\d+)\]\]/g
-    const ordered: number[] = []
-    const seen = new Set<number>()
-
-    for (const worksheet of workbook.worksheets) {
-      worksheet.eachRow({ includeEmpty: false }, row => {
-        row.eachCell({ includeEmpty: false }, cell => {
-          const raw = cell.value
-          if (typeof raw !== "string") return
-          if (!raw.includes("[[ID")) return
-
-          const matches = raw.matchAll(placeholderRegex)
-          for (const m of matches) {
-            const itemId = Number(m[1])
-            if (!itemId || Number.isNaN(itemId)) continue
-            if (seen.has(itemId)) continue
-            seen.add(itemId)
-            ordered.push(itemId)
-          }
-        })
-      })
-    }
-
-    return ordered
   }
 
   private async mergePdfBuffers(buffers: Buffer[]) {
@@ -476,10 +466,20 @@ export class ProcessScoreService {
       worksheet.eachRow({ includeEmpty: false }, row => {
         row.eachCell({ includeEmpty: false }, cell => {
           const raw = cell.value
-          if (typeof raw !== "string") return
-          if (!raw.includes("[[")) return
+          const formulaResult =
+            typeof raw === "object" && raw !== null && "formula" in raw && "result" in raw
+              ? (raw as ExcelJS.CellFormulaValue).result
+              : undefined
 
-          const replaced = raw.replace(tagRegex, (_m, key: string) => {
+          const text = typeof raw === "string"
+            ? raw
+            : typeof formulaResult === "string"
+              ? formulaResult
+              : null
+
+          if (text === null || !text.includes("[[")) return
+
+          const replaced = text.replace(tagRegex, (_m, key: string) => {
             if (key.startsWith("ID")) return `[[${key}]]`
 
             const value = tags.get(key)
@@ -487,12 +487,43 @@ export class ProcessScoreService {
             return value
           })
 
-          if (replaced !== raw) {
+          if (replaced === text) return
+
+          if (typeof raw === "string") {
             cell.value = replaced
+          } else {
+            // Mantém a fórmula da aba Resumo e atualiza o resultado em cache.
+            // O LibreOffice usa esse resultado na conversão quando a referência
+            // textual ainda não foi recalculada.
+            cell.value = {
+              ...(raw as ExcelJS.CellFormulaValue),
+              result: replaced
+            }
           }
         })
       })
     }
+  }
+
+  private extrairItemIdsDoTemplate(workbook: ExcelJS.Workbook) {
+    const placeholderRegex = /\[\[ID(\d+)\]\]/g
+    const itemIds = new Set<number>()
+
+    for (const worksheet of workbook.worksheets) {
+      worksheet.eachRow({ includeEmpty: false }, row => {
+        row.eachCell({ includeEmpty: false }, cell => {
+          const raw = cell.value
+          if (typeof raw !== "string" || !raw.includes("[[ID")) return
+
+          for (const match of raw.matchAll(placeholderRegex)) {
+            const itemId = Number(match[1])
+            if (Number.isInteger(itemId) && itemId > 0) itemIds.add(itemId)
+          }
+        })
+      })
+    }
+
+    return itemIds
   }
 
   private preencherQuantidadesNaPlanilha(workbook: ExcelJS.Workbook, quantityByItemId: Map<number, number>) {

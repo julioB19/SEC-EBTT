@@ -25,10 +25,6 @@ export function AdminNavLinks() {
         <Link href="/admin/usuarios" className={desktopLinkClass}>
           Usuários
         </Link>
-
-        <Link href="/admin/configuracoes" className={desktopLinkClass}>
-          Configurações
-        </Link>
       </div>
 
       <button

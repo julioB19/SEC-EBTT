@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
@@ -109,45 +110,61 @@ export default function NovaTabelaPontuacaoPage() {
 
   return (
     <main className="min-h-[60vh]">
-      <div className="px-4 md:px-6 lg:px-8 py-6 space-y-6">
-        <header className="flex flex-wrap gap-3 justify-between items-center">
+      <div className="max-w-3xl mx-auto space-y-6 px-4 md:px-6 lg:px-8 py-6">
+        <header className="space-y-3">
           <div>
             <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Criar Tabela de Pontuação</h1>
             <p className="text-sm text-[var(--text-secondary)]">
-              A tabela será criada como <span className="font-semibold text-[var(--text-primary)]">DRAFT</span>. Depois você monta os blocos no builder.
+              A tabela será criada como <span className="font-semibold text-[var(--text-primary)]">Rascunho</span>.
+              Depois você monta os blocos no builder.
             </p>
           </div>
 
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              disabled={loading}
-              className="px-4 py-2 rounded-full border border-[var(--btn-secondary-border)]
-                         text-xs text-[var(--btn-secondary-text)]
-                         hover:bg-[var(--btn-secondary-hover-bg)] transition
-                         disabled:opacity-60 disabled:cursor-not-allowed"
+          <div className="flex items-center justify-between">
+            <Link
+              href="/admin/tabelas-pontuacao"
+              className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                         bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
+                         hover:bg-[var(--btn-primary-hover-bg)] transition-[background]"
             >
               Voltar
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={loading}
+              className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                         bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
+                         hover:bg-[var(--btn-primary-hover-bg)] transition-[background]
+                         disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? "Criando..." : "Criar"}
             </button>
           </div>
         </header>
 
         {(infoMessage || error) && (
-          <div className="space-y-1">
-            {infoMessage && <p className="text-xs text-[var(--state-success-text)]">{infoMessage}</p>}
-            {error && <p className="text-xs text-[var(--state-danger-text)]">{error}</p>}
+          <div className="space-y-2">
+            {infoMessage && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+                {infoMessage}
+              </div>
+            )}
+            {error && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {error}
+              </div>
+            )}
           </div>
         )}
 
-        <section className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl p-4 shadow-sm space-y-4 max-w-2xl">
+        <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 space-y-4">
           <div className="space-y-1">
-            <label className="text-[11px] text-[var(--text-secondary)]">Nome</label>
+            <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Nome</label>
             <input
-              className="w-full text-sm rounded-xl border border-[var(--border-subtle)]
-                         bg-[var(--surface-bg)] px-3 py-2
-                         text-[var(--text-primary)]
-                         focus:outline-none focus:border-[var(--border-strong)]"
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
+                         px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="Ex: Tabela EBTT 2025"
@@ -155,15 +172,16 @@ export default function NovaTabelaPontuacaoPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[11px] text-[var(--text-secondary)]">Início de vigência (opcional)</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                Início de vigência (opcional)
+              </label>
               <input
                 type="date"
-                className="w-full text-sm rounded-xl border border-[var(--border-subtle)]
-                           bg-[var(--surface-bg)] px-3 py-2
-                           text-[var(--text-primary)]
-                           focus:outline-none focus:border-[var(--border-strong)]"
+                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
+                           px-3 py-2 text-sm text-[var(--text-primary)] outline-none
+                           disabled:opacity-60 disabled:cursor-not-allowed"
                 value={startsOn}
                 onChange={e => setStartsOn(e.target.value)}
                 disabled={loading}
@@ -171,13 +189,14 @@ export default function NovaTabelaPontuacaoPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] text-[var(--text-secondary)]">Fim de vigência (opcional)</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                Fim de vigência (opcional)
+              </label>
               <input
                 type="date"
-                className="w-full text-sm rounded-xl border border-[var(--border-subtle)]
-                           bg-[var(--surface-bg)] px-3 py-2
-                           text-[var(--text-primary)]
-                           focus:outline-none focus:border-[var(--border-strong)]"
+                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
+                           px-3 py-2 text-sm text-[var(--text-primary)] outline-none
+                           disabled:opacity-60 disabled:cursor-not-allowed"
                 value={endsOn}
                 onChange={e => setEndsOn(e.target.value)}
                 disabled={loading}
@@ -185,15 +204,15 @@ export default function NovaTabelaPontuacaoPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap justify-end gap-2 pt-2">
+          <div className="flex justify-end pt-2">
             <button
               type="button"
               onClick={handleCreate}
               disabled={loading}
-              className="inline-flex items-center rounded-full px-6 py-2 text-xs font-semibold
+              className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
                          bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
-                         hover:bg-[var(--btn-primary-hover-bg)]
-                         disabled:opacity-60 disabled:cursor-not-allowed transition"
+                         hover:bg-[var(--btn-primary-hover-bg)] transition-[background]
+                         disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? "Criando..." : "Criar tabela"}
             </button>

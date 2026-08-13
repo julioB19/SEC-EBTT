@@ -4,7 +4,7 @@ export interface CppdItemScoreDto {
   evaluatorComment?: string | null
 }
 
-export type CppdDecision = "APPROVED" | "REJECTED" | "RETURNED"
+export type CppdDecision = "APPROVED" | "REJECTED"
 
 export interface FinalizeEvaluationDto {
   decision: CppdDecision

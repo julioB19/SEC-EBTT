@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, use } from "react"
 import { useRouter } from "next/navigation"
 import ConfirmModal from "@/components/ui/ConfirmModal"
 
@@ -52,9 +52,20 @@ function toDateInput(value: string | null | undefined) {
   return String(value).slice(0, 10)
 }
 
-export default function AdminEditUsuarioPage({ params }: any) {
+function onlyDigits(value: string) {
+  return (value || "").replace(/\D/g, "")
+}
+
+function roleLabel(r: Role) {
+  if (r === "CPPD_MEMBER") return "MEMBRO DA CPPD"
+  return r
+}
+
+export default function AdminEditUsuarioPage({ params }: { params: Promise<{ userId: string }> }) {
   const router = useRouter()
-  const userId = Number(params.userId)
+
+  const resolvedParams = use(params)
+  const userId = Number(resolvedParams.userId)
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -72,7 +83,6 @@ export default function AdminEditUsuarioPage({ params }: any) {
   const [phone, setPhone] = useState("")
   const [city, setCity] = useState("")
   const [uf, setUf] = useState("")
-  const [active, setActive] = useState(true)
 
   const [roles, setRoles] = useState<Role[]>([])
   const hasDocente = useMemo(() => roles.includes("DOCENTE"), [roles])
@@ -96,8 +106,8 @@ export default function AdminEditUsuarioPage({ params }: any) {
   function toggleRole(r: Role) {
     setRoles(prev => {
       const has = prev.includes(r)
-      if (has) return prev.filter(x => x !== r)
-      return [...prev, r]
+      const next = has ? prev.filter(x => x !== r) : [...prev, r]
+      return [...next].sort((a, b) => roleLabel(a).localeCompare(roleLabel(b)))
     })
   }
 
@@ -125,8 +135,7 @@ export default function AdminEditUsuarioPage({ params }: any) {
       setPhone(u.phone ?? "")
       setCity(u.city ?? "")
       setUf(u.uf ?? "")
-      setActive(Boolean(u.active))
-      setRoles((u.roles ?? []) as Role[])
+      setRoles([...(u.roles ?? [])].sort((a, b) => roleLabel(a).localeCompare(roleLabel(b))) as Role[])
 
       if (u.docenteProfile) {
         setSiape(u.docenteProfile.siape ?? "")
@@ -186,7 +195,6 @@ export default function AdminEditUsuarioPage({ params }: any) {
       phone: phone || null,
       city: city || null,
       uf: uf || null,
-      active,
       roles
     }
 
@@ -206,8 +214,6 @@ export default function AdminEditUsuarioPage({ params }: any) {
         role: roleText || null,
         immediateSupervisor: immediateSupervisor || null
       }
-    } else {
-      payload.docenteProfile = null
     }
 
     try {
@@ -238,29 +244,39 @@ export default function AdminEditUsuarioPage({ params }: any) {
     setErr(null)
     setOk(null)
 
+    const cleanCpf = onlyDigits(cpf)
+
+    if (!cleanCpf) {
+      setInviting(false)
+      setErr("Informe um CPF válido para reenviar o link de redefinição de senha")
+      return
+    }
+
     try {
       const r = await fetch("/api/admin/usuarios/invite", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cpf })
+        body: JSON.stringify({ cpf: cleanCpf })
       })
 
       const res = (await r.json().catch(() => null)) as ApiResponse<any> | null
+
       if (!res || !r.ok || res.status === "error") {
-        setErr(res?.message || "Falha ao enviar convite")
+        const details = res?.details ? ` (${String(res.details).slice(0, 300)})` : ""
+        setErr((res?.message || "Falha ao enviar link de redefinição de senha") + details)
         return
       }
 
-      setOk("Convite enviado por e-mail")
+      setOk(res.message || "Link de redefinição de senha enviado para o e-mail cadastrado")
     } catch (e: any) {
-      setErr(e?.message || "Erro ao enviar convite")
+      setErr(e?.message || "Erro ao enviar link de redefinição de senha")
     } finally {
       setInviting(false)
     }
   }
 
-  async function onDeleteDocente() {
+  async function onDeleteUser() {
     setDeleting(true)
     setErr(null)
     setOk(null)
@@ -270,14 +286,14 @@ export default function AdminEditUsuarioPage({ params }: any) {
       const res = (await r.json().catch(() => null)) as ApiResponse<any> | null
 
       if (!res || !r.ok || res.status === "error") {
-        setErr(res?.message || "Falha ao excluir docente")
+        setErr(res?.message || "Falha ao excluir usuário")
         return
       }
 
       setConfirmDeleteOpen(false)
       router.push("/admin/usuarios")
     } catch (e: any) {
-      setErr(e?.message || "Erro ao excluir docente")
+      setErr(e?.message || "Erro ao excluir usuário")
     } finally {
       setDeleting(false)
     }
@@ -291,11 +307,18 @@ export default function AdminEditUsuarioPage({ params }: any) {
   return (
     <main className="min-h-[60vh]">
       <div className="max-w-3xl mx-auto space-y-6">
-        <header className="space-y-1">
+        <header className="space-y-3">
           <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Editar usuário</h1>
-          <p className="text-sm text-[var(--text-secondary)]">
-            Admin pode editar dados, roles e (se DOCENTE) o perfil docente.
-          </p>
+
+          <button
+            type="button"
+            onClick={() => router.push("/admin/usuarios")}
+            className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                               bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
+                               hover:bg-[var(--btn-primary-hover-bg)] transition-[background] disabled:opacity-60"
+          >
+            Voltar
+          </button>
         </header>
 
         {loading && <p className="text-sm text-[var(--text-secondary)]">Carregando...</p>}
@@ -316,11 +339,6 @@ export default function AdminEditUsuarioPage({ params }: any) {
             <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-base font-semibold text-[var(--text-primary)]">Dados</h2>
-
-                <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                  <input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} />
-                  Ativo
-                </label>
               </div>
 
               <div className="grid sm:grid-cols-2 gap-3">
@@ -360,78 +378,58 @@ export default function AdminEditUsuarioPage({ params }: any) {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => router.back()}
-                  className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)] hover:underline"
+                  onClick={onResendInvite}
+                  disabled={inviting}
+                  className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                               border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition disabled:opacity-60"
                 >
-                  Voltar
+                  {inviting ? "Enviando link..." : "Redefinir Senha"}
                 </button>
 
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={onResendInvite}
-                    disabled={inviting}
-                    className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
-                               border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition disabled:opacity-60"
-                  >
-                    {inviting ? "Enviando..." : "Reenviar convite"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={onSave}
-                    disabled={saving || (hasDocente && needsRequiredDocenteFields)}
-                    className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                <button
+                  type="button"
+                  onClick={onSave}
+                  disabled={saving || (hasDocente && needsRequiredDocenteFields)}
+                  className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
                                bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                                hover:bg-[var(--btn-primary-hover-bg)] transition-[background] disabled:opacity-60"
-                    title={
-                      hasDocente && needsRequiredDocenteFields
-                        ? "Preencha SIAPE, Classe/Nível, Início do interstício e Nível de formação"
-                        : ""
-                    }
-                  >
-                    {saving ? "Salvando..." : "Salvar"}
-                  </button>
-                </div>
+                  title={
+                    hasDocente && needsRequiredDocenteFields
+                      ? "Preencha SIAPE, Classe/Nível, Início do interstício e Nível de formação"
+                      : ""
+                  }
+                >
+                  {saving ? "Salvando..." : "Salvar"}
+                </button>
               </div>
             </section>
 
             <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 space-y-3">
-              <h2 className="text-base font-semibold text-[var(--text-primary)]">Roles</h2>
+              <h2 className="text-base font-semibold text-[var(--text-primary)]">Tipo de usuário</h2>
 
               <div className="grid sm:grid-cols-3 gap-3 text-sm">
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={roles.includes("DOCENTE")} onChange={() => toggleRole("DOCENTE")} />
-                  DOCENTE
-                </label>
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={roles.includes("CPPD_MEMBER")} onChange={() => toggleRole("CPPD_MEMBER")} />
-                  CPPD_MEMBER
-                </label>
                 <label className="flex items-center gap-2">
                   <input type="checkbox" checked={roles.includes("ADMIN")} onChange={() => toggleRole("ADMIN")} />
                   ADMIN
                 </label>
+
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={roles.includes("DOCENTE")} onChange={() => toggleRole("DOCENTE")} />
+                  DOCENTE
+                </label>
+
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={roles.includes("CPPD_MEMBER")}
+                    onChange={() => toggleRole("CPPD_MEMBER")}
+                  />
+                  MEMBRO DA CPPD
+                </label>
               </div>
-
-              <p className="text-xs text-[var(--text-secondary)]">
-                Regra: em geral CPPD_MEMBER será DOCENTE também, mas o sistema permite CPPD_MEMBER sem perfil docente para avaliadores externos.
-              </p>
-
-              {roles.includes("DOCENTE") && (
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteOpen(true)}
-                    className="text-xs font-semibold uppercase tracking-wide text-red-600 hover:underline"
-                  >
-                    Excluir docente (soft delete)
-                  </button>
-                </div>
-              )}
             </section>
 
             {hasDocente && (
@@ -521,17 +519,39 @@ export default function AdminEditUsuarioPage({ params }: any) {
               </section>
             )}
 
+            <section className="rounded-2xl border border-red-200 bg-red-50 p-5 space-y-3">
+              <div className="space-y-1">
+                <h2 className="text-base font-semibold text-red-700">ATENÇÃO</h2>
+                <p className="text-xs text-red-700/80">
+                  A exclusão de um usuário é permanente e não pode ser desfeita.
+                </p>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteOpen(true)}
+                  disabled={deleting}
+                  className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                             border border-red-200 bg-white text-red-700
+                             hover:bg-red-100 transition disabled:opacity-60"
+                >
+                  {deleting ? "Excluindo..." : "Deletar usuário"}
+                </button>
+              </div>
+            </section>
+
             <ConfirmModal
               open={confirmDeleteOpen}
-              title="Excluir docente"
-              description="Essa ação desativa o usuário (soft delete). Tem certeza?"
+              title="Deletar usuário"
+              description="Tem certeza que deseja deletar este usuário? Após a exclusão não é possível recuperar o cadastro."
               confirmText={deleting ? "Excluindo..." : "Confirmar"}
               cancelText="Cancelar"
               loading={deleting}
               onCancel={() => {
                 if (!deleting) setConfirmDeleteOpen(false)
               }}
-              onConfirm={onDeleteDocente}
+              onConfirm={onDeleteUser}
             />
           </>
         )}

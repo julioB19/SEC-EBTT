@@ -62,20 +62,6 @@ export default async function AdminPage() {
                 Crie e gerencie as tabelas de atividades, pesos e critérios do sistema.
               </p>
             </a>
-
-            <a
-              href="/admin/configuracoes"
-              className="block bg-[var(--surface-bg)] border border-[var(--border-subtle)]
-                         hover:border-[var(--border-strong)] transition
-                         rounded-2xl p-5 shadow-sm"
-            >
-              <h2 className="text-base font-semibold text-[var(--text-primary)]">
-                Configurações
-              </h2>
-              <p className="text-sm text-[var(--text-secondary)] mt-1">
-                Ajuste parâmetros gerais e preferências do sistema.
-              </p>
-            </a>
           </div>
         </section>
       </div>

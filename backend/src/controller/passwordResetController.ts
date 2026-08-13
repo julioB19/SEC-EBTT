@@ -16,6 +16,18 @@ export class PasswordResetController {
     }
   }
 
+  async invite(req: any, res: any): Promise<void> {
+    try {
+      const cpf = String(req.body?.cpf || "")
+      await this.passwordResetService.inviteFirstAccessByCpf(cpf)
+
+      return HttpResponse.ok(res, "Link para redefinição de senha enviado para o email cadastrado.", null)
+    } catch (error: any) {
+      console.log("Request failed:", error?.message)
+      return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error?.message || "Falha ao convidar", null)
+    }
+  }
+
   async confirm(req: any, res: any): Promise<void> {
     try {
       const cpf = String(req.body?.cpf || "")

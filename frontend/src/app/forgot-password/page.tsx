@@ -125,7 +125,7 @@ export default function ForgotPasswordPage() {
         onSubmit={onSubmit}
         className="
           w-full max-w-sm
-          bg-[var(--surface-card)]
+          bg-white
           border border-[var(--border-subtle)]
           rounded-2xl shadow-sm
           p-6 space-y-5
@@ -140,7 +140,9 @@ export default function ForgotPasswordPage() {
         </p>
 
         <div className="space-y-1">
-          <label className="block text-sm text-[var(--text-secondary)]">CPF</label>
+          <label className="block text-sm text-[var(--text-secondary)]">
+            CPF
+          </label>
           <input
             value={cpf}
             onChange={onCpfChange}
@@ -149,7 +151,7 @@ export default function ForgotPasswordPage() {
             className="
               w-full border border-[var(--border-subtle)]
               rounded-xl px-3 py-2 text-sm
-              bg-[var(--surface-card)]
+              bg-white
               text-[var(--text-primary)]
               placeholder:text-[var(--text-secondary)]
               outline-none
@@ -173,7 +175,10 @@ export default function ForgotPasswordPage() {
         </button>
 
         <div className="pt-2 text-center">
-          <a href="/login" className="text-sm text-[var(--brand)] hover:underline">
+          <a
+            href="/login"
+            className="text-sm text-[var(--brand)] hover:underline"
+          >
             Voltar para o login
           </a>
         </div>

@@ -2,7 +2,7 @@ import express from "express"
 import { ParamType, validatorMiddleware } from "../middleware/validatorMiddleware"
 import { loginSchema, refreshTokenSchema, selectRoleSchema, logoutSchema } from "../validator/userValidator"
 import { userController, passwordResetController } from "../appContainer"
-import { requestPasswordResetSchema, confirmPasswordResetSchema } from "../validator/userValidator"
+import { requestPasswordResetSchema, confirmPasswordResetSchema, inviteFirstAccessSchema } from "../validator/userValidator"
 
 const router = express.Router()
 
@@ -42,6 +42,12 @@ export function authRoute() {
     validatorMiddleware(ParamType.BODY, confirmPasswordResetSchema),
     async (req, res) => await passwordResetController.confirm(req, res)
   )
+
+  router.post(
+  "/invite",
+  validatorMiddleware(ParamType.BODY, inviteFirstAccessSchema),
+  async (req, res) => await passwordResetController.invite(req, res)
+ )
 
   return router
 }

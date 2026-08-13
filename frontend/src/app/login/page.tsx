@@ -8,7 +8,7 @@ type Role = "DOCENTE" | "CPPD_MEMBER" | "ADMIN"
 function pathForRole(role: Role | null | undefined) {
   if (role === "DOCENTE") return "/docente"
   if (role === "CPPD_MEMBER") return "/cppd"
-  if (role === "ADMIN") return "/dashboard"
+  if (role === "ADMIN") return "/admin"
   return "/dashboard"
 }
 
@@ -76,7 +76,7 @@ export default function LoginPage() {
         onSubmit={onSubmit}
         className="
           w-full max-w-sm
-          bg-[var(--surface-card)]
+          bg-white
           border border-[var(--border-subtle)]
           rounded-2xl shadow-sm
           p-6 space-y-5
@@ -97,7 +97,7 @@ export default function LoginPage() {
             className="
               w-full border border-[var(--border-subtle)]
               rounded-xl px-3 py-2 text-sm
-              bg-[var(--surface-card)]
+              bg-white
               text-[var(--text-primary)]
               placeholder:text-[var(--text-secondary)]
               outline-none
@@ -118,7 +118,7 @@ export default function LoginPage() {
             className="
               w-full border border-[var(--border-subtle)]
               rounded-xl px-3 py-2 text-sm
-              bg-[var(--surface-card)]
+              bg-white
               text-[var(--text-primary)]
               placeholder:text-[var(--text-secondary)]
               outline-none

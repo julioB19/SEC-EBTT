@@ -20,7 +20,7 @@ export const updateItemScoreSchema = Joi.object({
 })
 
 export const finalizeEvaluationSchema = Joi.object({
-  decision: Joi.string().valid("APPROVED", "REJECTED", "RETURNED").required(),
+  decision: Joi.string().valid("APPROVED", "REJECTED").required(),
   evaluatorUserIds: Joi.array().items(Joi.number().integer().positive()).optional(),
   overrideOpinion: Joi.string().allow(null, "").optional()
 })

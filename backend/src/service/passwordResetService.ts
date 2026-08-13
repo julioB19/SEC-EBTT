@@ -27,8 +27,12 @@ function getAppUrl() {
 type ResetContext = "RESET" | "INVITE"
 
 export class PasswordResetService {
-  private async createResetCode(userId: number) {
-    const ttlMin = intEnv("PASSWORD_RESET_CODE_TTL_MINUTES", 15)
+  private async createResetCode(userId: number, context: ResetContext) {
+    const ttlMin =
+      context === "INVITE"
+        ? intEnv("PASSWORD_INVITE_CODE_TTL_MINUTES", 24 * 60)
+        : intEnv("PASSWORD_RESET_CODE_TTL_MINUTES", 15)
+
     const codeLen = intEnv("PASSWORD_RESET_CODE_LENGTH", 6)
 
     await prisma.passwordResetCode.updateMany({
@@ -74,9 +78,11 @@ export class PasswordResetService {
   private async sendInviteEmail(input: { to: string; name?: string | null; cpf: string; code: string; ttlMin: number }) {
     const appUrl = getAppUrl()
     const qs = `cpf=${encodeURIComponent(input.cpf)}&code=${encodeURIComponent(input.code)}`
-    const link = appUrl ? `${appUrl}/definir-senha?${qs}` : ""
+    const link = appUrl ? `${appUrl}/reset-password?${qs}` : ""
 
     const subject = "Acesso ao sistema: defina sua senha"
+    const hours = Math.round((input.ttlMin / 60) * 10) / 10
+
     const html = `
       <div style="font-family: Arial, sans-serif; line-height: 1.4">
         <p>Olá${input.name ? `, ${input.name}` : ""}.</p>
@@ -89,14 +95,14 @@ export class PasswordResetService {
                <p style="font-size: 22px; font-weight: bold; letter-spacing: 3px">${input.code}</p>`
         }
 
-        <p>Esse link/código expira em <b>${input.ttlMin} minutos</b>.</p>
+        <p>Esse link/código expira em <b>${hours} horas</b>.</p>
         <p>Se você não esperava esse convite, pode ignorar este e-mail.</p>
       </div>
     `
 
     const text = link
-      ? `Você foi convidado(a) para acessar o sistema. Defina sua senha em: ${link} (expira em ${input.ttlMin} minutos).`
-      : `Você foi convidado(a) para acessar o sistema. Seu código para definir a senha é: ${input.code}. Expira em ${input.ttlMin} minutos.`
+      ? `Você foi convidado(a) para acessar o sistema. Defina sua senha em: ${link} (expira em ${hours} horas).`
+      : `Você foi convidado(a) para acessar o sistema. Seu código para definir a senha é: ${input.code}. Expira em ${hours} horas.`
 
     await sendMail({
       to: input.to,
@@ -123,7 +129,7 @@ export class PasswordResetService {
       if (user.deletedDate || !user.active) throw new Error("Usuário inativo")
     }
 
-    const { code, ttlMin } = await this.createResetCode(user!.idUser)
+    const { code, ttlMin } = await this.createResetCode(user!.idUser, context)
 
     if (context === "RESET") {
       await this.sendResetEmail({ to: user!.email, name: user!.name, code, ttlMin })

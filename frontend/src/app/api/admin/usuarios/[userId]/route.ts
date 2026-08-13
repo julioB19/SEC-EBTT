@@ -27,46 +27,55 @@ async function accessTokenOrError() {
   return { ok: true as const, access }
 }
 
-function getUserId(ctx: any) {
-  const userId = String(ctx?.params?.userId || "").trim()
+async function getUserId(ctx: { params: Promise<{ userId: string }> | { userId: string } }) {
+  const p: any = await ctx.params
+  const userId = String(p?.userId ?? "").trim()
   return userId
 }
 
-export async function GET(_req: NextRequest, ctx: any) {
+function jsonFromText(text: string) {
+  try {
+    return text ? JSON.parse(text) : null
+  } catch {
+    return null
+  }
+}
+
+export async function GET(_req: NextRequest, ctx: { params: Promise<{ userId: string }> | { userId: string } }) {
   const backend = backendUrlOrError()
   if (!backend.ok) return backend.res
 
   const auth = await accessTokenOrError()
   if (!auth.ok) return auth.res
 
-  const userId = getUserId(ctx)
+  const userId = await getUserId(ctx)
   if (!userId) {
-    const body: ApiResponse = { status: "error", message: "userId não informado", data: null }
-    return NextResponse.json(body, { status: 400 })
+    return NextResponse.json({ status: "error", message: "userId inválido", data: null }, { status: 400 })
   }
 
   const backendRes = await fetch(`${backend.backendUrl}/users/${encodeURIComponent(userId)}`, {
     method: "GET",
-    headers: { Authorization: `Bearer ${auth.access}` },
-    cache: "no-store"
+    headers: { Authorization: `Bearer ${auth.access}` }
   })
 
-  const contentType = backendRes.headers.get("content-type") ?? "application/json"
   const text = await backendRes.text()
-  return new NextResponse(text, { status: backendRes.status, headers: { "Content-Type": contentType } })
+  const data = jsonFromText(text)
+  return new NextResponse(JSON.stringify(data ?? text), {
+    status: backendRes.status,
+    headers: { "Content-Type": "application/json" }
+  })
 }
 
-export async function PUT(req: NextRequest, ctx: any) {
+export async function PUT(req: NextRequest, ctx: { params: Promise<{ userId: string }> | { userId: string } }) {
   const backend = backendUrlOrError()
   if (!backend.ok) return backend.res
 
   const auth = await accessTokenOrError()
   if (!auth.ok) return auth.res
 
-  const userId = getUserId(ctx)
+  const userId = await getUserId(ctx)
   if (!userId) {
-    const body: ApiResponse = { status: "error", message: "userId não informado", data: null }
-    return NextResponse.json(body, { status: 400 })
+    return NextResponse.json({ status: "error", message: "userId inválido", data: null }, { status: 400 })
   }
 
   const body = await req.text()
@@ -85,20 +94,19 @@ export async function PUT(req: NextRequest, ctx: any) {
   return new NextResponse(text, { status: backendRes.status, headers: { "Content-Type": contentType } })
 }
 
-export async function DELETE(_req: NextRequest, ctx: any) {
+export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ userId: string }> | { userId: string } }) {
   const backend = backendUrlOrError()
   if (!backend.ok) return backend.res
 
   const auth = await accessTokenOrError()
   if (!auth.ok) return auth.res
 
-  const userId = getUserId(ctx)
+  const userId = await getUserId(ctx)
   if (!userId) {
-    const body: ApiResponse = { status: "error", message: "userId não informado", data: null }
-    return NextResponse.json(body, { status: 400 })
+    return NextResponse.json({ status: "error", message: "userId inválido", data: null }, { status: 400 })
   }
 
-  const backendRes = await fetch(`${backend.backendUrl}/docentes/${encodeURIComponent(userId)}`, {
+  const backendRes = await fetch(`${backend.backendUrl}/users/${encodeURIComponent(userId)}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${auth.access}` }
   })

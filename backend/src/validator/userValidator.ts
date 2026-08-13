@@ -180,8 +180,7 @@ export const confirmPasswordResetSchema = Joi.object({
   newPassword: Joi.string().min(6).max(100).required()
 })
 
-
-export const updateMyDocenteProfileSchema = Joi.object({
+export const updateMyProfileSchema = Joi.object({
   name: Joi.string().trim().optional(),
   email: Joi.string().email().optional(),
   phone: Joi.string()
@@ -216,4 +215,8 @@ export const setUserRolesSchema = Joi.object({
     .items(Joi.string().valid(RoleName.ADMIN, RoleName.CPPD_MEMBER, RoleName.DOCENTE))
     .min(1)
     .required()
+})
+
+export const inviteFirstAccessSchema = Joi.object({
+  cpf: Joi.string().required()
 })

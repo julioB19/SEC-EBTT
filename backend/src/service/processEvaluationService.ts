@@ -73,7 +73,7 @@ type TreeNode = {
   children: TreeNode[]
 }
 
-type CppdDecision = "APPROVED" | "REJECTED" | "RETURNED"
+type CppdDecision = "APPROVED" | "REJECTED"
 
 export class ProcessEvaluationService {
   async getProcessForEvaluation(processId: number): Promise<ProcessEvaluationViewDto> {
@@ -365,9 +365,7 @@ export class ProcessEvaluationService {
     const toStatus =
       dto.decision === "APPROVED"
         ? ProcessStatus.APPROVED
-        : dto.decision === "REJECTED"
-        ? ProcessStatus.REJECTED
-        : ProcessStatus.RETURNED
+        : ProcessStatus.REJECTED
 
     const opinion =
       dto.overrideOpinion && dto.overrideOpinion.trim() !== ""
@@ -869,14 +867,10 @@ export class ProcessEvaluationService {
     const decisionText =
       decision === "APPROVED"
         ? "**deferimento da solicitação**"
-        : decision === "REJECTED"
-        ? "**indeferimento da solicitação**"
-        : "**devolução do processo para correção**"
+        : "**indeferimento da solicitação**"
 
     const forwardingText =
-      decision === "RETURNED"
-        ? `Encaminha-se o presente parecer ao(à) **docente interessado(a)** para correção/ajustes, a fim de que o processo possa ser reapresentado.\n\n`
-        : `Encaminha-se o presente parecer à **Coordenação de Gestão de Pessoas**, a fim de que seja dado o devido andamento.\n\n`
+      `Encaminha-se o presente parecer à **Coordenação de Gestão de Pessoas**, a fim de que seja dado o devido andamento.\n\n`
 
     const hasMin = args.minRequiredPoints !== null
     const isBelowMin = hasMin && args.points < (args.minRequiredPoints as number)

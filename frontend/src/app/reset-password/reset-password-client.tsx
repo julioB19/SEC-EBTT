@@ -43,6 +43,9 @@ export default function ResetPasswordClient() {
   useEffect(() => {
     const qCpf = sp.get("cpf")
     if (qCpf) setCpf(formatCPF(qCpf))
+
+    const qCode = sp.get("code")
+    if (qCode) setCode(onlyDigits(qCode).slice(0, 6))
   }, [sp])
 
   async function onSubmit(e: React.FormEvent) {
@@ -90,7 +93,7 @@ export default function ResetPasswordClient() {
         onSubmit={onSubmit}
         className="
           w-full max-w-sm
-          bg-[var(--surface-card)]
+          bg-white
           border border-[var(--border-subtle)]
           rounded-2xl shadow-sm
           p-6 space-y-5
@@ -110,7 +113,7 @@ export default function ResetPasswordClient() {
             className="
               w-full border border-[var(--border-subtle)]
               rounded-xl px-3 py-2 text-sm
-              bg-[var(--surface-card)]
+              bg-white
               text-[var(--text-primary)]
               placeholder:text-[var(--text-secondary)]
               outline-none
@@ -125,13 +128,13 @@ export default function ResetPasswordClient() {
           </label>
           <input
             value={code}
-            onChange={e => setCode(e.target.value)}
+            onChange={e => setCode(onlyDigits(e.target.value).slice(0, 6))}
             placeholder="123456"
             inputMode="numeric"
             className="
               w-full border border-[var(--border-subtle)]
               rounded-xl px-3 py-2 text-sm
-              bg-[var(--surface-card)]
+              bg-white
               text-[var(--text-primary)]
               placeholder:text-[var(--text-secondary)]
               outline-none
@@ -150,7 +153,7 @@ export default function ResetPasswordClient() {
             className="
               w-full border border-[var(--border-subtle)]
               rounded-xl px-3 py-2 text-sm
-              bg-[var(--surface-card)]
+              bg-white
               text-[var(--text-primary)]
               placeholder:text-[var(--text-secondary)]
               outline-none
@@ -171,7 +174,7 @@ export default function ResetPasswordClient() {
             className="
               w-full border border-[var(--border-subtle)]
               rounded-xl px-3 py-2 text-sm
-              bg-[var(--surface-card)]
+              bg-white
               text-[var(--text-primary)]
               placeholder:text-[var(--text-secondary)]
               outline-none
@@ -207,7 +210,10 @@ export default function ResetPasswordClient() {
         </button>
 
         <div className="pt-2 text-center">
-          <a href="/forgot-password" className="text-sm text-[var(--brand)] hover:underline">
+          <a
+            href="/forgot-password"
+            className="text-sm text-[var(--brand)] hover:underline"
+          >
             Pedir outro código
           </a>
         </div>

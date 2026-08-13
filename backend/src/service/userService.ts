@@ -29,6 +29,12 @@ function onlyDigits(value: string) {
   return (value || "").replace(/\D/g, "")
 }
 
+function toDateOrUndefined(value: any): Date | undefined {
+  if (value === undefined || value === null || value === "") return undefined
+  const d = value instanceof Date ? value : new Date(String(value))
+  return Number.isNaN(d.getTime()) ? undefined : d
+}
+
 export class UserService {
   constructor(
     private readonly userRepository: UserRepository
@@ -153,7 +159,7 @@ export class UserService {
           ? {
               siape: dto.docenteProfile.siape,
               classLevel: dto.docenteProfile.classLevel,
-              startInterstice: dto.docenteProfile.startInterstice,
+              startInterstice: toDateOrUndefined(dto.docenteProfile.startInterstice) ?? dto.docenteProfile.startInterstice,
               educationLevel: dto.docenteProfile.educationLevel,
               improvement: dto.docenteProfile.improvement ?? null,
               specialization: dto.docenteProfile.specialization ?? null,
@@ -225,7 +231,7 @@ export class UserService {
         ? {
             siape: dto.docenteProfile.siape,
             classLevel: dto.docenteProfile.classLevel as ClassLevel | undefined,
-            startInterstice: dto.docenteProfile.startInterstice,
+            startInterstice: toDateOrUndefined(dto.docenteProfile.startInterstice),
             educationLevel: dto.docenteProfile.educationLevel,
             improvement: dto.docenteProfile.improvement ?? null,
             specialization: dto.docenteProfile.specialization ?? null,
@@ -251,7 +257,6 @@ export class UserService {
     return this.toResponse(deleted)
   }
 
-
   async updateOwnDocenteProfile(authUserId: number, dto: UpdateMyDocenteProfileDto): Promise<UserResponseDto> {
     const current = await this.userRepository.findById(authUserId)
     if (!current) throw new UserNotFound()
@@ -269,7 +274,46 @@ export class UserService {
         ? {
             siape: dto.docenteProfile.siape,
             classLevel: dto.docenteProfile.classLevel as ClassLevel | undefined,
-            startInterstice: dto.docenteProfile.startInterstice,
+            startInterstice: toDateOrUndefined(dto.docenteProfile.startInterstice),
+            educationLevel: dto.docenteProfile.educationLevel,
+            improvement: dto.docenteProfile.improvement ?? null,
+            specialization: dto.docenteProfile.specialization ?? null,
+            mastersDegree: dto.docenteProfile.mastersDegree ?? null,
+            doctorate: dto.docenteProfile.doctorate ?? null,
+            assignment: dto.docenteProfile.assignment ?? null,
+            department: dto.docenteProfile.department ?? null,
+            division: dto.docenteProfile.division ?? null,
+            role: dto.docenteProfile.role ?? null,
+            immediateSupervisor: dto.docenteProfile.immediateSupervisor ?? null
+          }
+        : undefined
+    })
+
+    return this.toResponse(updated)
+  }
+
+  async updateOwnProfile(authUserId: number, dto: UpdateMyDocenteProfileDto): Promise<UserResponseDto> {
+    const current = await this.userRepository.findById(authUserId)
+    if (!current) throw new UserNotFound()
+
+    if (!current.docente && dto.docenteProfile) {
+      throw new Error("Apenas DOCENTE pode editar docenteProfile")
+    }
+
+    const updated = await this.userRepository.updateWithRolesAndDocente(authUserId, {
+      name: dto.name,
+      email: dto.email,
+      phone: dto.phone ?? undefined,
+      city: dto.city ?? undefined,
+      uf: dto.uf ?? undefined,
+      cpf: undefined,
+      roles: undefined,
+      active: undefined,
+      docenteProfile: dto.docenteProfile
+        ? {
+            siape: dto.docenteProfile.siape,
+            classLevel: dto.docenteProfile.classLevel as ClassLevel | undefined,
+            startInterstice: toDateOrUndefined(dto.docenteProfile.startInterstice),
             educationLevel: dto.docenteProfile.educationLevel,
             improvement: dto.docenteProfile.improvement ?? null,
             specialization: dto.docenteProfile.specialization ?? null,

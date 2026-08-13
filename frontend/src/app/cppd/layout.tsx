@@ -1,8 +1,52 @@
 import type { ReactNode } from "react"
+import { cookies, headers } from "next/headers"
+import { redirect } from "next/navigation"
+
 import { ProfileMenu } from "@/components/ProfileMenu"
 import { CppdNavLinks } from "@/components/CppdNavLinks"
 
-export default function CppdLayout({ children }: { children: ReactNode }) {
+async function resolveBaseUrl() {
+  const h = await headers()
+
+  const host = h.get("x-forwarded-host") || h.get("host")
+  const proto = h.get("x-forwarded-proto") || "http"
+
+  if (!host) return null
+
+  return `${proto}://${host}`
+}
+
+async function ensureCppdRole() {
+  const jar = await cookies()
+  const access = jar.get("accessToken")?.value
+
+  if (!access) {
+    redirect("/login")
+  }
+
+  const baseUrl = await resolveBaseUrl()
+  if (!baseUrl) {
+    redirect("/login")
+  }
+
+  const res = await fetch(`${baseUrl}/api/auth/select-role`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: jar.toString()
+    },
+    body: JSON.stringify({ role: "CPPD_MEMBER" }),
+    cache: "no-store"
+  })
+
+  if (!res.ok) {
+    redirect("/login")
+  }
+}
+
+export default async function CppdLayout({ children }: { children: ReactNode }) {
+  await ensureCppdRole()
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--app-bg)]">
       {/* NAVBAR EM TODA A LARGURA */}

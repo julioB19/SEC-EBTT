@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import ConfirmModal from "@/components/ui/ConfirmModal"
 
 type Role = "DOCENTE" | "CPPD_MEMBER" | "ADMIN"
 
@@ -23,6 +22,11 @@ type UserRow = {
   docenteProfile: null | { siape: string }
 }
 
+function roleLabel(role: Role) {
+  if (role === "CPPD_MEMBER") return "MEMBRO DA CPPD"
+  return role
+}
+
 function badge(role: Role) {
   if (role === "ADMIN") return "bg-amber-50 text-amber-700 border-amber-100"
   if (role === "CPPD_MEMBER") return "bg-sky-50 text-sky-700 border-sky-100"
@@ -36,9 +40,6 @@ export default function AdminUsuariosPage() {
 
   const [q, setQ] = useState("")
   const [roleFilter, setRoleFilter] = useState<"" | Role>("")
-
-  const [deleteId, setDeleteId] = useState<number | null>(null)
-  const [deleting, setDeleting] = useState(false)
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase()
@@ -82,42 +83,27 @@ export default function AdminUsuariosPage() {
     load()
   }, [])
 
-  async function onDeleteConfirm() {
-    if (!deleteId) return
-
-    setDeleting(true)
-    setErr(null)
-
-    try {
-      const r = await fetch(`/api/admin/usuarios/${deleteId}`, { method: "DELETE", credentials: "include" })
-      const payload = (await r.json().catch(() => null)) as ApiResponse<any> | null
-
-      if (!payload || !r.ok || payload.status === "error") {
-        setErr(payload?.message || "Falha ao excluir")
-        return
-      }
-
-      setDeleteId(null)
-      await load()
-    } catch (e: any) {
-      setErr(e?.message || "Erro ao excluir")
-    } finally {
-      setDeleting(false)
-    }
-  }
-
   return (
     <main className="min-h-[60vh]">
       <div className="max-w-6xl mx-auto space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Usuários</h1>
-            <p className="text-sm text-[var(--text-secondary)]">
-              Cadastre usuários, gerencie roles e exclua docentes.
-            </p>
-          </div>
+        {/* HEADER */}
+        <header className="space-y-3">
+          {/* TÍTULO */}
+          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
+            Usuários
+          </h1>
 
-          <div className="flex items-center gap-2">
+          {/* AÇÕES */}
+          <div className="flex items-center justify-between">
+            <Link
+              href="/admin"
+              className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                         bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
+                         hover:bg-[var(--btn-primary-hover-bg)] transition-[background]"
+            >
+              Voltar
+            </Link>
+
             <Link
               href="/admin/usuarios/novo"
               className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
@@ -149,10 +135,10 @@ export default function AdminUsuariosPage() {
               value={roleFilter}
               onChange={e => setRoleFilter(e.target.value as any)}
             >
-              <option value="">Todas as roles</option>
-              <option value="DOCENTE">DOCENTE</option>
-              <option value="CPPD_MEMBER">CPPD_MEMBER</option>
+              <option value="">Todos os usuários</option>
               <option value="ADMIN">ADMIN</option>
+              <option value="DOCENTE">DOCENTE</option>
+              <option value="CPPD_MEMBER">MEMBRO DA CPPD</option>
             </select>
 
             <button
@@ -176,7 +162,7 @@ export default function AdminUsuariosPage() {
                   <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">CPF</th>
                   <th className="px-4 py-3">SIAPE</th>
-                  <th className="px-4 py-3">Roles</th>
+                  <th className="px-4 py-3">Tipo</th>
                   <th className="px-4 py-3">Ações</th>
                 </tr>
               </thead>
@@ -191,36 +177,26 @@ export default function AdminUsuariosPage() {
 
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
-                        {u.roles.map(r => (
-                          <span
-                            key={r}
-                            className={`inline-flex items-center border px-2 py-0.5 rounded-full text-xs ${badge(r)}`}
-                          >
-                            {r}
-                          </span>
-                        ))}
+                        {[...u.roles]
+                          .sort((a, b) => roleLabel(a).localeCompare(roleLabel(b)))
+                          .map(r => (
+                            <span
+                              key={r}
+                              className={`inline-flex items-center border px-2 py-0.5 rounded-full text-xs ${badge(r)}`}
+                            >
+                              {roleLabel(r)}
+                            </span>
+                          ))}
                       </div>
                     </td>
 
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <Link
-                          href={`/admin/usuarios/${u.idUser}`}
-                          className="text-xs font-semibold uppercase tracking-wide text-[var(--btn-primary-bg)] hover:underline"
-                        >
-                          Editar
-                        </Link>
-
-                        {u.roles.includes("DOCENTE") && (
-                          <button
-                            type="button"
-                            onClick={() => setDeleteId(u.idUser)}
-                            className="text-xs font-semibold uppercase tracking-wide text-red-600 hover:underline"
-                          >
-                            Excluir docente
-                          </button>
-                        )}
-                      </div>
+                      <Link
+                        href={`/admin/usuarios/${u.idUser}`}
+                        className="text-xs font-semibold uppercase tracking-wide text-[var(--btn-primary-bg)] hover:underline"
+                      >
+                        Editar
+                      </Link>
                     </td>
                   </tr>
                 ))}
@@ -236,19 +212,6 @@ export default function AdminUsuariosPage() {
             </table>
           </div>
         )}
-
-        <ConfirmModal
-          open={Boolean(deleteId)}
-          title="Excluir docente"
-          description="Essa ação desativa o usuário (soft delete). Tem certeza?"
-          confirmText={deleting ? "Excluindo..." : "Confirmar"}
-          cancelText="Cancelar"
-          loading={deleting}
-          onCancel={() => {
-            if (!deleting) setDeleteId(null)
-          }}
-          onConfirm={onDeleteConfirm}
-        />
       </div>
     </main>
   )
