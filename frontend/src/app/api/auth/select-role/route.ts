@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 
 const backend = process.env.BACKEND_URL!
 
-type Role = "DOCENTE" | "CPPD_MEMBER" | "ADMIN"
+type Role = "DOCENTE" | "CPPD_MEMBER" | "CPPD_CENTRAL" | "ADMIN" | "EXTERNAL_EVALUATOR"
 
 type SelectRoleResponse = {
   accessToken: string
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     body: JSON.stringify({ refreshToken, role })
   })
 
-  const json = await r.json().catch(() => ({} as any))
+  const json = await r.json().catch(() => ({}) as any)
   if (!r.ok) {
     return NextResponse.json(json, { status: r.status })
   }

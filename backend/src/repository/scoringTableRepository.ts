@@ -1,13 +1,15 @@
 import { prisma } from "../infra/prismaClient"
+import { ScoringTablePurpose } from "@prisma/client"
 
 type TableStatus = "DRAFT" | "ACTIVE" | "INACTIVE"
 
 export class ScoringTableRepository {
-  async findVigente(referenceDate: Date) {
+  async findVigente(referenceDate: Date, purpose?: ScoringTablePurpose) {
     return prisma.scoringTable.findFirst({
       where: {
         deletedDate: null,
         status: "ACTIVE",
+        ...(purpose ? { purpose } : {}),
         AND: [
           { OR: [{ startsOn: null }, { startsOn: { lte: referenceDate } }] },
           { OR: [{ endsOn: null }, { endsOn: { gte: referenceDate } }] }
@@ -50,10 +52,18 @@ export class ScoringTableRepository {
     return { table, nodes, items }
   }
 
-  async createTable(params: { name: string; startsOn: Date | null; endsOn: Date | null }) {
+  async createTable(params: {
+    name: string
+    purpose: ScoringTablePurpose
+    minRequiredPoints: string | null
+    startsOn: Date | null
+    endsOn: Date | null
+  }) {
     return prisma.scoringTable.create({
       data: {
         name: params.name,
+        purpose: params.purpose,
+        minRequiredPoints: params.minRequiredPoints,
         startsOn: params.startsOn,
         endsOn: params.endsOn
       }
@@ -62,6 +72,8 @@ export class ScoringTableRepository {
 
   async updateTable(scoringTableId: number, data: {
     name?: string
+    purpose?: ScoringTablePurpose
+    minRequiredPoints?: string | null
     startsOn?: Date | null
     endsOn?: Date | null
     status?: TableStatus
@@ -70,6 +82,10 @@ export class ScoringTableRepository {
       where: { idScoringTable: scoringTableId },
       data: {
         ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.purpose !== undefined ? { purpose: data.purpose } : {}),
+        ...(data.minRequiredPoints !== undefined
+          ? { minRequiredPoints: data.minRequiredPoints }
+          : {}),
         ...(data.startsOn !== undefined ? { startsOn: data.startsOn } : {}),
         ...(data.endsOn !== undefined ? { endsOn: data.endsOn } : {}),
         ...(data.status !== undefined ? { status: data.status } : {})

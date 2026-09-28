@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Link from "next/link"
-import { logoutAction } from "@/utils/logoutAction"
+import { useState } from "react";
+import Link from "next/link";
+import { logoutAction } from "@/utils/logoutAction";
 
 const desktopLinkClass =
   "rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wide " +
-  "text-[var(--navbar-text)] hover:bg-[var(--navbar-item-hover-bg)] transition-[background]"
+  "text-[var(--navbar-text)] hover:bg-[var(--navbar-item-hover-bg)] transition-[background]";
 
 export function AdminNavLinks() {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="relative flex items-center">
@@ -25,11 +25,19 @@ export function AdminNavLinks() {
         <Link href="/admin/usuarios" className={desktopLinkClass}>
           Usuários
         </Link>
+
+        <Link href="/admin/campi-comissoes" className={desktopLinkClass}>
+          Campi e CPPD
+        </Link>
+
+        <Link href="/admin/tipos-processo" className={desktopLinkClass}>
+          Tipos de Processo
+        </Link>
       </div>
 
       <button
         type="button"
-        onClick={() => setOpen(prev => !prev)}
+        onClick={() => setOpen((prev) => !prev)}
         className="md:hidden flex h-9 w-9 flex-col items-center justify-center gap-[3px]
                    rounded-md bg-[var(--navbar-chip-bg)] text-[var(--navbar-text)]
                    hover:bg-[var(--navbar-chip-hover-bg)] transition"
@@ -71,11 +79,19 @@ export function AdminNavLinks() {
           </Link>
 
           <Link
-            href="/admin/configuracoes"
+            href="/admin/campi-comissoes"
             className="block px-4 py-2.5 text-sm hover:bg-[var(--navbar-item-hover-bg)]"
             onClick={() => setOpen(false)}
           >
-            Configurações
+            Campi e CPPD
+          </Link>
+
+          <Link
+            href="/admin/tipos-processo"
+            className="block px-4 py-2.5 text-sm hover:bg-[var(--navbar-item-hover-bg)]"
+            onClick={() => setOpen(false)}
+          >
+            Tipos de Processo
           </Link>
 
           <div className="my-1 h-px bg-[var(--border-subtle)]" />
@@ -91,8 +107,8 @@ export function AdminNavLinks() {
           <button
             type="button"
             onClick={() => {
-              setOpen(false)
-              logoutAction()
+              setOpen(false);
+              logoutAction();
             }}
             className="w-full text-left px-4 py-2.5 text-sm
                        text-[var(--state-danger-text)]
@@ -103,5 +119,5 @@ export function AdminNavLinks() {
         </div>
       )}
     </div>
-  )
+  );
 }

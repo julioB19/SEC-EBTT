@@ -1,37 +1,60 @@
-import dayjs from "dayjs"
-import "dayjs/locale/pt-br"
-import utc from "dayjs/plugin/utc"
-import path from "path"
-import { ClassLevel, ProcessStatus, ProcessType } from "@prisma/client"
+import dayjs from "dayjs";
+import "dayjs/locale/pt-br";
+import utc from "dayjs/plugin/utc";
+import path from "path";
+import {
+  ClassLevel,
+  FullProfessorEvaluationMode,
+  ProcessStatus,
+  ProcessType,
+  ProcessTypeCategory,
+  ProcessTypeConfig,
+  ScoringTablePurpose,
+} from "@prisma/client";
 import {
   AberturaProcessoDto,
   UpdateProcessoDto,
-  UserPatchDto
-} from "../type/dto/processoDto"
-import { renderDocxFromTemplate } from "../util/docx"
-import { convertDocxToPdf } from "../util/convertToPdf"
-import { ProcessRepository } from "../repository/processoRepository"
-import { ScoringTableRepository } from "../repository/scoringTableRepository"
-import { UserRepository } from "../repository/userRepository"
-import { ProcessScoreRepository } from "../repository/processScoreRepository"
+  UserPatchDto,
+} from "../type/dto/processoDto";
+import { renderDocxFromTemplate } from "../util/docx";
+import { convertDocxToPdf } from "../util/convertToPdf";
+import { ProcessRepository } from "../repository/processoRepository";
+import { ScoringTableRepository } from "../repository/scoringTableRepository";
+import { UserRepository } from "../repository/userRepository";
+import { ProcessScoreRepository } from "../repository/processScoreRepository";
 
-dayjs.locale("pt-br")
-dayjs.extend(utc)
+dayjs.locale("pt-br");
+dayjs.extend(utc);
+
+const PROCESS_TYPE_CODE_ALIASES: Record<string, string> = {
+  PROGRESSAO: "PROGRESSION",
+  PROGRESSAO_FUNCIONAL: "PROGRESSION",
+  PROGRESSION: "PROGRESSION",
+  PROMOCAO: "PROMOTION",
+  PROMOCAO_FUNCIONAL: "PROMOTION",
+  PROMOTION: "PROMOTION",
+  RSC: "RSC",
+  CLASSE_TITULAR: "FULL_PROFESSOR",
+  PROFESSOR_TITULAR: "FULL_PROFESSOR",
+  FULL_PROFESSOR: "FULL_PROFESSOR",
+};
+
+const RSC_TARGET_LEVELS = new Set(["RSC_I", "RSC_II", "RSC_III"]);
 
 export class BusinessRuleError extends Error {
-  details?: any
+  details?: any;
 
   constructor(message: string, details?: any) {
-    super(message)
-    this.name = "BusinessRuleError"
-    this.details = details
+    super(message);
+    this.name = "BusinessRuleError";
+    this.details = details;
   }
 }
 
 export class NotFoundError extends Error {
   constructor(message: string) {
-    super(message)
-    this.name = "NotFoundError"
+    super(message);
+    this.name = "NotFoundError";
   }
 }
 
@@ -40,18 +63,22 @@ export class ProcessoService {
     private readonly processRepo: ProcessRepository,
     private readonly tableRepo: ScoringTableRepository,
     private readonly userRepo: UserRepository,
-    private readonly scoreRepo: ProcessScoreRepository = new ProcessScoreRepository()
-  ) { }
+    private readonly scoreRepo: ProcessScoreRepository = new ProcessScoreRepository(),
+  ) {}
 
+  async listarTiposProcesso() {
+    const list = await this.processRepo.listActiveProcessTypeConfigs();
+    return list.map((config) => this.mapProcessTypeConfigToDto(config));
+  }
 
   async enviarParaAvaliacao(processId: number, userId: number) {
-    const careerProcess = await this.processRepo.findById(processId)
+    const careerProcess = await this.processRepo.findById(processId);
     if (!careerProcess || careerProcess.deletedDate) {
-      throw new NotFoundError("Processo não encontrado")
+      throw new NotFoundError("Processo não encontrado");
     }
 
     if (careerProcess.userId !== userId) {
-      throw new NotFoundError("Processo não encontrado")
+      throw new NotFoundError("Processo não encontrado");
     }
 
     if (
@@ -59,44 +86,113 @@ export class ProcessoService {
       careerProcess.status !== ProcessStatus.RETURNED
     ) {
       throw new BusinessRuleError(
-        "Você só pode enviar processos com status DRAFT ou RETURNED"
-      )
+        "Você só pode enviar processos com status DRAFT ou RETURNED",
+      );
     }
 
-    this.validarRegrasDeRequerimento(careerProcess)
+    const config = careerProcess.processTypeConfig;
+    const category = config?.category ?? ProcessTypeCategory.CAREER;
 
-    const totalPontos = await this.calcularPontuacaoTotalProcesso(processId)
+    this.validarDocumentosConfigurados(careerProcess);
 
-    if (totalPontos < 120) {
-      throw new BusinessRuleError(
-        `Para enviar o processo, é necessário atingir no mínimo 120 pontos. ` +
-        `Pontuação atual: ${totalPontos.toFixed(2)}`,
-        {
-          requiredMinimum: 120,
-          currentTotal: totalPontos
-        }
-      )
+    if (category === ProcessTypeCategory.CAREER) {
+      this.validarRegrasDeRequerimento(careerProcess);
+    } else if (category === ProcessTypeCategory.RSC) {
+      if (!careerProcess.rscDetail?.targetLevel) {
+        throw new BusinessRuleError(
+          "Informe o nível pretendido do RSC antes do envio",
+        );
+      }
+      if (!careerProcess.rscDetail.reportFileId) {
+        throw new BusinessRuleError(
+          "Anexe o relatório descritivo ou memorial do RSC antes do envio",
+        );
+      }
+    } else if (category === ProcessTypeCategory.FULL_PROFESSOR) {
+      const detail = careerProcess.fullProfessorDetail;
+      if (!detail?.evaluationMode) {
+        throw new BusinessRuleError(
+          "Selecione Memorial ou Tese acadêmica antes do envio",
+        );
+      }
+
+      const selectedFileId =
+        detail.evaluationMode === FullProfessorEvaluationMode.MEMORIAL
+          ? detail.memorialFileId
+          : detail.thesisFileId;
+      if (!selectedFileId) {
+        throw new BusinessRuleError(
+          `Anexe o arquivo de ${detail.evaluationMode === FullProfessorEvaluationMode.MEMORIAL ? "memorial" : "tese acadêmica"} antes do envio`,
+        );
+      }
+
+      const degree = detail.doctorateDegree;
+      const degreeType = String(degree?.degreeType ?? "").toUpperCase();
+      if (
+        !degree ||
+        !["DOCTORATE", "DOUTORADO"].includes(degreeType) ||
+        !degree.conclusionDate ||
+        !degree.evidenceFileId
+      ) {
+        throw new BusinessRuleError(
+          "Cadastre o doutorado, a data de conclusão e o diploma antes de enviar o processo",
+        );
+      }
+    }
+
+    let totalPontos: number | null = null;
+    if (config?.requiresScoring ?? true) {
+      if (!careerProcess.scoringTableId || !careerProcess.table) {
+        throw new BusinessRuleError(
+          "Processo sem tabela de pontuação vinculada",
+        );
+      }
+
+      totalPontos = await this.calcularPontuacaoTotalProcesso(processId);
+      const configuredMinimum = careerProcess.table.minRequiredPoints;
+      const requiredMinimum =
+        configuredMinimum !== null && configuredMinimum !== undefined
+          ? Number(configuredMinimum)
+          : category === ProcessTypeCategory.RSC
+            ? 60
+            : 120;
+
+      if (totalPontos < requiredMinimum) {
+        throw new BusinessRuleError(
+          `Para enviar o processo, é necessário atingir no mínimo ${requiredMinimum} pontos. ` +
+            `Pontuação atual: ${totalPontos.toFixed(2)}`,
+          {
+            requiredMinimum,
+            currentTotal: totalPontos,
+          },
+        );
+      }
     }
 
     const updated = await this.processRepo.updateStatus(
       processId,
-      ProcessStatus.SUBMITTED
-    )
+      ProcessStatus.SUBMITTED,
+      userId,
+      "Processo enviado pelo docente",
+    );
+
+    if (!updated) {
+      throw new NotFoundError("Processo não encontrado");
+    }
 
     return {
       processId: updated.idProcess,
       status: updated.status,
-      totalPoints: totalPontos
-    }
+      totalPoints: totalPontos,
+    };
   }
-
 
   async abrirComAtualizacao(
     userId: number,
     patch: UserPatchDto | null,
-    dto: AberturaProcessoDto
+    dto: AberturaProcessoDto,
   ) {
-    const now = new Date()
+    const now = new Date();
 
     if (patch) {
       const updateInput: any = {
@@ -107,157 +203,343 @@ export class ProcessoService {
         uf: patch.uf ?? undefined,
         docenteProfile: patch.docenteProfile
           ? {
-            siape: patch.docenteProfile.siape,
-            classLevel: patch.docenteProfile.classLevel,
-            startInterstice: patch.docenteProfile.startInterstice
-              ? new Date(patch.docenteProfile.startInterstice)
-              : undefined,
-            educationLevel: patch.docenteProfile.educationLevel,
-            assignment: patch.docenteProfile.assignment ?? undefined
-          }
-          : undefined
+              siape: patch.docenteProfile.siape,
+              classLevel: patch.docenteProfile.classLevel,
+              startInterstice: patch.docenteProfile.startInterstice
+                ? new Date(patch.docenteProfile.startInterstice)
+                : undefined,
+              educationLevel: patch.docenteProfile.educationLevel,
+              assignment: patch.docenteProfile.assignment ?? undefined,
+            }
+          : undefined,
+      };
+
+      await this.userRepo.updateWithRolesAndDocente(userId, updateInput);
+    }
+
+    const processTypeConfig = await this.resolveProcessTypeConfig(dto);
+    const processType =
+      this.resolveSupportedOpeningProcessType(processTypeConfig);
+    const scoringTablePurpose = this.resolveScoringTablePurpose(
+      processTypeConfig.code,
+    );
+
+    let scoringTableId: number | null = null;
+    if (processTypeConfig.requiresScoring) {
+      const vigente = await this.tableRepo.findVigente(
+        now,
+        scoringTablePurpose,
+      );
+      if (!vigente) {
+        throw new BusinessRuleError(
+          `Nenhuma tabela de pontuação vigente encontrada para ${processTypeConfig.name}`,
+        );
       }
-
-      await this.userRepo.updateWithRolesAndDocente(userId, updateInput)
+      scoringTableId = vigente.idScoringTable;
     }
 
-    const vigente = await this.tableRepo.findVigente(now)
-    if (!vigente) {
-      throw new BusinessRuleError("Nenhuma tabela de pontuação vigente encontrada")
-    }
-
-    const processType: ProcessType = dto.tipo
-    console.log("ProcessoService.abrirComAtualizacao => processType:", processType)
-
-    const active = await this.processRepo.findAnyActiveProcessForUser(userId)
+    const active = await this.processRepo.findAnyActiveProcessForUser(
+      userId,
+      processTypeConfig.idProcessType,
+    );
     if (active) {
       const msg =
-        `Já existe um processo em andamento (nº ${active.idProcess}, status ${active.status}). ` +
-        "Finalize (ou exclua) esse processo antes de abrir um novo"
+        `Já existe um processo de ${processTypeConfig.name} em andamento ` +
+        `(nº ${active.idProcess}, status ${active.status}). ` +
+        "Finalize ou exclua esse processo antes de abrir outro do mesmo tipo";
 
       throw new BusinessRuleError(msg, {
         existingProcessId: active.idProcess,
-        existingStatus: active.status
-      })
+        existingStatus: active.status,
+      });
     }
 
-    this.validarClasseENivel(dto.classeOrigem, dto.nivelOrigem, "origem")
-    this.validarClasseENivel(dto.classeDestino, dto.nivelDestino, "destino")
+    this.validarDadosComunsAbertura(dto);
 
-    const origemCodigo = `${dto.classeOrigem}${dto.nivelOrigem}`.toUpperCase()
-    const destinoCodigo = `${dto.classeDestino}${dto.nivelDestino}`.toUpperCase()
-
-    this.validarCombinacaoProgressaoOuPromocao(
-      processType,
-      origemCodigo,
-      destinoCodigo
-    )
-
-    const intersticeStart = new Date(dto.intersticioInicioISO)
-    const intersticeEnd = new Date(dto.intersticioFimISO)
-
-    const lastApproved = await this.processRepo.findLastApprovedProcessForUser(userId)
-
-    if (lastApproved) {
-      const lastEnd = lastApproved.intersticeEnd
-
-      if (intersticeStart <= lastEnd) {
-        const formattedLastEnd = dayjs(lastEnd).format("DD/MM/YYYY")
-
-        const msg =
-          `Já existe um processo APROVADO com interstício até ${formattedLastEnd} ` +
-          `(nº ${lastApproved.idProcess}, ${lastApproved.type}). ` +
-          "O próximo processo só pode iniciar após essa data"
-
-        throw new BusinessRuleError(msg, {
-          lastApprovedProcessId: lastApproved.idProcess,
-          lastApprovedType: lastApproved.type,
-          lastApprovedIntersticeEnd: lastEnd
-        })
+    if (processTypeConfig.category === ProcessTypeCategory.CAREER) {
+      if (!processType) {
+        throw new BusinessRuleError(
+          "Tipo legado obrigatório para processo de carreira",
+        );
       }
-    }
+      await this.validarAberturaCarreira(userId, processType, dto);
+    } else if (processTypeConfig.category === ProcessTypeCategory.RSC) {
+      this.validarAberturaRsc(dto);
+    } else if (
+      processTypeConfig.category === ProcessTypeCategory.FULL_PROFESSOR
+    ) {
+      this.validarAberturaClasseTitular(dto);
 
-    const existingApprovedByInterstice = await this.processRepo.findApprovedByInterstice(
-      userId,
-      intersticeStart,
-      intersticeEnd
-    )
-
-    if (existingApprovedByInterstice) {
-      const msg =
-        `Já existe um processo APROVADO para este interstício ` +
-        `(nº ${existingApprovedByInterstice.idProcess}, ${existingApprovedByInterstice.type}). ` +
-        "Não é permitido abrir um novo processo para o mesmo período"
-
-      throw new BusinessRuleError(msg, {
-        existingProcessId: existingApprovedByInterstice.idProcess,
-        existingStatus: existingApprovedByInterstice.status,
-        existingType: existingApprovedByInterstice.type
-      })
-    }
-
-    const existingApprovedByMovement = await this.processRepo.findApprovedByMovement(
-      userId,
-      processType,
-      dto.classeOrigem,
-      dto.nivelOrigem,
-      dto.classeDestino,
-      dto.nivelDestino
-    )
-
-    if (existingApprovedByMovement) {
-      const msg =
-        `Já existe um processo APROVADO com esta movimentação ` +
-        `(nº ${existingApprovedByMovement.idProcess}, ${existingApprovedByMovement.type}, ` +
-        `${existingApprovedByMovement.classeOrigem}${existingApprovedByMovement.nivelOrigem} → ` +
-        `${existingApprovedByMovement.classeDestino}${existingApprovedByMovement.nivelDestino}). ` +
-        "Não é permitido abrir novamente a mesma movimentação"
-
-      throw new BusinessRuleError(msg, {
-        existingProcessId: existingApprovedByMovement.idProcess,
-        existingStatus: existingApprovedByMovement.status,
-        existingType: existingApprovedByMovement.type
-      })
+      const approved = await this.processRepo.findApprovedByProcessTypeId(
+        userId,
+        processTypeConfig.idProcessType,
+      );
+      if (approved) {
+        throw new BusinessRuleError(
+          `Já existe um processo de Classe Titular aprovado (nº ${approved.idProcess}).`,
+        );
+      }
     }
 
     const created = await this.processRepo.create(
       userId,
-      vigente.idScoringTable,
+      scoringTableId,
       processType,
-      dto
-    )
+      dto,
+      processTypeConfig.idProcessType,
+      processTypeConfig.code,
+    );
 
-    return this.mapProcessToDto(created)
+    return this.mapProcessToDto(created);
   }
 
+  private validarDadosComunsAbertura(dto: AberturaProcessoDto) {
+    if (!String(dto.campus ?? "").trim()) {
+      throw new BusinessRuleError("Campus é obrigatório");
+    }
+    if (!String(dto.cidadeUF ?? "").trim()) {
+      throw new BusinessRuleError("Cidade e UF são obrigatórios");
+    }
+  }
+
+  private validarAberturaRsc(dto: AberturaProcessoDto) {
+    const targetLevel = this.normalizeProcessTypeCode(
+      dto.rscDetails?.targetLevel,
+    );
+    if (!RSC_TARGET_LEVELS.has(targetLevel)) {
+      throw new BusinessRuleError(
+        "Selecione o nível pretendido: RSC I, RSC II ou RSC III",
+      );
+    }
+    if (dto.rscDetails) dto.rscDetails.targetLevel = targetLevel;
+  }
+
+  private validarAberturaClasseTitular(dto: AberturaProcessoDto) {
+    const mode = String(
+      dto.fullProfessorDetails?.evaluationMode ?? "",
+    ).toUpperCase();
+    if (
+      !Object.values(FullProfessorEvaluationMode).includes(
+        mode as FullProfessorEvaluationMode,
+      )
+    ) {
+      throw new BusinessRuleError(
+        "Selecione a modalidade Memorial ou Tese acadêmica",
+      );
+    }
+    if (dto.fullProfessorDetails) {
+      dto.fullProfessorDetails.evaluationMode =
+        mode as FullProfessorEvaluationMode;
+    }
+  }
+
+  private async validarAberturaCarreira(
+    userId: number,
+    processType: ProcessType,
+    dto: AberturaProcessoDto,
+  ) {
+    const classeOrigem = String(dto.classeOrigem ?? "");
+    const nivelOrigem = String(dto.nivelOrigem ?? "");
+    const classeDestino = String(dto.classeDestino ?? "");
+    const nivelDestino = String(dto.nivelDestino ?? "");
+
+    this.validarClasseENivel(classeOrigem, nivelOrigem, "origem");
+    this.validarClasseENivel(classeDestino, nivelDestino, "destino");
+
+    const origemCodigo = `${classeOrigem}${nivelOrigem}`.toUpperCase();
+    const destinoCodigo = `${classeDestino}${nivelDestino}`.toUpperCase();
+    this.validarCombinacaoProgressaoOuPromocao(
+      processType,
+      origemCodigo,
+      destinoCodigo,
+    );
+
+    const intersticeStart = this.parseRequiredDate(
+      dto.intersticioInicioISO,
+      "Início do interstício",
+    );
+    const intersticeEnd = this.parseRequiredDate(
+      dto.intersticioFimISO,
+      "Fim do interstício",
+    );
+    if (intersticeEnd < intersticeStart) {
+      throw new BusinessRuleError(
+        "Fim do interstício não pode ser anterior ao início",
+      );
+    }
+
+    const lastApproved =
+      await this.processRepo.findLastApprovedProcessForUser(userId);
+    if (
+      lastApproved?.intersticeEnd &&
+      intersticeStart <= lastApproved.intersticeEnd
+    ) {
+      const formattedLastEnd = dayjs(lastApproved.intersticeEnd).format(
+        "DD/MM/YYYY",
+      );
+      throw new BusinessRuleError(
+        `Já existe um processo APROVADO com interstício até ${formattedLastEnd} ` +
+          `(nº ${lastApproved.idProcess}). O próximo processo só pode iniciar após essa data`,
+      );
+    }
+
+    const existingApprovedByInterstice =
+      await this.processRepo.findApprovedByInterstice(
+        userId,
+        intersticeStart,
+        intersticeEnd,
+      );
+    if (existingApprovedByInterstice) {
+      throw new BusinessRuleError(
+        `Já existe um processo APROVADO para este interstício ` +
+          `(nº ${existingApprovedByInterstice.idProcess}).`,
+      );
+    }
+
+    const existingApprovedByMovement =
+      await this.processRepo.findApprovedByMovement(
+        userId,
+        processType,
+        classeOrigem,
+        nivelOrigem,
+        classeDestino,
+        nivelDestino,
+      );
+    if (existingApprovedByMovement) {
+      throw new BusinessRuleError(
+        `Já existe um processo APROVADO com esta movimentação ` +
+          `(nº ${existingApprovedByMovement.idProcess}).`,
+      );
+    }
+  }
+
+  private parseRequiredDate(value: string | undefined, label: string) {
+    const parsed = value ? new Date(value) : new Date(Number.NaN);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new BusinessRuleError(
+        `${label} é obrigatório e deve ser uma data válida`,
+      );
+    }
+    return parsed;
+  }
+
+  private async resolveProcessTypeConfig(
+    dto: AberturaProcessoDto,
+  ): Promise<ProcessTypeConfig> {
+    if (dto.processTypeId !== undefined) {
+      if (!Number.isInteger(dto.processTypeId) || dto.processTypeId <= 0) {
+        throw new BusinessRuleError("processTypeId inválido");
+      }
+
+      const config = await this.processRepo.findActiveProcessTypeConfigById(
+        dto.processTypeId,
+      );
+      if (!config) {
+        throw new BusinessRuleError(
+          "Tipo de processo não configurado ou inativo",
+          {
+            processTypeId: dto.processTypeId,
+          },
+        );
+      }
+
+      return config;
+    }
+
+    const normalizedCode = this.normalizeProcessTypeCode(
+      dto.processTypeCode ?? dto.tipo,
+    );
+    if (!normalizedCode) {
+      throw new BusinessRuleError("Tipo de processo é obrigatório");
+    }
+
+    const code = PROCESS_TYPE_CODE_ALIASES[normalizedCode] ?? normalizedCode;
+    const config =
+      await this.processRepo.findActiveProcessTypeConfigByCode(code);
+    if (!config) {
+      throw new BusinessRuleError(
+        "Tipo de processo não configurado ou inativo",
+        {
+          processTypeCode: code,
+        },
+      );
+    }
+
+    return config;
+  }
+
+  private normalizeProcessTypeCode(input: unknown): string {
+    return String(input ?? "")
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/[\s-]+/g, "_");
+  }
+
+  private resolveSupportedOpeningProcessType(
+    config: ProcessTypeConfig,
+  ): ProcessType | null {
+    if (config.code === "PROGRESSION") return ProcessType.PROGRESSAO;
+    if (config.code === "PROMOTION") return ProcessType.PROMOCAO;
+    if (
+      config.category === ProcessTypeCategory.RSC ||
+      config.category === ProcessTypeCategory.FULL_PROFESSOR ||
+      config.category === ProcessTypeCategory.SIMPLE ||
+      config.category === ProcessTypeCategory.OTHER
+    ) {
+      return null;
+    }
+
+    throw new BusinessRuleError(
+      `O tipo de processo "${config.name}" já está configurado, mas o fluxo de abertura ainda não foi implementado.`,
+      {
+        processTypeId: config.idProcessType,
+        processTypeCode: config.code,
+      },
+    );
+  }
+
+  private resolveScoringTablePurpose(
+    processTypeCode: string,
+  ): ScoringTablePurpose {
+    if (processTypeCode === "RSC") return ScoringTablePurpose.RSC;
+    if (processTypeCode === "FULL_PROFESSOR") {
+      return ScoringTablePurpose.FULL_PROFESSOR_EVALUATION;
+    }
+    if (processTypeCode === "PROGRESSION" || processTypeCode === "PROMOTION") {
+      return ScoringTablePurpose.PROGRESSION_PROMOTION;
+    }
+
+    return ScoringTablePurpose.OTHER;
+  }
 
   async listarProcessos(userId: number, statuses?: ProcessStatus[]) {
-    const list = await this.processRepo.listByUser(userId, statuses)
-    return list.map(p => this.mapProcessToDto(p))
+    const list = await this.processRepo.listByUser(userId, statuses);
+    return list.map((p) => this.mapProcessToDto(p));
   }
 
   async obterProcessoPorId(processId: number, userId: number) {
-    const careerProcess = await this.processRepo.findById(processId)
+    const careerProcess = await this.processRepo.findById(processId);
     if (!careerProcess || careerProcess.deletedDate) {
-      throw new NotFoundError("Processo não encontrado")
+      throw new NotFoundError("Processo não encontrado");
     }
 
     if (careerProcess.userId !== userId) {
-      throw new NotFoundError("Processo não encontrado")
+      throw new NotFoundError("Processo não encontrado");
     }
 
-    return this.mapProcessToDto(careerProcess)
+    return this.mapProcessToDto(careerProcess);
   }
 
-
   async excluirProcesso(processId: number, userId: number) {
-    const careerProcess = await this.processRepo.findById(processId)
+    const careerProcess = await this.processRepo.findById(processId);
     if (!careerProcess || careerProcess.deletedDate) {
-      throw new NotFoundError("Processo não encontrado")
+      throw new NotFoundError("Processo não encontrado");
     }
 
     if (careerProcess.userId !== userId) {
-      throw new NotFoundError("Processo não encontrado")
+      throw new NotFoundError("Processo não encontrado");
     }
 
     if (
@@ -265,32 +547,261 @@ export class ProcessoService {
       careerProcess.status !== ProcessStatus.REJECTED
     ) {
       throw new BusinessRuleError(
-        "Você só pode excluir processos com status DRAFT ou REJECTED"
-      )
+        "Você só pode excluir processos com status DRAFT ou REJECTED",
+      );
     }
 
-    const deleted = await this.processRepo.softDelete(processId)
+    const deleted = await this.processRepo.softDelete(processId);
 
     return {
       processId: deleted.idProcess,
       status: deleted.status,
-      deletedDate: deleted.deletedDate
-    }
+      deletedDate: deleted.deletedDate,
+    };
   }
 
+  async anexarDocumentoEspecifico(params: {
+    processId: number;
+    userId: number;
+    kind: string;
+    originalName: string;
+    storedName: string;
+    webUrl: string;
+    mimeType: string | null;
+    sizeBytes: number | null;
+    course?: string;
+    institution?: string;
+    conclusionDateISO?: string;
+  }) {
+    const careerProcess = await this.processRepo.findById(params.processId);
+    if (
+      !careerProcess ||
+      careerProcess.deletedDate ||
+      careerProcess.userId !== params.userId
+    ) {
+      throw new NotFoundError("Processo não encontrado");
+    }
+
+    if (
+      careerProcess.status !== ProcessStatus.DRAFT &&
+      careerProcess.status !== ProcessStatus.RETURNED
+    ) {
+      throw new BusinessRuleError(
+        "Os documentos só podem ser alterados em processos em rascunho ou devolvidos",
+      );
+    }
+
+    if (params.sizeBytes !== null && params.sizeBytes > 5 * 1024 * 1024) {
+      throw new BusinessRuleError(
+        "O arquivo excede o tamanho máximo permitido de 5 MB",
+      );
+    }
+
+    const kind = String(params.kind ?? "")
+      .trim()
+      .toUpperCase();
+    const category = careerProcess.processTypeConfig?.category;
+    const file = {
+      originalName: params.originalName,
+      storedName: params.storedName,
+      url: params.webUrl,
+      mimeType: params.mimeType,
+      sizeBytes: params.sizeBytes,
+    };
+
+    let updated: any = null;
+    if (kind === "RSC_REPORT") {
+      if (category !== ProcessTypeCategory.RSC || !careerProcess.rscDetail) {
+        throw new BusinessRuleError(
+          "Este documento só pode ser anexado a processos de RSC",
+        );
+      }
+      updated = await this.processRepo.attachRscReport(
+        params.processId,
+        params.userId,
+        file,
+      );
+    } else if (
+      kind === "FULL_PROFESSOR_MEMORIAL" ||
+      kind === "FULL_PROFESSOR_THESIS"
+    ) {
+      if (
+        category !== ProcessTypeCategory.FULL_PROFESSOR ||
+        !careerProcess.fullProfessorDetail
+      ) {
+        throw new BusinessRuleError(
+          "Este documento só pode ser anexado a processos de Classe Titular",
+        );
+      }
+      updated = await this.processRepo.attachFullProfessorDocument(
+        params.processId,
+        params.userId,
+        kind,
+        file,
+      );
+    } else if (kind === "DOCTORATE_DEGREE") {
+      if (
+        category !== ProcessTypeCategory.FULL_PROFESSOR ||
+        !careerProcess.fullProfessorDetail
+      ) {
+        throw new BusinessRuleError(
+          "O diploma de doutorado só pode ser vinculado a processos de Classe Titular",
+        );
+      }
+
+      const course = String(params.course ?? "").trim();
+      const institution = String(params.institution ?? "").trim();
+      if (!course || !institution) {
+        throw new BusinessRuleError(
+          "Curso e instituição do doutorado são obrigatórios",
+        );
+      }
+
+      const conclusionDate = this.parseRequiredDate(
+        params.conclusionDateISO,
+        "Data de conclusão do doutorado",
+      );
+      if (conclusionDate > new Date()) {
+        throw new BusinessRuleError(
+          "A data de conclusão do doutorado não pode estar no futuro",
+        );
+      }
+
+      const user = await this.userRepo.findById(params.userId);
+      if (!user?.docente) {
+        throw new BusinessRuleError("Perfil docente não encontrado");
+      }
+
+      updated = await this.processRepo.attachDoctorateDegree({
+        processId: params.processId,
+        userId: params.userId,
+        teacherId: user.docente.idDocente,
+        existingDegreeId: careerProcess.fullProfessorDetail.doctorateDegreeId,
+        course,
+        institution,
+        conclusionDate,
+        file,
+      });
+    } else {
+      throw new BusinessRuleError("Tipo de documento inválido");
+    }
+
+    if (!updated) throw new NotFoundError("Processo não encontrado");
+    return this.mapProcessToDto(updated);
+  }
+
+  async anexarDocumentoConfigurado(params: {
+    processId: number;
+    userId: number;
+    requirementCode: string;
+    originalName: string;
+    storedName: string;
+    webUrl: string;
+    mimeType: string | null;
+    sizeBytes: number | null;
+  }) {
+    const careerProcess = await this.processRepo.findById(params.processId);
+    if (
+      !careerProcess ||
+      careerProcess.deletedDate ||
+      careerProcess.userId !== params.userId
+    ) {
+      throw new NotFoundError("Processo não encontrado");
+    }
+
+    if (
+      careerProcess.status !== ProcessStatus.DRAFT &&
+      careerProcess.status !== ProcessStatus.RETURNED
+    ) {
+      throw new BusinessRuleError(
+        "Os documentos só podem ser alterados em processos em rascunho ou devolvidos",
+      );
+    }
+
+    const requirementCode = String(params.requirementCode ?? "")
+      .trim()
+      .toUpperCase();
+    const requirement =
+      careerProcess.processTypeConfig?.documentRequirements?.find(
+        (item: any) => item.active && item.code === requirementCode,
+      );
+    if (!requirement) {
+      throw new BusinessRuleError(
+        "Este documento não está configurado para o tipo e a versão do processo",
+      );
+    }
+
+    this.validarArquivoConfigurado(requirement, params);
+
+    const result = await this.processRepo.attachConfiguredDocument({
+      processId: params.processId,
+      userId: params.userId,
+      requirementCode,
+      required: requirement.required,
+      allowsMultiple: requirement.allowsMultiple,
+      file: {
+        originalName: params.originalName,
+        storedName: params.storedName,
+        url: params.webUrl,
+        mimeType: params.mimeType,
+        sizeBytes: params.sizeBytes,
+      },
+    });
+
+    if (!result.process) throw new NotFoundError("Processo não encontrado");
+    return {
+      process: this.mapProcessToDto(result.process),
+      replacedFileUrl: result.replacedFileUrl,
+    };
+  }
+
+  async removerDocumentoConfigurado(
+    processId: number,
+    userId: number,
+    documentId: number,
+  ) {
+    const careerProcess = await this.processRepo.findById(processId);
+    if (
+      !careerProcess ||
+      careerProcess.deletedDate ||
+      careerProcess.userId !== userId
+    ) {
+      throw new NotFoundError("Processo não encontrado");
+    }
+
+    if (
+      careerProcess.status !== ProcessStatus.DRAFT &&
+      careerProcess.status !== ProcessStatus.RETURNED
+    ) {
+      throw new BusinessRuleError(
+        "Os documentos só podem ser alterados em processos em rascunho ou devolvidos",
+      );
+    }
+
+    const result = await this.processRepo.removeConfiguredDocument(
+      processId,
+      documentId,
+    );
+    if (!result?.process) throw new NotFoundError("Documento não encontrado");
+
+    return {
+      process: this.mapProcessToDto(result.process),
+      removedFileUrl: result.removedFileUrl,
+    };
+  }
 
   async editarProcesso(
     processId: number,
     userId: number,
-    dto: UpdateProcessoDto
+    dto: UpdateProcessoDto,
   ) {
-    const careerProcess = await this.processRepo.findById(processId)
+    const careerProcess = await this.processRepo.findById(processId);
     if (!careerProcess || careerProcess.deletedDate) {
-      throw new NotFoundError("Processo não encontrado")
+      throw new NotFoundError("Processo não encontrado");
     }
 
     if (careerProcess.userId !== userId) {
-      throw new NotFoundError("Processo não encontrado")
+      throw new NotFoundError("Processo não encontrado");
     }
 
     if (
@@ -299,62 +810,145 @@ export class ProcessoService {
       careerProcess.status !== ProcessStatus.REJECTED
     ) {
       throw new BusinessRuleError(
-        "Você só pode editar processos com status DRAFT, RETURNED ou REJECTED"
-      )
+        "Você só pode editar processos com status DRAFT, RETURNED ou REJECTED",
+      );
+    }
+
+    const category = careerProcess.processTypeConfig?.category;
+    if (category === ProcessTypeCategory.RSC) {
+      const targetLevel = dto.rscDetails?.targetLevel
+        ? this.normalizeProcessTypeCode(dto.rscDetails.targetLevel)
+        : (careerProcess.rscDetail?.targetLevel ?? undefined);
+
+      if (targetLevel && !RSC_TARGET_LEVELS.has(targetLevel)) {
+        throw new BusinessRuleError("Nível de RSC inválido");
+      }
+
+      const updated = await this.processRepo.updateRscProcess(processId, {
+        campus: dto.campus,
+        cidadeUF: dto.cidadeUF,
+        externalNumber:
+          dto.externalNumber !== undefined
+            ? dto.externalNumber?.trim() || null
+            : undefined,
+        targetLevel,
+        simecReference:
+          dto.rscDetails?.simecReference !== undefined
+            ? dto.rscDetails.simecReference?.trim() || null
+            : undefined,
+      });
+      return this.mapProcessToDto(updated);
+    }
+
+    if (category === ProcessTypeCategory.FULL_PROFESSOR) {
+      const modeRaw = dto.fullProfessorDetails?.evaluationMode;
+      const mode = modeRaw ? String(modeRaw).toUpperCase() : undefined;
+      if (
+        mode &&
+        !Object.values(FullProfessorEvaluationMode).includes(
+          mode as FullProfessorEvaluationMode,
+        )
+      ) {
+        throw new BusinessRuleError("Modalidade de avaliação inválida");
+      }
+
+      const finalReferenceDate = dto.fullProfessorDetails?.finalReferenceDateISO
+        ? this.parseRequiredDate(
+            dto.fullProfessorDetails.finalReferenceDateISO,
+            "Data de referência final",
+          )
+        : undefined;
+
+      const updated = await this.processRepo.updateFullProfessorProcess(
+        processId,
+        {
+          campus: dto.campus,
+          cidadeUF: dto.cidadeUF,
+          externalNumber:
+            dto.externalNumber !== undefined
+              ? dto.externalNumber?.trim() || null
+              : undefined,
+          evaluationMode: mode as FullProfessorEvaluationMode | undefined,
+          doctorateDegreeId: dto.fullProfessorDetails?.doctorateDegreeId,
+          finalReferenceDate,
+        },
+      );
+      return this.mapProcessToDto(updated);
+    }
+
+    if (
+      !careerProcess.type ||
+      !careerProcess.intersticeStart ||
+      !careerProcess.intersticeEnd ||
+      !careerProcess.classeOrigem ||
+      !careerProcess.nivelOrigem ||
+      !careerProcess.classeDestino ||
+      !careerProcess.nivelDestino
+    ) {
+      throw new BusinessRuleError(
+        "Processo de carreira possui dados obrigatórios incompletos",
+      );
     }
 
     const newIntersticeStart = dto.intersticioInicioISO
       ? new Date(dto.intersticioInicioISO)
-      : careerProcess.intersticeStart
+      : careerProcess.intersticeStart;
 
     const newIntersticeEnd = dto.intersticioFimISO
       ? new Date(dto.intersticioFimISO)
-      : careerProcess.intersticeEnd
+      : careerProcess.intersticeEnd;
 
     const classeOrigemFinal =
-      dto.classeOrigem !== undefined ? dto.classeOrigem : careerProcess.classeOrigem
+      dto.classeOrigem !== undefined
+        ? dto.classeOrigem
+        : careerProcess.classeOrigem;
     const nivelOrigemFinal =
-      dto.nivelOrigem !== undefined ? dto.nivelOrigem : careerProcess.nivelOrigem
+      dto.nivelOrigem !== undefined
+        ? dto.nivelOrigem
+        : careerProcess.nivelOrigem;
     const classeDestinoFinal =
       dto.classeDestino !== undefined
         ? dto.classeDestino
-        : careerProcess.classeDestino
+        : careerProcess.classeDestino;
     const nivelDestinoFinal =
       dto.nivelDestino !== undefined
         ? dto.nivelDestino
-        : careerProcess.nivelDestino
+        : careerProcess.nivelDestino;
 
-    this.validarClasseENivel(classeOrigemFinal, nivelOrigemFinal, "origem")
-    this.validarClasseENivel(classeDestinoFinal, nivelDestinoFinal, "destino")
+    this.validarClasseENivel(classeOrigemFinal, nivelOrigemFinal, "origem");
+    this.validarClasseENivel(classeDestinoFinal, nivelDestinoFinal, "destino");
 
-    const origemCodigo = `${classeOrigemFinal}${nivelOrigemFinal}`.toUpperCase()
-    const destinoCodigo = `${classeDestinoFinal}${nivelDestinoFinal}`.toUpperCase()
+    const origemCodigo =
+      `${classeOrigemFinal}${nivelOrigemFinal}`.toUpperCase();
+    const destinoCodigo =
+      `${classeDestinoFinal}${nivelDestinoFinal}`.toUpperCase();
 
     this.validarCombinacaoProgressaoOuPromocao(
       careerProcess.type,
       origemCodigo,
-      destinoCodigo
-    )
+      destinoCodigo,
+    );
 
-    const lastApproved = await this.processRepo.findLastApprovedProcessForUser(userId)
+    const lastApproved =
+      await this.processRepo.findLastApprovedProcessForUser(userId);
 
     if (lastApproved) {
-      const lastEnd = lastApproved.intersticeEnd
+      const lastEnd = lastApproved.intersticeEnd;
 
-      if (lastApproved.idProcess !== processId) {
+      if (lastEnd && lastApproved.idProcess !== processId) {
         if (newIntersticeStart <= lastEnd) {
-          const formattedLastEnd = dayjs(lastEnd).format("DD/MM/YYYY")
+          const formattedLastEnd = dayjs(lastEnd).format("DD/MM/YYYY");
 
           const msg =
             `Já existe um processo APROVADO com interstício até ${formattedLastEnd} ` +
             `(nº ${lastApproved.idProcess}, ${lastApproved.type}). ` +
-            "O próximo processo só pode iniciar após essa data"
+            "O próximo processo só pode iniciar após essa data";
 
           throw new BusinessRuleError(msg, {
             lastApprovedProcessId: lastApproved.idProcess,
             lastApprovedType: lastApproved.type,
-            lastApprovedIntersticeEnd: lastEnd
-          })
+            lastApprovedIntersticeEnd: lastEnd,
+          });
         }
       }
     }
@@ -367,49 +961,51 @@ export class ProcessoService {
         userId,
         newIntersticeStart,
         newIntersticeEnd,
-        processId
-      )
+        processId,
+      );
 
       if (existingOverlap) {
         const message =
           `Já existe outro processo com interstício que se sobrepõe a este ` +
-          `(nº ${existingOverlap.idProcess}). Ajuste o período ou utilize o processo existente`
+          `(nº ${existingOverlap.idProcess}). Ajuste o período ou utilize o processo existente`;
 
         throw new BusinessRuleError(message, {
-          existingProcessId: existingOverlap.idProcess
-        })
+          existingProcessId: existingOverlap.idProcess,
+        });
       }
     }
 
-    const existingApprovedByInterstice = await this.processRepo.findApprovedByInterstice(
-      userId,
-      newIntersticeStart,
-      newIntersticeEnd,
-      processId
-    )
+    const existingApprovedByInterstice =
+      await this.processRepo.findApprovedByInterstice(
+        userId,
+        newIntersticeStart,
+        newIntersticeEnd,
+        processId,
+      );
 
     if (existingApprovedByInterstice) {
       const msg =
         `Já existe um processo APROVADO com este interstício ` +
         `(nº ${existingApprovedByInterstice.idProcess}, ${existingApprovedByInterstice.type}). ` +
-        "Não é permitido editar este processo para usar o mesmo período"
+        "Não é permitido editar este processo para usar o mesmo período";
 
       throw new BusinessRuleError(msg, {
         existingProcessId: existingApprovedByInterstice.idProcess,
         existingStatus: existingApprovedByInterstice.status,
-        existingType: existingApprovedByInterstice.type
-      })
+        existingType: existingApprovedByInterstice.type,
+      });
     }
 
-    const existingApprovedByMovement = await this.processRepo.findApprovedByMovement(
-      userId,
-      careerProcess.type,
-      classeOrigemFinal,
-      nivelOrigemFinal,
-      classeDestinoFinal,
-      nivelDestinoFinal,
-      processId
-    )
+    const existingApprovedByMovement =
+      await this.processRepo.findApprovedByMovement(
+        userId,
+        careerProcess.type,
+        classeOrigemFinal,
+        nivelOrigemFinal,
+        classeDestinoFinal,
+        nivelDestinoFinal,
+        processId,
+      );
 
     if (existingApprovedByMovement) {
       const msg =
@@ -417,92 +1013,97 @@ export class ProcessoService {
         `(nº ${existingApprovedByMovement.idProcess}, ${existingApprovedByMovement.type}, ` +
         `${existingApprovedByMovement.classeOrigem}${existingApprovedByMovement.nivelOrigem} → ` +
         `${existingApprovedByMovement.classeDestino}${existingApprovedByMovement.nivelDestino}). ` +
-        "Não é permitido editar este processo para duplicar uma movimentação já aprovada"
+        "Não é permitido editar este processo para duplicar uma movimentação já aprovada";
 
       throw new BusinessRuleError(msg, {
         existingProcessId: existingApprovedByMovement.idProcess,
         existingStatus: existingApprovedByMovement.status,
-        existingType: existingApprovedByMovement.type
-      })
+        existingType: existingApprovedByMovement.type,
+      });
     }
 
-    const updateData: any = {}
+    const updateData: any = {};
 
     if (dto.campus !== undefined) {
-      updateData.campus = dto.campus
+      updateData.campus = dto.campus;
     }
     if (dto.cidadeUF !== undefined) {
-      updateData.cidadeUF = dto.cidadeUF
+      updateData.cidadeUF = dto.cidadeUF;
+    }
+    if (dto.externalNumber !== undefined) {
+      updateData.externalNumber = dto.externalNumber?.trim() || null;
     }
     if (dto.intersticioInicioISO !== undefined) {
-      updateData.intersticeStart = newIntersticeStart
+      updateData.intersticeStart = newIntersticeStart;
     }
     if (dto.intersticioFimISO !== undefined) {
-      updateData.intersticeEnd = newIntersticeEnd
+      updateData.intersticeEnd = newIntersticeEnd;
     }
     if (dto.classeOrigem !== undefined) {
-      updateData.classeOrigem = classeOrigemFinal
+      updateData.classeOrigem = classeOrigemFinal;
     }
     if (dto.nivelOrigem !== undefined) {
-      updateData.nivelOrigem = nivelOrigemFinal
+      updateData.nivelOrigem = nivelOrigemFinal;
     }
     if (dto.classeDestino !== undefined) {
-      updateData.classeDestino = classeDestinoFinal
+      updateData.classeDestino = classeDestinoFinal;
     }
     if (dto.nivelDestino !== undefined) {
-      updateData.nivelDestino = nivelDestinoFinal
+      updateData.nivelDestino = nivelDestinoFinal;
     }
 
     if (Object.keys(updateData).length === 0) {
-      return this.mapProcessToDto(careerProcess)
+      return this.mapProcessToDto(careerProcess);
     }
 
-    const updated = await this.processRepo.updateProcess(processId, updateData)
+    const updated = await this.processRepo.updateProcess(processId, updateData);
 
-    return this.mapProcessToDto(updated)
+    return this.mapProcessToDto(updated);
   }
 
-
   async gerarRequerimento(processId: number, userId: number) {
-    const careerProcess = await this.processRepo.findById(processId)
+    const careerProcess = await this.processRepo.findById(processId);
     if (!careerProcess || careerProcess.deletedDate) {
-      throw new NotFoundError("Processo não encontrado")
+      throw new NotFoundError("Processo não encontrado");
     }
 
     if (careerProcess.userId !== userId) {
-      throw new NotFoundError("Processo não encontrado")
+      throw new NotFoundError("Processo não encontrado");
     }
 
-    const processType: ProcessType = careerProcess.type
+    if (!careerProcess.type) {
+      throw new BusinessRuleError(
+        "O modelo de requerimento para este tipo de processo ainda não está configurado.",
+      );
+    }
 
-    this.validarRegrasDeRequerimento(careerProcess)
+    const processType: ProcessType = careerProcess.type;
 
-    const user = await this.userRepo.findById(userId)
+    this.validarRegrasDeRequerimento(careerProcess);
+
+    const user = await this.userRepo.findById(userId);
     if (!user) {
-      throw new NotFoundError("Usuário não encontrado")
+      throw new NotFoundError("Usuário não encontrado");
     }
 
-    const nomeProfessor = user.name
-    const email = user.email
-    const celular = user.phone ?? ""
-    const siape = user.docente?.siape ?? ""
+    const nomeProfessor = user.name;
+    const email = user.email;
+    const celular = user.phone ?? "";
+    const siape = user.docente?.siape ?? "";
 
-    const dataEmissao = dayjs()
+    const dataEmissao = dayjs();
 
-    const interIni = dayjs.utc(careerProcess.intersticeStart)
-    const interFim = dayjs.utc(careerProcess.intersticeEnd)
+    const interIni = dayjs.utc(careerProcess.intersticeStart);
+    const interFim = dayjs.utc(careerProcess.intersticeEnd);
 
     const dataPorExtenso =
       `${careerProcess.cidadeUF}, ${dataEmissao.format("DD")} de ` +
-      `${dataEmissao.format("MMMM")} de ${dataEmissao.format("YYYY")}`
+      `${dataEmissao.format("MMMM")} de ${dataEmissao.format("YYYY")}`;
 
-    const intersticioStr =
-      `${interIni.format("DD/MM/YYYY")} a ${interFim.format("DD/MM/YYYY")}`
+    const intersticioStr = `${interIni.format("DD/MM/YYYY")} a ${interFim.format("DD/MM/YYYY")}`;
 
-    const classeNivelOrigem =
-      `Classe ${careerProcess.classeOrigem} / Nível ${careerProcess.nivelOrigem}`
-    const classeNivelDestino =
-      `Classe ${careerProcess.classeDestino} / Nível ${careerProcess.nivelDestino}`
+    const classeNivelOrigem = `Classe ${careerProcess.classeOrigem} / Nível ${careerProcess.nivelOrigem}`;
+    const classeNivelDestino = `Classe ${careerProcess.classeDestino} / Nível ${careerProcess.nivelDestino}`;
 
     const vars = {
       campus: careerProcess.campus,
@@ -513,48 +1114,63 @@ export class ProcessoService {
       celular,
       classe_nivel_origem: classeNivelOrigem,
       classe_nivel_destino: classeNivelDestino,
-      intersticio: intersticioStr
-    }
+      intersticio: intersticioStr,
+    };
 
     const templateFile =
       processType === ProcessType.PROMOCAO
         ? path.join(process.cwd(), "templates", "requerimento_promocao.docx")
-        : path.join(process.cwd(), "templates", "requerimento_progressao.docx")
+        : path.join(process.cwd(), "templates", "requerimento_progressao.docx");
 
-    const docxBuffer = renderDocxFromTemplate(templateFile, vars)
-    const pdfBuffer = await convertDocxToPdf(docxBuffer)
+    const docxBuffer = renderDocxFromTemplate(templateFile, vars);
+    const pdfBuffer = await convertDocxToPdf(docxBuffer);
 
     const base =
       processType === ProcessType.PROMOCAO
         ? "Requerimento_Promocao"
-        : "Requerimento_Progressao"
+        : "Requerimento_Progressao";
 
     const filename =
       `${base}_${nomeProfessor.replace(/\s+/g, "_")}_` +
-      `${dataEmissao.format("YYYYMMDD")}.pdf`
+      `${dataEmissao.format("YYYYMMDD")}.pdf`;
 
     return {
       filename,
-      pdfBuffer
-    }
+      pdfBuffer,
+    };
   }
 
-
   private validarRegrasDeRequerimento(careerProcess: any) {
-    const processType: ProcessType = careerProcess.type
-    const origemCodigo = `${careerProcess.classeOrigem}${careerProcess.nivelOrigem}`.toUpperCase()
-    const destinoCodigo = `${careerProcess.classeDestino}${careerProcess.nivelDestino}`.toUpperCase()
+    if (
+      !careerProcess.type ||
+      !careerProcess.intersticeStart ||
+      !careerProcess.intersticeEnd ||
+      !careerProcess.classeOrigem ||
+      !careerProcess.nivelOrigem ||
+      !careerProcess.classeDestino ||
+      !careerProcess.nivelDestino
+    ) {
+      throw new BusinessRuleError(
+        "Processo de carreira possui dados obrigatórios incompletos",
+      );
+    }
+
+    const processType: ProcessType = careerProcess.type;
+    const origemCodigo =
+      `${careerProcess.classeOrigem}${careerProcess.nivelOrigem}`.toUpperCase();
+    const destinoCodigo =
+      `${careerProcess.classeDestino}${careerProcess.nivelDestino}`.toUpperCase();
 
     const mesesIntersticio = dayjs().diff(
       dayjs.utc(careerProcess.intersticeStart),
-      "month"
-    )
+      "month",
+    );
 
     this.validarCombinacaoProgressaoOuPromocao(
       processType,
       origemCodigo,
-      destinoCodigo
-    )
+      destinoCodigo,
+    );
 
     if (processType === ProcessType.PROMOCAO) {
       const regrasPromocao = [
@@ -562,39 +1178,42 @@ export class ProcessoService {
           from: "A1",
           to: "B1",
           minMonths: 36,
-          descricao: "Só é permitida promoção de A1 para B1 com interstício mínimo de 36 meses"
+          descricao:
+            "Só é permitida promoção de A1 para B1 com interstício mínimo de 36 meses",
         },
         {
           from: "B4",
           to: "C1",
           minMonths: 24,
-          descricao: "Só é permitida promoção para C1 após permanecer no mínimo 24 meses em B4"
+          descricao:
+            "Só é permitida promoção para C1 após permanecer no mínimo 24 meses em B4",
         },
         {
           from: "C4",
           to: "D1",
           minMonths: 24,
-          descricao: "Só é permitida promoção para D1 após permanecer no mínimo 24 meses em C4"
-        }
-      ]
+          descricao:
+            "Só é permitida promoção para D1 após permanecer no mínimo 24 meses em C4",
+        },
+      ];
 
       const regra = regrasPromocao.find(
-        r => r.from === origemCodigo && r.to === destinoCodigo
-      )
+        (r) => r.from === origemCodigo && r.to === destinoCodigo,
+      );
 
       if (!regra) {
         throw new BusinessRuleError(
-          `Combinação de promoção inválida: ${origemCodigo} → ${destinoCodigo}`
-        )
+          `Combinação de promoção inválida: ${origemCodigo} → ${destinoCodigo}`,
+        );
       }
 
       if (mesesIntersticio < regra.minMonths) {
         throw new BusinessRuleError(
-          `${regra.descricao}. Interstício atual: ${mesesIntersticio} meses`
-        )
+          `${regra.descricao}. Interstício atual: ${mesesIntersticio} meses`,
+        );
       }
 
-      return
+      return;
     }
 
     if (processType === ProcessType.PROGRESSAO) {
@@ -603,65 +1222,70 @@ export class ProcessoService {
           from: "B1",
           to: "B2",
           minMonths: 24,
-          descricao: "Só é permitida progressão para B2 após permanecer no mínimo 24 meses em B1"
+          descricao:
+            "Só é permitida progressão para B2 após permanecer no mínimo 24 meses em B1",
         },
         {
           from: "B2",
           to: "B3",
           minMonths: 24,
-          descricao: "Só é permitida progressão para B3 após permanecer no mínimo 24 meses em B2"
+          descricao:
+            "Só é permitida progressão para B3 após permanecer no mínimo 24 meses em B2",
         },
         {
           from: "B3",
           to: "B4",
           minMonths: 24,
-          descricao: "Só é permitida progressão para B4 após permanecer no mínimo 24 meses em B3"
+          descricao:
+            "Só é permitida progressão para B4 após permanecer no mínimo 24 meses em B3",
         },
         {
           from: "C1",
           to: "C2",
           minMonths: 24,
-          descricao: "Só é permitida progressão para C2 após permanecer no mínimo 24 meses em C1"
+          descricao:
+            "Só é permitida progressão para C2 após permanecer no mínimo 24 meses em C1",
         },
         {
           from: "C2",
           to: "C3",
           minMonths: 24,
-          descricao: "Só é permitida progressão para C3 após permanecer no mínimo 24 meses em C2"
+          descricao:
+            "Só é permitida progressão para C3 após permanecer no mínimo 24 meses em C2",
         },
         {
           from: "C3",
           to: "C4",
           minMonths: 24,
-          descricao: "Só é permitida progressão para C4 após permanecer no mínimo 24 meses em C3"
-        }
-      ]
+          descricao:
+            "Só é permitida progressão para C4 após permanecer no mínimo 24 meses em C3",
+        },
+      ];
 
       const regra = regrasProgressao.find(
-        r => r.from === origemCodigo && r.to === destinoCodigo
-      )
+        (r) => r.from === origemCodigo && r.to === destinoCodigo,
+      );
 
       if (!regra) {
         throw new BusinessRuleError(
-          `Combinação de progressão inválida: ${origemCodigo} → ${destinoCodigo}`
-        )
+          `Combinação de progressão inválida: ${origemCodigo} → ${destinoCodigo}`,
+        );
       }
 
       if (mesesIntersticio < regra.minMonths) {
         throw new BusinessRuleError(
-          `${regra.descricao}. Interstício atual: ${mesesIntersticio} meses`
-        )
+          `${regra.descricao}. Interstício atual: ${mesesIntersticio} meses`,
+        );
       }
 
-      return
+      return;
     }
   }
-
 
   private validarCombinacaoProgressaoOuPromocao(
     processType: ProcessType,
     origemCodigo: string,
-    destinoCodigo: string
+    destinoCodigo: string,
   ) {
     if (processType === ProcessType.PROGRESSAO) {
       const combinacoesValidas = [
@@ -670,101 +1294,334 @@ export class ProcessoService {
         "B3->B4",
         "C1->C2",
         "C2->C3",
-        "C3->C4"
-      ]
+        "C3->C4",
+      ];
 
-      const chave = `${origemCodigo}->${destinoCodigo}`
+      const chave = `${origemCodigo}->${destinoCodigo}`;
 
       if (!combinacoesValidas.includes(chave)) {
         throw new BusinessRuleError(
-          `Combinação de progressão inválida: ${origemCodigo} → ${destinoCodigo}`
-        )
+          `Combinação de progressão inválida: ${origemCodigo} → ${destinoCodigo}`,
+        );
       }
 
-      return
+      return;
     }
 
     if (processType === ProcessType.PROMOCAO) {
-      const combinacoesValidas = ["A1->B1", "B4->C1", "C4->D1"]
+      const combinacoesValidas = ["A1->B1", "B4->C1", "C4->D1"];
 
-      const chave = `${origemCodigo}->${destinoCodigo}`
+      const chave = `${origemCodigo}->${destinoCodigo}`;
 
       if (!combinacoesValidas.includes(chave)) {
         throw new BusinessRuleError(
-          `Combinação de promoção inválida: ${origemCodigo} → ${destinoCodigo}`
-        )
+          `Combinação de promoção inválida: ${origemCodigo} → ${destinoCodigo}`,
+        );
       }
 
-      return
+      return;
     }
   }
-
 
   private validarClasseENivel(
     classe: string,
     nivel: string,
-    contexto: "origem" | "destino"
+    contexto: "origem" | "destino",
   ) {
-    const codigo = `${classe}${nivel}`.toUpperCase()
-    const valoresValidos = Object.values(ClassLevel)
+    const codigo = `${classe}${nivel}`.toUpperCase();
+    const valoresValidos = Object.values(ClassLevel);
 
     if (!valoresValidos.includes(codigo as ClassLevel)) {
       throw new BusinessRuleError(
-        `Combinação de classe/nível de ${contexto} inválida: ${codigo}`
-      )
+        `Combinação de classe/nível de ${contexto} inválida: ${codigo}`,
+      );
     }
   }
 
+  private validarDocumentosConfigurados(careerProcess: any) {
+    const requirements =
+      careerProcess.processTypeConfig?.documentRequirements?.filter(
+        (item: any) => item.active && item.required,
+      ) ?? [];
+    if (requirements.length === 0) return;
+
+    const attachedCodes = new Set(
+      (careerProcess.documents ?? [])
+        .filter(
+          (document: any) =>
+            !document.deletedDate &&
+            document.purpose === "PROCESS_REQUIREMENT" &&
+            document.evidenceFile &&
+            !document.evidenceFile.deletedDate,
+        )
+        .map((document: any) => document.documentType),
+    );
+    const missingDocuments = requirements
+      .filter((requirement: any) => !attachedCodes.has(requirement.code))
+      .map((requirement: any) => ({
+        code: requirement.code,
+        name: requirement.name,
+      }));
+
+    if (missingDocuments.length > 0) {
+      throw new BusinessRuleError(
+        "Anexe todos os documentos obrigatórios antes do envio",
+        { missingDocuments },
+      );
+    }
+  }
+
+  private validarArquivoConfigurado(
+    requirement: any,
+    file: {
+      originalName: string;
+      mimeType: string | null;
+      sizeBytes: number | null;
+    },
+  ) {
+    const maxSizeMb = requirement.maxSizeMb ?? 100;
+    if (file.sizeBytes !== null && file.sizeBytes > maxSizeMb * 1024 * 1024) {
+      throw new BusinessRuleError(
+        `O arquivo excede o tamanho máximo permitido de ${maxSizeMb} MB`,
+      );
+    }
+
+    const acceptedFormats = String(requirement.acceptedFormats ?? "")
+      .split(/[\s,;]+/)
+      .map((value) => this.normalizarFormato(value))
+      .filter(Boolean);
+    if (acceptedFormats.length === 0) return;
+
+    const extension = path.extname(file.originalName).slice(1);
+    const receivedFormats = new Set([
+      this.normalizarFormato(extension),
+      this.normalizarFormato(file.mimeType ?? ""),
+    ]);
+    if (!acceptedFormats.some((format) => receivedFormats.has(format))) {
+      throw new BusinessRuleError(
+        `Formato não permitido. Envie: ${acceptedFormats.join(", ").toUpperCase()}`,
+      );
+    }
+  }
+
+  private normalizarFormato(value: string) {
+    const normalized = String(value ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/^\./, "");
+    const aliases: Record<string, string> = {
+      "application/pdf": "pdf",
+      "image/jpeg": "jpg",
+      jpeg: "jpg",
+      "image/png": "png",
+      "application/msword": "doc",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        "docx",
+      "application/vnd.ms-excel": "xls",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+        "xlsx",
+      "application/vnd.oasis.opendocument.text": "odt",
+      "application/vnd.oasis.opendocument.spreadsheet": "ods",
+    };
+    return aliases[normalized] ?? normalized;
+  }
 
   private mapProcessToDto(careerProcess: any) {
+    const processTypeConfig = careerProcess.processTypeConfig ?? null;
+
     return {
       processId: careerProcess.idProcess,
       type: careerProcess.type,
+      processTypeId:
+        careerProcess.processTypeId ?? processTypeConfig?.idProcessType ?? null,
+      processTypeCode:
+        processTypeConfig?.code ??
+        this.inferProcessTypeCode(careerProcess.type),
+      processTypeName:
+        processTypeConfig?.name ??
+        this.inferProcessTypeName(careerProcess.type),
+      processTypeCategory: processTypeConfig?.category ?? null,
+      processTypeConfig: processTypeConfig
+        ? this.mapProcessTypeConfigToDto(processTypeConfig)
+        : null,
       status: careerProcess.status,
       scoringTableId: careerProcess.scoringTableId,
+      scoringTable: careerProcess.table
+        ? {
+            idScoringTable: careerProcess.table.idScoringTable,
+            name: careerProcess.table.name,
+            purpose: careerProcess.table.purpose,
+            minRequiredPoints:
+              careerProcess.table.minRequiredPoints !== null
+                ? String(careerProcess.table.minRequiredPoints)
+                : null,
+          }
+        : null,
+      submittedAt: careerProcess.submittedAt ?? null,
       createdAt: careerProcess.createdAt,
       userId: careerProcess.userId,
       campus: careerProcess.campus,
       cidadeUF: careerProcess.cidadeUF,
+      externalNumber: careerProcess.externalNumber ?? null,
       intersticeStart: careerProcess.intersticeStart,
       intersticeEnd: careerProcess.intersticeEnd,
       classeOrigem: careerProcess.classeOrigem,
       nivelOrigem: careerProcess.nivelOrigem,
       classeDestino: careerProcess.classeDestino,
-      nivelDestino: careerProcess.nivelDestino
-    }
+      nivelDestino: careerProcess.nivelDestino,
+      progressionDetails: careerProcess.progressionDetail ?? null,
+      rscDetails: careerProcess.rscDetail
+        ? {
+            targetLevel: careerProcess.rscDetail.targetLevel,
+            simecReference: careerProcess.rscDetail.simecReference,
+            finalResult: careerProcess.rscDetail.finalResult,
+            reportFile: this.mapEvidenceFileToDto(
+              careerProcess.rscDetail.reportFile,
+            ),
+            generatedSpreadsheetFile: this.mapEvidenceFileToDto(
+              careerProcess.rscDetail.generatedSpreadsheetFile,
+            ),
+          }
+        : null,
+      configuredDocuments: (careerProcess.documents ?? []).map(
+        (document: any) => ({
+          idDocumentProcess: document.idDocumentProcess,
+          documentType: document.documentType,
+          nature: document.nature,
+          checked: document.checked,
+          receivedAt: document.receivedAt,
+          file: this.mapEvidenceFileToDto(document.evidenceFile),
+        }),
+      ),
+      fullProfessorDetails: careerProcess.fullProfessorDetail
+        ? {
+            evaluationMode: careerProcess.fullProfessorDetail.evaluationMode,
+            finalReferenceDate:
+              careerProcess.fullProfessorDetail.finalReferenceDate,
+            memorialFile: this.mapEvidenceFileToDto(
+              careerProcess.fullProfessorDetail.memorialFile,
+            ),
+            thesisFile: this.mapEvidenceFileToDto(
+              careerProcess.fullProfessorDetail.thesisFile,
+            ),
+            doctorateDegree: careerProcess.fullProfessorDetail.doctorateDegree
+              ? {
+                  idTeacherDegree:
+                    careerProcess.fullProfessorDetail.doctorateDegree
+                      .idTeacherDegree,
+                  degreeType:
+                    careerProcess.fullProfessorDetail.doctorateDegree
+                      .degreeType,
+                  course:
+                    careerProcess.fullProfessorDetail.doctorateDegree.course,
+                  institution:
+                    careerProcess.fullProfessorDetail.doctorateDegree
+                      .institution,
+                  conclusionDate:
+                    careerProcess.fullProfessorDetail.doctorateDegree
+                      .conclusionDate,
+                  evidenceFile: this.mapEvidenceFileToDto(
+                    careerProcess.fullProfessorDetail.doctorateDegree
+                      .evidenceFile,
+                  ),
+                }
+              : null,
+          }
+        : null,
+    };
   }
 
+  private mapEvidenceFileToDto(file: any) {
+    if (!file) return null;
+    return {
+      idEvidenceFile: file.idEvidenceFile,
+      usageType: file.usageType,
+      originalName: file.originalName,
+      url: file.url,
+      mimeType: file.mimeType,
+      sizeBytes:
+        file.sizeBytes !== null && file.sizeBytes !== undefined
+          ? Number(file.sizeBytes)
+          : null,
+      uploadedAt: file.uploadedAt,
+    };
+  }
 
-  private async calcularPontuacaoTotalProcesso(processId: number): Promise<number> {
-    const blocks = await this.scoreRepo.findBlocksWithScoresByProcess(processId)
+  private mapProcessTypeConfigToDto(
+    config: ProcessTypeConfig & { documentRequirements?: any[] },
+  ) {
+    return {
+      idProcessType: config.idProcessType,
+      code: config.code,
+      name: config.name,
+      category: config.category,
+      requiresScoring: config.requiresScoring,
+      requiresCommittee: config.requiresCommittee,
+      requiresGecc: config.requiresGecc,
+      defaultDestination: config.defaultDestination,
+      version: config.version,
+      validFrom: config.validFrom,
+      validUntil: config.validUntil,
+      opinionTemplateId: config.opinionTemplateId,
+      active: config.active,
+      documentRequirements: (config.documentRequirements ?? []).map(
+        (requirement) => ({
+          idDocumentRequirement: requirement.idDocumentRequirement,
+          code: requirement.code,
+          name: requirement.name,
+          description: requirement.description,
+          required: requirement.required,
+          allowsMultiple: requirement.allowsMultiple,
+          acceptedFormats: requirement.acceptedFormats,
+          maxSizeMb: requirement.maxSizeMb,
+          sortOrder: requirement.sortOrder,
+        }),
+      ),
+    };
+  }
+
+  private inferProcessTypeCode(type: ProcessType | null): string {
+    if (!type) return "OTHER";
+    return type === ProcessType.PROMOCAO ? "PROMOTION" : "PROGRESSION";
+  }
+
+  private inferProcessTypeName(type: ProcessType | null): string {
+    if (!type) return "Outro";
+    return type === ProcessType.PROMOCAO ? "Promoção" : "Progressão";
+  }
+
+  private async calcularPontuacaoTotalProcesso(
+    processId: number,
+  ): Promise<number> {
+    const blocks =
+      await this.scoreRepo.findBlocksWithScoresByProcess(processId);
 
     if (!blocks || blocks.length === 0) {
-      return 0
+      return 0;
     }
 
     type TreeNode = {
-      nodeId: number
-      parentId: number | null
-      sortOrder: number
-      hasFormula: boolean
-      formulaExpression: string | null
+      nodeId: number;
+      parentId: number | null;
+      sortOrder: number;
+      hasFormula: boolean;
+      formulaExpression: string | null;
       items: Array<{
-        itemId: number
-        points: number
-        hasMaxPoints: boolean
-        maxPoints: number | null
-        formulaKey: string | null
+        itemId: number;
+        points: number;
+        hasMaxPoints: boolean;
+        maxPoints: number | null;
+        formulaKey: string | null;
         currentScore: {
-          quantity: number
-          awardedPoints: number
-        } | null
-      }>
-      children: TreeNode[]
-    }
+          quantity: number;
+          awardedPoints: number;
+        } | null;
+      }>;
+      children: TreeNode[];
+    };
 
-    const map = new Map<number, TreeNode>()
-    blocks.forEach(b => {
+    const map = new Map<number, TreeNode>();
+    blocks.forEach((b) => {
       map.set(b.nodeId, {
         nodeId: b.nodeId,
         parentId: b.parentId ?? null,
@@ -772,142 +1629,228 @@ export class ProcessoService {
         hasFormula: b.hasFormula,
         formulaExpression: b.formulaExpression ?? null,
         items: b.items,
-        children: []
-      })
-    })
+        children: [],
+      });
+    });
 
-    const roots: TreeNode[] = []
+    const roots: TreeNode[] = [];
 
-    map.forEach(node => {
+    map.forEach((node) => {
       if (node.parentId === null || node.parentId === undefined) {
-        roots.push(node)
+        roots.push(node);
       } else {
-        const parent = map.get(node.parentId)
+        const parent = map.get(node.parentId);
         if (parent) {
-          parent.children.push(node)
+          parent.children.push(node);
         } else {
-          roots.push(node)
+          roots.push(node);
         }
       }
-    })
+    });
 
     const sortTree = (nodes: TreeNode[]) => {
-      nodes.sort((a, b) => a.sortOrder - b.sortOrder)
-      nodes.forEach(n => sortTree(n.children))
-    }
+      nodes.sort((a, b) => a.sortOrder - b.sortOrder);
+      nodes.forEach((n) => sortTree(n.children));
+    };
 
-    sortTree(roots)
+    sortTree(roots);
 
     function computeNodeTotal(node: TreeNode): number {
       const baseSum = node.items.reduce((acc, item) => {
-        const pts = item.currentScore ? Number(item.currentScore.awardedPoints) : 0
-        return acc + (Number.isNaN(pts) ? 0 : pts)
-      }, 0)
+        const pts = item.currentScore
+          ? Number(item.currentScore.awardedPoints)
+          : 0;
+        return acc + (Number.isNaN(pts) ? 0 : pts);
+      }, 0);
 
-      let selfTotal = baseSum
+      let selfTotal = baseSum;
 
       if (node.hasFormula && node.formulaExpression) {
-        const vars: Record<string, number> = {}
+        const vars: Record<string, number> = {};
 
-        node.items.forEach(item => {
-          if (!item.formulaKey) return
+        node.items.forEach((item) => {
+          if (!item.formulaKey) return;
 
-          const val = item.currentScore ? Number(item.currentScore.quantity) : 0
-          vars[item.formulaKey] = Number.isNaN(val) ? 0 : val
-        })
+          const val = item.currentScore
+            ? Number(item.currentScore.quantity)
+            : 0;
+          vars[item.formulaKey] = Number.isNaN(val) ? 0 : val;
+        });
 
         try {
-          const argNames = Object.keys(vars)
-          const argValues = Object.values(vars)
+          const argNames = Object.keys(vars);
+          const argValues = Object.values(vars);
 
           if (argNames.length > 0) {
             const fn = new Function(
               ...argNames,
-              `return ${node.formulaExpression};`
-            ) as (...args: number[]) => number
+              `return ${node.formulaExpression};`,
+            ) as (...args: number[]) => number;
 
-            const result = fn(...argValues)
-            const num = Number(result)
+            const result = fn(...argValues);
+            const num = Number(result);
 
-            selfTotal = Number.isFinite(num) ? num : baseSum
+            selfTotal = Number.isFinite(num) ? num : baseSum;
           } else {
-            selfTotal = baseSum
+            selfTotal = baseSum;
           }
         } catch (e) {
-          console.error("Erro ao avaliar a fórmula do bloco", node.nodeId, e)
-          selfTotal = baseSum
+          console.error("Erro ao avaliar a fórmula do bloco", node.nodeId, e);
+          selfTotal = baseSum;
         }
       }
 
       const childrenSum = node.children.reduce(
         (acc, child) => acc + computeNodeTotal(child),
-        0
-      )
+        0,
+      );
 
-      return selfTotal + childrenSum
+      return selfTotal + childrenSum;
     }
 
-    return roots.reduce((acc, node) => acc + computeNodeTotal(node), 0)
+    return roots.reduce((acc, node) => acc + computeNodeTotal(node), 0);
   }
 
-  public async listarProcessosCppd(view: "pending" | "evaluated") {
-    const pending: ProcessStatus[] = [ProcessStatus.SUBMITTED, ProcessStatus.UNDER_REVIEW]
-    const evaluated: ProcessStatus[] = [ProcessStatus.APPROVED, ProcessStatus.REJECTED, ProcessStatus.RETURNED]
+  public async finalizarAnaliseDocumentalCppd(
+    processId: number,
+    currentUserId: number,
+    dto: { decision: "APPROVED" | "REJECTED"; opinionText: string },
+  ) {
+    const process = await this.processRepo.obterParaCppdPorId(processId);
+    if (!process) throw new NotFoundError("Processo não encontrado");
 
-    const statuses = view === "evaluated" ? evaluated : pending
-    return this.processRepo.listarParaCppdPorStatus(statuses)
+    if (
+      process.status !== ProcessStatus.SUBMITTED &&
+      process.status !== ProcessStatus.UNDER_REVIEW
+    ) {
+      throw new BusinessRuleError(
+        "Somente processos enviados ou em análise podem receber uma decisão documental",
+      );
+    }
+
+    const config = process.processTypeConfig;
+    if (!config || config.requiresScoring || config.requiresCommittee) {
+      throw new BusinessRuleError(
+        "Este processo deve seguir o fluxo específico de pontuação ou comissão",
+      );
+    }
+
+    const opinionText = String(dto.opinionText ?? "").trim();
+    if (!opinionText) {
+      throw new BusinessRuleError("O parecer da CPPD é obrigatório");
+    }
+
+    const toStatus =
+      dto.decision === "APPROVED"
+        ? ProcessStatus.APPROVED
+        : ProcessStatus.REJECTED;
+
+    const updated = await this.processRepo.finalizeDocumentReview({
+      processId,
+      fromStatus: process.status,
+      toStatus,
+      evaluationOpinion: opinionText,
+      changedById: currentUserId,
+    });
+
+    return {
+      idProcess: updated.idProcess,
+      status: updated.status,
+      evaluationOpinion: updated.evaluationOpinion,
+    };
+  }
+
+  public async listarProcessosCppd(
+    view: "pending" | "evaluated",
+    campusIds: number[] | null = null,
+  ) {
+    const pending: ProcessStatus[] = [
+      ProcessStatus.DOCUMENTATION_PENDING,
+      ProcessStatus.SUBMITTED,
+      ProcessStatus.AWAITING_EVALUATOR_ACCEPTANCE,
+      ProcessStatus.AWAITING_ORDINANCE,
+      ProcessStatus.UNDER_REVIEW,
+      ProcessStatus.IN_EVALUATION,
+      ProcessStatus.AWAITING_GECC,
+    ];
+    const evaluated: ProcessStatus[] = [
+      ProcessStatus.APPROVED,
+      ProcessStatus.REJECTED,
+      ProcessStatus.RETURNED,
+    ];
+
+    const statuses = view === "evaluated" ? evaluated : pending;
+    return this.processRepo.listarParaCppdPorStatus(statuses, campusIds);
   }
 
   public async obterProcessoCppd(processId: number) {
-    const p = await this.processRepo.obterParaCppdPorId(processId)
-    if (!p) throw new NotFoundError("Processo não encontrado")
-    return p
+    const p = await this.processRepo.obterParaCppdPorId(processId);
+    if (!p) throw new NotFoundError("Processo não encontrado");
+    return p;
   }
 
   public async obterDetalhesAvaliacaoCppd(processId: number) {
-    const p = await this.processRepo.obterParaCppdPorId(processId)
-    if (!p) throw new NotFoundError("Processo não encontrado")
+    const p = await this.processRepo.obterParaCppdPorId(processId);
+    if (!p) throw new NotFoundError("Processo não encontrado");
 
     const evaluatorUserIds = Array.isArray(p.evaluatorUserIds)
       ? (p.evaluatorUserIds as any[])
-        .map(id => Number(id))
-        .filter(id => Number.isFinite(id) && id > 0)
-      : []
+          .map((id) => Number(id))
+          .filter((id) => Number.isFinite(id) && id > 0)
+      : [];
 
     const evaluatorUsers = evaluatorUserIds.length
       ? await this.userRepo.findSummariesByIds(evaluatorUserIds)
-      : []
+      : [];
 
-    const history = Array.isArray(p.ProcessStatusHistory) ? p.ProcessStatusHistory : []
+    const history = Array.isArray(p.ProcessStatusHistory)
+      ? p.ProcessStatusHistory
+      : [];
 
     const finalEvent = [...history]
       .reverse()
-      .find(h => h.toStatus === "APPROVED" || h.toStatus === "REJECTED" || h.toStatus === "RETURNED")
+      .find(
+        (h) =>
+          h.toStatus === "APPROVED" ||
+          h.toStatus === "REJECTED" ||
+          h.toStatus === "RETURNED",
+      );
 
     return {
       process: {
         idProcess: p.idProcess,
         status: p.status,
         type: p.type,
+        processTypeId: p.processTypeId,
+        processTypeCode:
+          p.processTypeConfig?.code ?? this.inferProcessTypeCode(p.type),
+        processTypeName:
+          p.processTypeConfig?.name ?? this.inferProcessTypeName(p.type),
+        processTypeConfig: p.processTypeConfig
+          ? this.mapProcessTypeConfigToDto(p.processTypeConfig)
+          : null,
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
         finalPoints: p.finalPoints,
         evaluationOpinion: p.evaluationOpinion,
         evaluatorUserIds: p.evaluatorUserIds,
         user: p.user,
-        table: p.table
+        table: p.table,
       },
       evaluatorUsers,
       finalization: finalEvent
         ? {
-          toStatus: finalEvent.toStatus,
-          createdAt: finalEvent.createdAt,
-          note: finalEvent.note ?? null,
-          changedBy: finalEvent.changedBy
-            ? { idUser: finalEvent.changedBy.idUser, name: finalEvent.changedBy.name }
-            : null
-        }
-        : null
-    }
+            toStatus: finalEvent.toStatus,
+            createdAt: finalEvent.createdAt,
+            note: finalEvent.note ?? null,
+            changedBy: finalEvent.changedBy
+              ? {
+                  idUser: finalEvent.changedBy.idUser,
+                  name: finalEvent.changedBy.name,
+                }
+              : null,
+          }
+        : null,
+    };
   }
 }

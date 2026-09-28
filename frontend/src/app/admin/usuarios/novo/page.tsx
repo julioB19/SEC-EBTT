@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 
-type Role = "DOCENTE" | "CPPD_MEMBER" | "ADMIN"
+type Role = "DOCENTE" | "CPPD_MEMBER" | "CPPD_CENTRAL" | "ADMIN" | "EXTERNAL_EVALUATOR"
 
 type ApiResponse<T = any> = {
   status: "success" | "error"
@@ -47,13 +47,7 @@ type InfoModalProps = {
   onConfirm: () => void
 }
 
-function InfoModal({
-  open,
-  title,
-  description,
-  confirmText = "Ok",
-  onConfirm
-}: InfoModalProps) {
+function InfoModal({ open, title, description, confirmText = "Ok", onConfirm }: InfoModalProps) {
   const okRef = useRef<HTMLButtonElement | null>(null)
 
   useEffect(() => {
@@ -103,11 +97,7 @@ function InfoModal({
           {title}
         </h2>
 
-        {description && (
-          <p className="text-sm text-[var(--text-secondary)] mt-2">
-            {description}
-          </p>
-        )}
+        {description && <p className="text-sm text-[var(--text-secondary)] mt-2">{description}</p>}
 
         <div className="mt-6 flex justify-end gap-3">
           <button
@@ -150,11 +140,15 @@ export default function AdminNovoUsuarioPage() {
   const [roles, setRoles] = useState<Role[]>(["CPPD_MEMBER"])
 
   const needsDocenteProfile = useMemo(() => roles.includes("DOCENTE"), [roles])
+  const hasExternalEvaluatorProfile = useMemo(() => roles.includes("EXTERNAL_EVALUATOR"), [roles])
+  const isExternalEvaluatorOnly = roles.length === 1 && hasExternalEvaluatorProfile
 
   const [siape, setSiape] = useState("")
   const [classLevel, setClassLevel] = useState("")
   const [startInterstice, setStartInterstice] = useState("")
   const [educationLevel, setEducationLevel] = useState("")
+  const [evaluatorTitle, setEvaluatorTitle] = useState("")
+  const [evaluatorInstitution, setEvaluatorInstitution] = useState("")
 
   function toggleRole(r: Role) {
     setRoles(prev => {
@@ -165,7 +159,7 @@ export default function AdminNovoUsuarioPage() {
   }
 
   function goToUsers() {
-    window.location.href = "http://localhost:3001/admin/usuarios"
+    router.push("/admin/usuarios")
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -178,12 +172,15 @@ export default function AdminNovoUsuarioPage() {
     const payload: any = {
       name,
       email,
-      cpf,
       phone: phone || null,
       city: city || null,
       uf: uf || null,
-      roles,
-      password: generateStrongPassword(24)
+      roles
+    }
+
+    if (!isExternalEvaluatorOnly) {
+      payload.cpf = cpf
+      payload.password = generateStrongPassword(24)
     }
 
     if (needsDocenteProfile) {
@@ -192,6 +189,13 @@ export default function AdminNovoUsuarioPage() {
         classLevel,
         startInterstice: startInterstice ? new Date(startInterstice).toISOString() : null,
         educationLevel
+      }
+    }
+
+    if (hasExternalEvaluatorProfile) {
+      payload.externalEvaluatorProfile = {
+        title: evaluatorTitle || null,
+        institution: evaluatorInstitution || null
       }
     }
 
@@ -213,7 +217,7 @@ export default function AdminNovoUsuarioPage() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cpf })
+        body: JSON.stringify(isExternalEvaluatorOnly ? { email } : { cpf })
       })
 
       const inviteJson = (await inviteRes.json().catch(() => null)) as ApiResponse<any> | null
@@ -244,11 +248,7 @@ export default function AdminNovoUsuarioPage() {
           </p>
         </header>
 
-        {err && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {err}
-          </div>
-        )}
+        {err && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{err}</div>}
 
         <form onSubmit={onSubmit} className="space-y-6">
           <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 space-y-3">
@@ -256,27 +256,39 @@ export default function AdminNovoUsuarioPage() {
 
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Nome</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Nome
+                </label>
                 <input className={inputClass()} value={name} onChange={e => setName(e.target.value)} required />
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Email</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Email
+                </label>
                 <input className={inputClass()} value={email} onChange={e => setEmail(e.target.value)} required />
               </div>
 
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">CPF</label>
-                <input className={inputClass()} value={cpf} onChange={e => setCpf(e.target.value)} required />
-              </div>
+              {!isExternalEvaluatorOnly && (
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                    CPF
+                  </label>
+                  <input className={inputClass()} value={cpf} onChange={e => setCpf(e.target.value)} required />
+                </div>
+              )}
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Telefone</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Telefone
+                </label>
                 <input className={inputClass()} value={phone} onChange={e => setPhone(e.target.value)} />
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Cidade</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Cidade
+                </label>
                 <input className={inputClass()} value={city} onChange={e => setCity(e.target.value)} />
               </div>
 
@@ -295,7 +307,7 @@ export default function AdminNovoUsuarioPage() {
           <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 space-y-3">
             <h2 className="text-base font-semibold text-[var(--text-primary)]">Permissões</h2>
 
-            <div className="grid sm:grid-cols-3 gap-3 text-sm">
+            <div className="grid sm:grid-cols-2 gap-3 text-sm">
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={roles.includes("DOCENTE")} onChange={() => toggleRole("DOCENTE")} />
                 DOCENTE
@@ -311,11 +323,66 @@ export default function AdminNovoUsuarioPage() {
               </label>
 
               <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={roles.includes("CPPD_CENTRAL")}
+                  onChange={() => toggleRole("CPPD_CENTRAL")}
+                />
+                CPPD CENTRAL
+              </label>
+
+              <label className="flex items-center gap-2">
                 <input type="checkbox" checked={roles.includes("ADMIN")} onChange={() => toggleRole("ADMIN")} />
                 ADMIN
               </label>
+
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={roles.includes("EXTERNAL_EVALUATOR")}
+                  onChange={() => toggleRole("EXTERNAL_EVALUATOR")}
+                />
+                AVALIADOR EXTERNO
+              </label>
             </div>
           </section>
+
+          {hasExternalEvaluatorProfile && (
+            <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 space-y-3">
+              <div className="space-y-1">
+                <h2 className="text-base font-semibold text-[var(--text-primary)]">Perfil do avaliador externo</h2>
+                {isExternalEvaluatorOnly && (
+                  <p className="text-xs text-[var(--text-secondary)]">
+                    O CPF e a senha serão informados pelo avaliador ao aceitar o convite recebido por e-mail.
+                  </p>
+                )}
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                    Titulação
+                  </label>
+                  <input
+                    className={inputClass()}
+                    value={evaluatorTitle}
+                    onChange={e => setEvaluatorTitle(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                    Instituição
+                  </label>
+                  <input
+                    className={inputClass()}
+                    value={evaluatorInstitution}
+                    onChange={e => setEvaluatorInstitution(e.target.value)}
+                  />
+                </div>
+              </div>
+            </section>
+          )}
 
           {needsDocenteProfile && (
             <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 space-y-3">
@@ -323,7 +390,9 @@ export default function AdminNovoUsuarioPage() {
 
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">SIAPE</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                    SIAPE
+                  </label>
                   <input className={inputClass()} value={siape} onChange={e => setSiape(e.target.value)} required />
                 </div>
 
@@ -389,13 +458,7 @@ export default function AdminNovoUsuarioPage() {
         </form>
       </div>
 
-      <InfoModal
-        open={doneOpen}
-        title={doneTitle}
-        description={doneMessage}
-        confirmText="Ok"
-        onConfirm={goToUsers}
-      />
+      <InfoModal open={doneOpen} title={doneTitle} description={doneMessage} confirmText="Ok" onConfirm={goToUsers} />
     </main>
   )
 }

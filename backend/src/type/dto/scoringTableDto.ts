@@ -1,5 +1,9 @@
+import { ScoringTablePurpose } from "@prisma/client"
+
 export interface CreateScoringTableDto {
   name: string
+  purpose?: ScoringTablePurpose
+  minRequiredPoints?: string | number | null
   startsOn?: string | null
   endsOn?: string | null
 }
@@ -8,6 +12,8 @@ export interface UpdateScoringTableDto {
   name?: string
   startsOn?: string | null
   endsOn?: string | null
+  purpose?: ScoringTablePurpose
+  minRequiredPoints?: string | number | null
   status?: "DRAFT" | "ACTIVE" | "INACTIVE"
 }
 

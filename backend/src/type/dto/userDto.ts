@@ -32,16 +32,22 @@ export interface UpdateDocenteProfileDto {
   immediateSupervisor?: string | null
 }
 
+export interface ExternalEvaluatorProfileDto {
+  title?: string | null
+  institution?: string | null
+}
+
 export interface CreateUserDto {
   name: string
   email: string
-  cpf: string
+  cpf?: string | null
   phone?: string | null
   city?: string | null
   uf?: string | null
-  password: string
+  password?: string | null
   roles: RoleName[]
   docenteProfile?: CreateDocenteProfileDto
+  externalEvaluatorProfile?: ExternalEvaluatorProfileDto
 }
 
 export interface UpdateUserDto {
@@ -54,6 +60,7 @@ export interface UpdateUserDto {
   active?: boolean
   roles?: RoleName[]
   docenteProfile?: UpdateDocenteProfileDto
+  externalEvaluatorProfile?: ExternalEvaluatorProfileDto
 }
 
 export interface UpdateMyDocenteProfileDto {
@@ -88,6 +95,13 @@ export interface DocenteProfileResponseDto {
   immediateSupervisor: string | null
 }
 
+export interface ExternalEvaluatorProfileResponseDto {
+  idExternalEvaluator: number
+  title: string | null
+  institution: string | null
+  active: boolean
+}
+
 export interface UserResponseDto {
   idUser: number
   name: string
@@ -95,12 +109,13 @@ export interface UserResponseDto {
   phone: string | null
   city: string | null
   uf: string | null
-  cpf: string
+  cpf: string | null
   active: boolean
   createdAt: Date
   deletedDate: Date | null
   roles: RoleName[]
   docenteProfile: DocenteProfileResponseDto | null
+  externalEvaluatorProfile: ExternalEvaluatorProfileResponseDto | null
 }
 
 export interface LoginDto {

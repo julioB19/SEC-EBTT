@@ -3,12 +3,13 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
-type Role = "DOCENTE" | "CPPD_MEMBER" | "ADMIN"
+type Role = "DOCENTE" | "CPPD_MEMBER" | "CPPD_CENTRAL" | "ADMIN" | "EXTERNAL_EVALUATOR"
 
 function pathForRole(role: Role | null | undefined) {
   if (role === "DOCENTE") return "/docente"
-  if (role === "CPPD_MEMBER") return "/cppd"
+  if (role === "CPPD_MEMBER" || role === "CPPD_CENTRAL") return "/cppd"
   if (role === "ADMIN") return "/admin"
+  if (role === "EXTERNAL_EVALUATOR") return "/avaliador"
   return "/dashboard"
 }
 
@@ -67,10 +68,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--surface-muted)] p-4">
-
-      <h1 className="text-2xl font-semibold text-[var(--text-primary)] mb-6 text-center">
-        SEC-EBTT
-      </h1>
+      <h1 className="text-2xl font-semibold text-[var(--text-primary)] mb-6 text-center">SEC-EBTT</h1>
 
       <form
         onSubmit={onSubmit}
@@ -82,14 +80,10 @@ export default function LoginPage() {
           p-6 space-y-5
         "
       >
-        <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-          Entrar
-        </h2>
+        <h2 className="text-lg font-semibold text-[var(--text-primary)]">Entrar</h2>
 
         <div className="space-y-1">
-          <label className="block text-sm text-[var(--text-secondary)]">
-            CPF
-          </label>
+          <label className="block text-sm text-[var(--text-secondary)]">CPF</label>
           <input
             value={cpf}
             onChange={e => setCpf(e.target.value)}
@@ -107,9 +101,7 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-1">
-          <label className="block text-sm text-[var(--text-secondary)]">
-            Senha
-          </label>
+          <label className="block text-sm text-[var(--text-secondary)]">Senha</label>
           <input
             type="password"
             value={password}
@@ -127,11 +119,7 @@ export default function LoginPage() {
           />
         </div>
 
-        {error && (
-          <p className="text-red-600 text-sm bg-red-50 border border-red-200 p-2 rounded-xl">
-            {error}
-          </p>
-        )}
+        {error && <p className="text-red-600 text-sm bg-red-50 border border-red-200 p-2 rounded-xl">{error}</p>}
 
         <button
           type="submit"
@@ -148,22 +136,14 @@ export default function LoginPage() {
         </button>
 
         <div className="pt-2 text-center">
-          <a
-            href="/forgot-password"
-            className="text-sm text-[var(--brand)] hover:underline"
-          >
+          <a href="/forgot-password" className="text-sm text-[var(--brand)] hover:underline">
             Esqueci minha senha
           </a>
         </div>
 
         <div className="pt-2 text-center">
-          <span className="text-sm text-[var(--text-secondary)]">
-            Não tem conta?
-          </span>{" "}
-          <a
-            href="/register-professor"
-            className="text-sm text-[var(--brand)] hover:underline"
-          >
+          <span className="text-sm text-[var(--text-secondary)]">Não tem conta?</span>{" "}
+          <a href="/register-professor" className="text-sm text-[var(--brand)] hover:underline">
             Cadastre-se
           </a>
         </div>

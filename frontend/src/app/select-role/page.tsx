@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 
-type Role = "DOCENTE" | "CPPD_MEMBER" | "ADMIN"
+type Role = "DOCENTE" | "CPPD_MEMBER" | "CPPD_CENTRAL" | "ADMIN" | "EXTERNAL_EVALUATOR"
 
 export default function SelectRolePage() {
   const router = useRouter()
@@ -16,7 +16,9 @@ export default function SelectRolePage() {
       const raw = sessionStorage.getItem("roles")
       const parsed = raw ? JSON.parse(raw) : []
       const valid = Array.isArray(parsed)
-        ? parsed.filter((r: string) => ["DOCENTE", "CPPD_MEMBER", "ADMIN"].includes(r))
+        ? parsed.filter((r: string) =>
+            ["DOCENTE", "CPPD_MEMBER", "CPPD_CENTRAL", "ADMIN", "EXTERNAL_EVALUATOR"].includes(r)
+          )
         : []
 
       if (!valid.length) {
@@ -35,8 +37,10 @@ export default function SelectRolePage() {
       ({
         DOCENTE: "Docente",
         CPPD_MEMBER: "Membro da CPPD",
-        ADMIN: "Administrador"
-      } as Record<Role, string>),
+        CPPD_CENTRAL: "CPPD Central",
+        ADMIN: "Administrador",
+        EXTERNAL_EVALUATOR: "Avaliador externo"
+      }) as Record<Role, string>,
     []
   )
 
@@ -51,7 +55,7 @@ export default function SelectRolePage() {
       body: JSON.stringify({ role })
     })
 
-    const json = await r.json().catch(() => ({} as any))
+    const json = await r.json().catch(() => ({}) as any)
     setLoading(false)
 
     if (!r.ok) {
@@ -65,8 +69,10 @@ export default function SelectRolePage() {
 
     if (role === "DOCENTE") {
       router.replace("/docente")
-    } else if (role === "CPPD_MEMBER") {
+    } else if (role === "CPPD_MEMBER" || role === "CPPD_CENTRAL") {
       router.replace("/cppd")
+    } else if (role === "EXTERNAL_EVALUATOR") {
+      router.replace("/avaliador")
     } else {
       router.replace("/admin")
     }
@@ -84,9 +90,7 @@ export default function SelectRolePage() {
         "
       >
         <h1 className="text-2xl font-semibold mb-2 text-[var(--text-primary)]">Escolha o módulo</h1>
-        <p className="text-sm text-[var(--text-secondary)] mb-4">
-          Selecione com qual papel você quer entrar agora.
-        </p>
+        <p className="text-sm text-[var(--text-secondary)] mb-4">Selecione com qual papel você quer entrar agora.</p>
 
         {error && (
           <p className="text-sm mb-3 text-[var(--danger-text-strong)] bg-[var(--danger-bg)] border border-[var(--danger-border)] rounded-xl px-3 py-2">

@@ -45,6 +45,15 @@ export class HttpResponse {
         res.status(401).json(body)
     }
 
+    static forbidden<T>(res: any, message = "Forbidden") {
+        const body: HttpResponseBody<T> = {
+            status: StatusCodeDescription.FORBIDDEN,
+            message,
+            data: null,
+        }
+        res.status(403).json(body)
+    }
+
     static internalError<T>(res: any) {
         const body: HttpResponseBody<T> = {
             status: StatusCodeDescription.INTERNAL_ERROR,

@@ -68,6 +68,7 @@ describe("UserService", () => {
 
     repo = {
       findByCpf: jest.fn(),
+      findByEmail: jest.fn(),
       findById: jest.fn(),
       findManyActive: jest.fn(),
       createWithRolesAndDocente: jest.fn(),
@@ -77,9 +78,13 @@ describe("UserService", () => {
 
     service = new UserService(repo)
 
+    repo.findByEmail.mockResolvedValue(null)
+
     jest.spyOn(tokenGen, "generateAccessToken").mockReturnValue("access")
     jest.spyOn(tokenGen, "generateRefreshToken").mockReturnValue("refresh")
-    jest.spyOn(tokenDecode, "decodeRefreshToken").mockReturnValue({ userId: dbUser.idUser, selectedRole: RoleName.ADMIN })
+    jest
+      .spyOn(tokenDecode, "decodeRefreshToken")
+      .mockReturnValue({ userId: dbUser.idUser, selectedRole: RoleName.ADMIN })
     jest.spyOn(blacklist, "isRefreshTokenRevoked").mockReturnValue(false)
 
     process.env.JWT_ACCESS_EXPIRATION = "3600s"
@@ -119,6 +124,14 @@ describe("UserService", () => {
           role: u.docente.role,
           immediateSupervisor: u.docente.immediate_supervisor
         }
+      : null,
+    externalEvaluatorProfile: u.externalEvaluator
+      ? {
+          idExternalEvaluator: u.externalEvaluator.idExternalEvaluator,
+          title: u.externalEvaluator.title ?? null,
+          institution: u.externalEvaluator.institution ?? null,
+          active: Boolean(u.externalEvaluator.active)
+        }
       : null
   })
 
@@ -152,10 +165,16 @@ describe("UserService", () => {
     })
 
     test("com uma role apenas, selectedRole definido e needsProfileSelection false", async () => {
-      const oneRoleUser = { ...dbUser, roles: [{ role: { name: RoleName.ADMIN } }] }
+      const oneRoleUser = {
+        ...dbUser,
+        roles: [{ role: { name: RoleName.ADMIN } }]
+      }
       repo.findByCpf.mockResolvedValue(oneRoleUser as any)
 
-      const result = await service.login({ cpf: oneRoleUser.cpf, password: "ok" })
+      const result = await service.login({
+        cpf: oneRoleUser.cpf,
+        password: "ok"
+      })
 
       expect(result.roles).toEqual([RoleName.ADMIN])
       expect(result.selectedRole).toBe(RoleName.ADMIN)
@@ -171,7 +190,9 @@ describe("UserService", () => {
     })
 
     test("token inválido no decode → lança InvalidRefreshToken", async () => {
-      jest.spyOn(tokenDecode, "decodeRefreshToken").mockImplementation(() => { throw new Error("bad") })
+      jest.spyOn(tokenDecode, "decodeRefreshToken").mockImplementation(() => {
+        throw new Error("bad")
+      })
 
       await expect(service.refreshToken({ refreshToken: "x" })).rejects.toThrow(InvalidRefreshToken)
     })
@@ -182,9 +203,15 @@ describe("UserService", () => {
     })
 
     test("selectedRole do token não pertence ao usuário → recalcula selectedRole", async () => {
-      const userWithTwo = { ...dbUser, roles: [{ role: { name: RoleName.ADMIN } }, { role: { name: RoleName.DOCENTE } }] }
+      const userWithTwo = {
+        ...dbUser,
+        roles: [{ role: { name: RoleName.ADMIN } }, { role: { name: RoleName.DOCENTE } }]
+      }
       repo.findById.mockResolvedValue(userWithTwo as any)
-      jest.spyOn(tokenDecode, "decodeRefreshToken").mockReturnValue({ userId: dbUser.idUser, selectedRole: RoleName.CPPD_MEMBER })
+      jest.spyOn(tokenDecode, "decodeRefreshToken").mockReturnValue({
+        userId: dbUser.idUser,
+        selectedRole: RoleName.CPPD_MEMBER
+      })
 
       const out = await service.refreshToken({ refreshToken: "ok" })
       expect(out.roles).toEqual([RoleName.ADMIN, RoleName.DOCENTE])
@@ -194,7 +221,10 @@ describe("UserService", () => {
 
     test("fluxo ok mantendo selectedRole válido", async () => {
       repo.findById.mockResolvedValue(dbUser as any)
-      jest.spyOn(tokenDecode, "decodeRefreshToken").mockReturnValue({ userId: dbUser.idUser, selectedRole: RoleName.ADMIN })
+      jest.spyOn(tokenDecode, "decodeRefreshToken").mockReturnValue({
+        userId: dbUser.idUser,
+        selectedRole: RoleName.ADMIN
+      })
 
       const out = await service.refreshToken({ refreshToken: "ok" })
       expect(out.selectedRole).toBe(RoleName.ADMIN)
@@ -211,7 +241,9 @@ describe("UserService", () => {
     })
 
     test("decode inválido → lança InvalidRefreshToken", async () => {
-      jest.spyOn(tokenDecode, "decodeRefreshToken").mockImplementation(() => { throw new Error("bad") })
+      jest.spyOn(tokenDecode, "decodeRefreshToken").mockImplementation(() => {
+        throw new Error("bad")
+      })
 
       await expect(service.selectRole("x", RoleName.ADMIN)).rejects.toThrow(InvalidRefreshToken)
     })
@@ -235,7 +267,11 @@ describe("UserService", () => {
       const out = await service.selectRole("x", RoleName.ADMIN)
       expect(out.selectedRole).toBe(RoleName.ADMIN)
       expect(out.needsProfileSelection).toBe(false)
-      expect(tokenGen.generateAccessToken).toHaveBeenCalledWith([RoleName.ADMIN, RoleName.DOCENTE], dbUser.idUser, RoleName.ADMIN)
+      expect(tokenGen.generateAccessToken).toHaveBeenCalledWith(
+        [RoleName.ADMIN, RoleName.DOCENTE],
+        dbUser.idUser,
+        RoleName.ADMIN
+      )
     })
   })
 
@@ -243,27 +279,31 @@ describe("UserService", () => {
     test("lança UserExists se CPF já cadastrado", async () => {
       repo.findByCpf.mockResolvedValue(dbUser as any)
 
-      await expect(service.createUser({
-        name: "a",
-        email: "b",
-        cpf: dbUser.cpf,
-        password: "123",
-        phone: "(11) 90000-0000", // 👈 incluir phone
-        roles: [RoleName.ADMIN]
-      } as any)).rejects.toThrow(UserExists)
+      await expect(
+        service.createUser({
+          name: "a",
+          email: "b",
+          cpf: dbUser.cpf,
+          password: "123",
+          phone: "(11) 90000-0000", // 👈 incluir phone
+          roles: [RoleName.ADMIN]
+        } as any)
+      ).rejects.toThrow(UserExists)
     })
 
     test("lança DocenteProfileRequired quando roles inclui DOCENTE e não vem docenteProfile", async () => {
       repo.findByCpf.mockResolvedValue(null)
 
-      await expect(service.createUser({
-        name: "a",
-        email: "b",
-        cpf: "000",
-        password: "123",
-        phone: "(11) 90000-0000", // 👈 incluir phone
-        roles: [RoleName.DOCENTE]
-      } as any)).rejects.toThrow(DocenteProfileRequired)
+      await expect(
+        service.createUser({
+          name: "a",
+          email: "b",
+          cpf: "000",
+          password: "123",
+          phone: "(11) 90000-0000", // 👈 incluir phone
+          roles: [RoleName.DOCENTE]
+        } as any)
+      ).rejects.toThrow(DocenteProfileRequired)
     })
 
     test("mapeia erro P2002 para UserExists", async () => {
@@ -271,15 +311,17 @@ describe("UserService", () => {
       bcryptMock.hash.mockResolvedValue("hash")
       repo.createWithRolesAndDocente.mockRejectedValue({ code: "P2002" })
 
-      await expect(service.createUser({
-        name: "a",
-        email: "b",
-        cpf: "000",
-        password: "123",
-        phone: "(11) 90000-0000", // 👈 incluir phone
-        roles: [RoleName.ADMIN],
-        docenteProfile: undefined
-      } as any)).rejects.toThrow(UserExists)
+      await expect(
+        service.createUser({
+          name: "a",
+          email: "b",
+          cpf: "000",
+          password: "123",
+          phone: "(11) 90000-0000", // 👈 incluir phone
+          roles: [RoleName.ADMIN],
+          docenteProfile: undefined
+        } as any)
+      ).rejects.toThrow(UserExists)
     })
 
     test("cria usuário com docenteProfile e retorna DTO mapeado (inclui phone)", async () => {
@@ -304,19 +346,58 @@ describe("UserService", () => {
 
       const out = await service.createUser(dto)
 
-      expect(repo.createWithRolesAndDocente).toHaveBeenCalledWith(expect.objectContaining({
-        name: dto.name,
-        email: dto.email,
-        cpf: dto.cpf,
-        passwordHash: "hash",
-        phone: dto.phone, // 👈 verificação
-        roles: dto.roles,
-        docenteProfile: expect.objectContaining({
-          siape: "1234567",
-          classLevel: "D1"
+      expect(repo.createWithRolesAndDocente).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: dto.name,
+          email: dto.email,
+          cpf: dto.cpf,
+          passwordHash: "hash",
+          phone: dto.phone, // 👈 verificação
+          roles: dto.roles,
+          docenteProfile: expect.objectContaining({
+            siape: "1234567",
+            classLevel: "D1"
+          })
         })
-      }))
+      )
       expect(out).toEqual(mapResponse(dbUser))
+    })
+
+    test("cria avaliador externo pendente sem CPF e senha", async () => {
+      const externalUser = {
+        ...dbUser,
+        cpf: null,
+        passwordHash: null,
+        roles: [{ role: { name: RoleName.EXTERNAL_EVALUATOR } }],
+        docente: null,
+        externalEvaluator: {
+          idExternalEvaluator: 15,
+          title: "Doutor",
+          institution: "Instituto Federal",
+          active: true
+        }
+      }
+      repo.createWithRolesAndDocente.mockResolvedValue(externalUser as any)
+
+      const out = await service.createUser({
+        name: externalUser.name,
+        email: externalUser.email,
+        roles: [RoleName.EXTERNAL_EVALUATOR],
+        externalEvaluatorProfile: {
+          title: "Doutor",
+          institution: "Instituto Federal"
+        }
+      })
+
+      expect(repo.createWithRolesAndDocente).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cpf: null,
+          passwordHash: null,
+          roles: [RoleName.EXTERNAL_EVALUATOR]
+        })
+      )
+      expect(out.cpf).toBeNull()
+      expect(out.externalEvaluatorProfile?.institution).toBe("Instituto Federal")
     })
   })
 
@@ -350,29 +431,41 @@ describe("UserService", () => {
     })
 
     test("adicionar DOCENTE sem docenteProfile quando não possui docente → DocenteProfileRequired", async () => {
-      const noDocente = { ...dbUser, docente: null, roles: [{ role: { name: RoleName.ADMIN } }] }
+      const noDocente = {
+        ...dbUser,
+        docente: null,
+        roles: [{ role: { name: RoleName.ADMIN } }]
+      }
       repo.findById.mockResolvedValue(noDocente as any)
 
-      await expect(service.updateUser(noDocente.idUser, {
-        userId: noDocente.idUser,
-        roles: [RoleName.ADMIN, RoleName.DOCENTE]
-      } as any)).rejects.toThrow(DocenteProfileRequired)
+      await expect(
+        service.updateUser(noDocente.idUser, {
+          userId: noDocente.idUser,
+          roles: [RoleName.ADMIN, RoleName.DOCENTE]
+        } as any)
+      ).rejects.toThrow(DocenteProfileRequired)
     })
 
     test("adicionar DOCENTE com docenteProfile faltando campos obrigatórios → erro com lista", async () => {
-      const noDocente = { ...dbUser, docente: null, roles: [{ role: { name: RoleName.ADMIN } }] }
+      const noDocente = {
+        ...dbUser,
+        docente: null,
+        roles: [{ role: { name: RoleName.ADMIN } }]
+      }
       repo.findById.mockResolvedValue(noDocente as any)
 
-      await expect(service.updateUser(noDocente.idUser, {
-        userId: noDocente.idUser,
-        roles: [RoleName.ADMIN, RoleName.DOCENTE],
-        docenteProfile: {
-          siape: "",
-          classLevel: "" as any,
-          startInterstice: undefined as any,
-          educationLevel: ""
-        } as any
-      } as any)).rejects.toThrow("Campos obrigatórios para criar DocenteProfile ausentes")
+      await expect(
+        service.updateUser(noDocente.idUser, {
+          userId: noDocente.idUser,
+          roles: [RoleName.ADMIN, RoleName.DOCENTE],
+          docenteProfile: {
+            siape: "",
+            classLevel: "" as any,
+            startInterstice: undefined as any,
+            educationLevel: ""
+          } as any
+        } as any)
+      ).rejects.toThrow("Campos obrigatórios para criar DocenteProfile ausentes")
     })
 
     test("fluxo ok atualizando dados e retornando DTO", async () => {
@@ -380,20 +473,20 @@ describe("UserService", () => {
       const updated = { ...dbUser, name: "Novo Nome" }
       repo.updateWithRolesAndDocente.mockResolvedValue(updated as any)
 
-      const out = await service.updateUser(dbUser.idUser, { userId: dbUser.idUser, name: "Novo Nome" } as any)
+      const out = await service.updateUser(dbUser.idUser, {
+        userId: dbUser.idUser,
+        name: "Novo Nome"
+      } as any)
 
-      expect(repo.updateWithRolesAndDocente).toHaveBeenCalledWith(
-        dbUser.idUser,
-        {
-          name: "Novo Nome",
-          email: undefined,
-          cpf: undefined,
-          active: undefined,
-          phone: undefined, // 👈 permanece undefined se não veio no DTO
-          roles: undefined,
-          docenteProfile: undefined
-        }
-      )
+      expect(repo.updateWithRolesAndDocente).toHaveBeenCalledWith(dbUser.idUser, {
+        name: "Novo Nome",
+        email: undefined,
+        cpf: undefined,
+        active: undefined,
+        phone: undefined, // 👈 permanece undefined se não veio no DTO
+        roles: undefined,
+        docenteProfile: undefined
+      })
       expect(out).toEqual(mapResponse(updated))
     })
   })

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 
-type Role = "DOCENTE" | "CPPD_MEMBER" | "ADMIN"
+type Role = "DOCENTE" | "CPPD_MEMBER" | "CPPD_CENTRAL" | "ADMIN" | "EXTERNAL_EVALUATOR"
 
 type ApiResponse<T = any> = {
   status?: "success" | "error" | string
@@ -19,7 +19,7 @@ type ApiMe = {
   phone: string | null
   city: string | null
   uf: string | null
-  cpf: string
+  cpf: string | null
   roles: Role[]
   selectedRole?: Role | null
   docenteProfile: null | {
@@ -49,10 +49,13 @@ function inputClass(disabled?: boolean) {
 }
 
 function looksLikeMe(payload: any) {
-  return Boolean(payload && typeof payload === "object" && payload.idUser && payload.cpf)
+  return Boolean(payload && typeof payload === "object" && payload.idUser && payload.email)
 }
 
-function extractMe(payload: any): { me: ApiMe | null; errorMessage: string | null } {
+function extractMe(payload: any): {
+  me: ApiMe | null
+  errorMessage: string | null
+} {
   if (!payload) return { me: null, errorMessage: "Resposta vazia do servidor" }
 
   if (looksLikeMe(payload)) {
@@ -71,7 +74,10 @@ function extractMe(payload: any): { me: ApiMe | null; errorMessage: string | nul
     }
   }
 
-  return { me: null, errorMessage: "Formato de resposta inesperado em /api/me" }
+  return {
+    me: null,
+    errorMessage: "Formato de resposta inesperado em /api/me"
+  }
 }
 
 export default function PerfilPage() {
@@ -119,7 +125,10 @@ export default function PerfilPage() {
       setOk(null)
 
       try {
-        const r = await fetch("/api/me", { method: "GET", credentials: "include" })
+        const r = await fetch("/api/me", {
+          method: "GET",
+          credentials: "include"
+        })
         const data = await r.json().catch(() => null)
 
         console.log("[/api/me] status:", r.status, "payload:", data)
@@ -244,9 +253,7 @@ export default function PerfilPage() {
       }
 
       if (!r.ok) {
-        const msg =
-          (typeof data?.message === "string" && data.message) ||
-          "Falha ao salvar"
+        const msg = (typeof data?.message === "string" && data.message) || "Falha ao salvar"
         setErr(msg)
         return
       }
@@ -277,20 +284,12 @@ export default function PerfilPage() {
       <div className="max-w-2xl mx-auto space-y-6 px-4 md:px-6 lg:px-8 py-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Editar perfil</h1>
-          <p className="text-sm text-[var(--text-secondary)]">
-            Atualize seus dados. CPF não pode ser alterado.
-          </p>
+          <p className="text-sm text-[var(--text-secondary)]">Atualize seus dados. CPF não pode ser alterado.</p>
         </header>
 
-        {err && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {err}
-          </div>
-        )}
+        {err && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{err}</div>}
         {ok && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
-            {ok}
-          </div>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">{ok}</div>
         )}
 
         <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 space-y-3">
@@ -308,17 +307,23 @@ export default function PerfilPage() {
             </div>
 
             <div className="sm:col-span-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">E-mail</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                E-mail
+              </label>
               <input className={inputClass()} value={email} onChange={e => setEmail(e.target.value)} />
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Telefone</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                Telefone
+              </label>
               <input className={inputClass()} value={phone} onChange={e => setPhone(e.target.value)} />
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Cidade</label>
+              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                Cidade
+              </label>
               <input className={inputClass()} value={city} onChange={e => setCity(e.target.value)} />
             </div>
 
@@ -340,17 +345,23 @@ export default function PerfilPage() {
 
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">SIAPE</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  SIAPE
+                </label>
                 <input className={inputClass()} value={siape} onChange={e => setSiape(e.target.value)} />
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Classe/Nível</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Classe/Nível
+                </label>
                 <input className={inputClass()} value={classLevel} onChange={e => setClassLevel(e.target.value)} />
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Início do interstício</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Início do interstício
+                </label>
                 <input
                   className={inputClass()}
                   type="date"
@@ -360,52 +371,84 @@ export default function PerfilPage() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Nível de formação</label>
-                <input className={inputClass()} value={educationLevel} onChange={e => setEducationLevel(e.target.value)} />
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Nível de formação
+                </label>
+                <input
+                  className={inputClass()}
+                  value={educationLevel}
+                  onChange={e => setEducationLevel(e.target.value)}
+                />
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Aperfeiçoamento</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Aperfeiçoamento
+                </label>
                 <input className={inputClass()} value={improvement} onChange={e => setImprovement(e.target.value)} />
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Especialização</label>
-                <input className={inputClass()} value={specialization} onChange={e => setSpecialization(e.target.value)} />
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Especialização
+                </label>
+                <input
+                  className={inputClass()}
+                  value={specialization}
+                  onChange={e => setSpecialization(e.target.value)}
+                />
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Mestrado</label>
-                <input className={inputClass()} value={mastersDegree} onChange={e => setMastersDegree(e.target.value)} />
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Mestrado
+                </label>
+                <input
+                  className={inputClass()}
+                  value={mastersDegree}
+                  onChange={e => setMastersDegree(e.target.value)}
+                />
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Doutorado</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Doutorado
+                </label>
                 <input className={inputClass()} value={doctorate} onChange={e => setDoctorate(e.target.value)} />
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Lotação</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Lotação
+                </label>
                 <input className={inputClass()} value={assignment} onChange={e => setAssignment(e.target.value)} />
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Departamento</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Departamento
+                </label>
                 <input className={inputClass()} value={department} onChange={e => setDepartment(e.target.value)} />
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Divisão</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Divisão
+                </label>
                 <input className={inputClass()} value={division} onChange={e => setDivision(e.target.value)} />
               </div>
 
               <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Cargo/Função</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Cargo/Função
+                </label>
                 <input className={inputClass()} value={role} onChange={e => setRole(e.target.value)} />
               </div>
 
               <div className="sm:col-span-2">
-                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Chefia imediata</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                  Chefia imediata
+                </label>
                 <input
                   className={inputClass()}
                   value={immediateSupervisor}

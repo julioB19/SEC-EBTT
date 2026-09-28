@@ -11,6 +11,7 @@
     "lint": "npx eslint",
     "build": "tsc",
     "seeds": "ts-node scripts/seeds",
+    "migrate:cpf": "ts-node scripts/migrate-cpf-protection",
     "format:prisma": "prisma format"
   },
   "dependencies": {

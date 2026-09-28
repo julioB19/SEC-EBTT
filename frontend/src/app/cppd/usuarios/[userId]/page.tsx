@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, use } from "react"
 import { useRouter } from "next/navigation"
 
-type Role = "DOCENTE" | "CPPD_MEMBER" | "ADMIN"
+type Role = "DOCENTE" | "CPPD_MEMBER" | "CPPD_CENTRAL" | "ADMIN" | "EXTERNAL_EVALUATOR"
 
 type ApiResponse<T = any> = {
   status: "success" | "error"
@@ -66,6 +66,8 @@ function formatDateBR(value: any) {
 
 function roleLabel(r: Role) {
   if (r === "CPPD_MEMBER") return "MEMBRO DA CPPD"
+  if (r === "CPPD_CENTRAL") return "CPPD CENTRAL"
+  if (r === "EXTERNAL_EVALUATOR") return "AVALIADOR EXTERNO"
   return r
 }
 

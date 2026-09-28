@@ -32,7 +32,7 @@ export class ProcessEvaluationController {
       return null
     }
 
-    if (auth.selectedRole !== RoleName.CPPD_MEMBER) {
+    if (auth.selectedRole !== RoleName.CPPD_MEMBER && auth.selectedRole !== RoleName.CPPD_CENTRAL) {
       HttpResponse.badRequest(
         res,
         StatusCodeDescription.INVALID_INPUT,

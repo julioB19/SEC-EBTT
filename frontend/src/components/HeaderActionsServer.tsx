@@ -1,7 +1,7 @@
 import { cookies } from "next/headers"
 import HeaderActionsClient from "./HeaderActionsClient"
 
-type Role = "DOCENTE" | "CPPD_MEMBER" | "ADMIN"
+type Role = "DOCENTE" | "CPPD_MEMBER" | "CPPD_CENTRAL" | "ADMIN" | "EXTERNAL_EVALUATOR"
 
 function decodeJwtPayloadServer(token: string): any | null {
   try {
@@ -19,11 +19,7 @@ export default async function HeaderActionsServer() {
 
   const access = jar.get("accessToken")?.value
   if (!access) {
-    return (
-      <div className="text-[var(--text-secondary)] text-xs">
-        Carregando...
-      </div>
-    )
+    return <div className="text-[var(--text-secondary)] text-xs">Carregando...</div>
   }
 
   const payload = decodeJwtPayloadServer(access)
@@ -31,10 +27,5 @@ export default async function HeaderActionsServer() {
   const roles: Role[] = Array.isArray(payload?.roles) ? payload.roles : []
   const selectedRole: Role | null = payload?.selectedRole ?? null
 
-  return (
-    <HeaderActionsClient
-      roles={roles}
-      selectedRole={selectedRole}
-    />
-  )
+  return <HeaderActionsClient roles={roles} selectedRole={selectedRole} />
 }

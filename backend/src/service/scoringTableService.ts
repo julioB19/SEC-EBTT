@@ -11,6 +11,7 @@ import {
 } from "../type/dto/scoringTableDto"
 import { ScoringTableRepository } from "../repository/scoringTableRepository"
 import { BusinessRuleError } from "./processoService"
+import { ScoringTablePurpose } from "@prisma/client"
 
 type ScoringTableMinimal = {
   idScoringTable: number
@@ -28,12 +29,23 @@ function parseNullableDate(input: any): Date | null {
   return d
 }
 
+function parseNullablePoints(input: unknown): string | null {
+  if (input === null || input === undefined || String(input).trim() === "") return null
+  const value = Number(String(input).replace(",", "."))
+  if (!Number.isFinite(value) || value < 0) {
+    throw new BusinessRuleError("Pontuação mínima inválida.")
+  }
+  return value.toFixed(2)
+}
+
 export class ScoringTableService {
   constructor(private readonly repo: ScoringTableRepository) {}
 
   async criarTabelaPontuacao(dto: CreateScoringTableDto) {
     const startsOn = parseNullableDate(dto.startsOn)
     const endsOn = parseNullableDate(dto.endsOn)
+    const purpose = dto.purpose ?? ScoringTablePurpose.PROGRESSION_PROMOTION
+    const minRequiredPoints = parseNullablePoints(dto.minRequiredPoints)
 
     if (startsOn && endsOn && endsOn < startsOn) {
       throw new BusinessRuleError("Data final não pode ser anterior à data inicial.")
@@ -41,6 +53,8 @@ export class ScoringTableService {
 
     const table = await this.repo.createTable({
       name: dto.name,
+      purpose,
+      minRequiredPoints,
       startsOn,
       endsOn
     })
@@ -48,6 +62,8 @@ export class ScoringTableService {
     return {
       idScoringTable: table.idScoringTable,
       name: table.name,
+      purpose: table.purpose,
+      minRequiredPoints: table.minRequiredPoints,
       status: table.status,
       startsOn: table.startsOn,
       endsOn: table.endsOn
@@ -95,6 +111,8 @@ export class ScoringTableService {
     return rows.map(t => ({
       idScoringTable: t.idScoringTable,
       name: t.name,
+      purpose: t.purpose,
+      minRequiredPoints: t.minRequiredPoints,
       status: t.status,
       startsOn: t.startsOn,
       endsOn: t.endsOn,
@@ -115,6 +133,9 @@ export class ScoringTableService {
 
     const startsOn = dto.startsOn !== undefined ? parseNullableDate(dto.startsOn) : undefined
     const endsOn = dto.endsOn !== undefined ? parseNullableDate(dto.endsOn) : undefined
+    const minRequiredPoints = dto.minRequiredPoints !== undefined
+      ? parseNullablePoints(dto.minRequiredPoints)
+      : undefined
 
     const finalStarts = startsOn !== undefined ? startsOn : current.startsOn
     const finalEnds = endsOn !== undefined ? endsOn : current.endsOn
@@ -138,6 +159,8 @@ export class ScoringTableService {
 
     const updated = await this.repo.updateTable(scoringTableId, {
       name: dto.name !== undefined ? String(dto.name).trim() : undefined,
+      purpose: dto.purpose,
+      minRequiredPoints,
       startsOn,
       endsOn,
       status
@@ -146,6 +169,8 @@ export class ScoringTableService {
     return {
       idScoringTable: updated.idScoringTable,
       name: updated.name,
+      purpose: updated.purpose,
+      minRequiredPoints: updated.minRequiredPoints,
       status: updated.status,
       startsOn: updated.startsOn,
       endsOn: updated.endsOn,

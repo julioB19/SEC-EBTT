@@ -3,6 +3,7 @@ import { ProcessEvaluationController } from "../controller/processEvaluationCont
 import { ProcessEvaluationService } from "../service/processEvaluationService"
 import { ProcessEvaluationRepository } from "../repository/processEvaluationRepository"
 import { authMiddleware } from "../middleware/authMiddleware"
+import { requireCppdAccess, requireCppdProcessAccess } from "../middleware/cppdAccessMiddleware"
 import { validatorMiddleware, ParamType } from "../middleware/validatorMiddleware"
 import {
   updateItemScoreSchema,
@@ -21,18 +22,24 @@ export function processEvaluationRoute() {
   router.get(
     "/processes/:id/evaluation",
     authMiddleware,
+    requireCppdAccess,
+    requireCppdProcessAccess(),
     evaluationController.getProcessForEvaluation
   )
 
   router.get(
     "/processes/:id/evaluation/evidences/:evidenceFileId/conteudo",
     authMiddleware,
+    requireCppdAccess,
+    requireCppdProcessAccess(),
     evaluationController.getEvidenceContentForCppd
   )
 
   router.patch(
     "/processes/:id/evaluation/items",
     authMiddleware,
+    requireCppdAccess,
+    requireCppdProcessAccess(),
     validatorMiddleware(ParamType.BODY, updateItemScoreSchema),
     evaluationController.updateItemScores
   )
@@ -40,6 +47,8 @@ export function processEvaluationRoute() {
   router.patch(
     "/processes/:id/evaluation/evaluators",
     authMiddleware,
+    requireCppdAccess,
+    requireCppdProcessAccess(),
     validatorMiddleware(ParamType.BODY, setEvaluatorsSchema),
     evaluationController.setEvaluationEvaluators
   )
@@ -47,6 +56,8 @@ export function processEvaluationRoute() {
   router.post(
     "/processes/:id/evaluation/parecer",
     authMiddleware,
+    requireCppdAccess,
+    requireCppdProcessAccess(),
     validatorMiddleware(ParamType.BODY, generateParecerSchema),
     evaluationController.generateParecerPreview
   )
@@ -54,6 +65,8 @@ export function processEvaluationRoute() {
   router.post(
     "/processes/:id/evaluation/finalize",
     authMiddleware,
+    requireCppdAccess,
+    requireCppdProcessAccess(),
     validatorMiddleware(ParamType.BODY, finalizeEvaluationSchema),
     evaluationController.finalizeEvaluation
   )
@@ -61,6 +74,8 @@ export function processEvaluationRoute() {
 router.get(
   "/processes/:id/evaluation/view",
   authMiddleware,
+  requireCppdAccess,
+  requireCppdProcessAccess(),
   evaluationController.getProcessForEvaluationReadOnly
 )
   

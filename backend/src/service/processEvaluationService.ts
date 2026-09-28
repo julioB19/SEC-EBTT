@@ -81,6 +81,39 @@ type TreeNode = {
 
 type CppdDecision = "APPROVED" | "REJECTED"
 
+type ScoredCareerProcessFields = {
+  scoringTableId: number
+  type: ProcessType
+  table: { minRequiredPoints: unknown }
+  intersticeStart: Date
+  intersticeEnd: Date
+  classeOrigem: string
+  nivelOrigem: string
+  classeDestino: string
+  nivelDestino: string
+}
+
+function assertScoredCareerProcess<T>(
+  process: T
+): asserts process is T & ScoredCareerProcessFields {
+  const value = process as any
+  if (
+    !value?.scoringTableId ||
+    !value?.table ||
+    !value?.type ||
+    !value?.intersticeStart ||
+    !value?.intersticeEnd ||
+    !value?.classeOrigem ||
+    !value?.nivelOrigem ||
+    !value?.classeDestino ||
+    !value?.nivelDestino
+  ) {
+    throw new BusinessRuleError(
+      "A avaliação CPPD por pontuação está disponível apenas para processos de carreira completos."
+    )
+  }
+}
+
 export class ProcessEvaluationService {
   constructor(private readonly repository = new ProcessEvaluationRepository()) {}
 
@@ -117,6 +150,8 @@ export class ProcessEvaluationService {
     if (process.status !== ProcessStatus.SUBMITTED && process.status !== ProcessStatus.UNDER_REVIEW) {
       throw new BusinessRuleError("Process is not available for CPPD evaluation")
     }
+
+    assertScoredCareerProcess(process)
 
     const scoringTableId = process.scoringTableId
 
@@ -264,6 +299,7 @@ export class ProcessEvaluationService {
 
     const refreshed = await this.repository.findProcessWithUserAndTable(processId)
     if (!refreshed || refreshed.deletedDate) throw new NotFoundError("Process not found")
+    assertScoredCareerProcess(refreshed)
 
     const { totalsDocente, totalsCppd } = await this.computeOverallTotals(processId)
     const divergentItems = await this.getDivergentItems(processId)
@@ -317,6 +353,8 @@ export class ProcessEvaluationService {
     if (processFull.status !== ProcessStatus.SUBMITTED && processFull.status !== ProcessStatus.UNDER_REVIEW) {
       throw new BusinessRuleError("Only SUBMITTED or UNDER_REVIEW processes can be evaluated")
     }
+
+    assertScoredCareerProcess(processFull)
 
     if (!dto.decision) throw new BusinessRuleError("CPPD decision is required")
 
@@ -399,6 +437,7 @@ export class ProcessEvaluationService {
   private async recalculateEvaluationTotals(processId: number) {
     const process = await this.repository.findProcess(processId)
     if (!process || process.deletedDate) throw new NotFoundError("Process not found")
+    assertScoredCareerProcess(process)
 
     const scoringTableId = process.scoringTableId
 
@@ -625,6 +664,7 @@ export class ProcessEvaluationService {
   private async computeOverallTotals(processId: number) {
     const process = await this.repository.findProcess(processId)
     if (!process || process.deletedDate) throw new NotFoundError("Process not found")
+    assertScoredCareerProcess(process)
 
     const { nodes, items, scores } =
       await this.repository.findEvaluationData(processId, process.scoringTableId)
@@ -817,6 +857,8 @@ export class ProcessEvaluationService {
     if (!allowed.has(process.status)) {
       throw new BusinessRuleError("Process is not available for CPPD view")
     }
+
+    assertScoredCareerProcess(process)
 
     const scoringTableId = process.scoringTableId
 

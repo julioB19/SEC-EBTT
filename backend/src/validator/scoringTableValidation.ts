@@ -13,6 +13,12 @@ import {
 
 export const createScoringTableSchema = Joi.object<CreateScoringTableDto>({
   name: Joi.string().max(120).required(),
+  purpose: Joi.string()
+    .valid("PROGRESSION_PROMOTION", "RSC", "FULL_PROFESSOR_EVALUATION", "OTHER")
+    .default("PROGRESSION_PROMOTION"),
+  minRequiredPoints: Joi.alternatives()
+    .try(Joi.number().min(0), Joi.string().pattern(/^\d+([.,]\d{1,2})?$/))
+    .allow(null, ""),
   startsOn: Joi.string().isoDate().allow(null, ""),
   endsOn: Joi.string().isoDate().allow(null, "")
 })
@@ -21,6 +27,15 @@ export const updateScoringTableSchema = Joi.object<UpdateScoringTableDto>({
   name: Joi.string().max(120),
   startsOn: Joi.string().isoDate().allow(null, ""),
   endsOn: Joi.string().isoDate().allow(null, ""),
+  purpose: Joi.string().valid(
+    "PROGRESSION_PROMOTION",
+    "RSC",
+    "FULL_PROFESSOR_EVALUATION",
+    "OTHER"
+  ),
+  minRequiredPoints: Joi.alternatives()
+    .try(Joi.number().min(0), Joi.string().pattern(/^\d+([.,]\d{1,2})?$/))
+    .allow(null, ""),
   status: Joi.string().valid("DRAFT", "ACTIVE", "INACTIVE")
 }).min(1)
 

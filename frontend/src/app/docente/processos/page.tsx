@@ -3,31 +3,39 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 
-type ProcessType = "PROGRESSAO" | "PROMOCAO"
-
 type ProcessStatus =
   | "DRAFT"
+  | "DOCUMENTATION_PENDING"
   | "SUBMITTED"
+  | "AWAITING_EVALUATOR_ACCEPTANCE"
+  | "AWAITING_ORDINANCE"
   | "UNDER_REVIEW"
+  | "IN_EVALUATION"
+  | "AWAITING_GECC"
   | "RETURNED"
   | "APPROVED"
   | "REJECTED"
+  | "FINALIZED"
 
 type Processo = {
   processId: number
-  type: ProcessType
+  type: "PROGRESSAO" | "PROMOCAO" | null
+  processTypeCode: string
+  processTypeName: string
+  processTypeCategory: string | null
   status: ProcessStatus
-  scoringTableId: number
+  scoringTableId: number | null
   createdAt: string
   userId: number
   campus: string
   cidadeUF: string
-  intersticeStart: string
-  intersticeEnd: string
-  classeOrigem: string
-  nivelOrigem: string
-  classeDestino: string
-  nivelDestino: string
+  intersticeStart: string | null
+  intersticeEnd: string | null
+  classeOrigem: string | null
+  nivelOrigem: string | null
+  classeDestino: string | null
+  nivelDestino: string | null
+  rscDetails: { targetLevel: string | null } | null
 }
 
 type ApiResponse<T> = {
@@ -64,8 +72,9 @@ function badgeColor(status: ProcessStatus) {
   if (status === "APPROVED") return "bg-emerald-100 text-emerald-800"
   if (status === "REJECTED") return "bg-red-100 text-red-800"
   if (status === "RETURNED") return "bg-amber-100 text-amber-800"
-  if (status === "UNDER_REVIEW") return "bg-blue-100 text-blue-800"
-  if (status === "SUBMITTED") return "bg-slate-100 text-slate-800"
+  if (status === "DOCUMENTATION_PENDING") return "bg-amber-100 text-amber-800"
+  if (status === "UNDER_REVIEW" || status === "IN_EVALUATION") return "bg-blue-100 text-blue-800"
+  if (status !== "DRAFT") return "bg-slate-100 text-slate-800"
   return "bg-gray-100 text-gray-700"
 }
 
@@ -73,19 +82,39 @@ function statusLabel(status: ProcessStatus) {
   switch (status) {
     case "DRAFT":
       return "Rascunho"
+    case "DOCUMENTATION_PENDING":
+      return "Documentação pendente"
     case "SUBMITTED":
       return "Submetido"
+    case "AWAITING_EVALUATOR_ACCEPTANCE":
+      return "Aguardando aceite"
+    case "AWAITING_ORDINANCE":
+      return "Aguardando portaria"
     case "UNDER_REVIEW":
       return "Em análise"
+    case "IN_EVALUATION":
+      return "Em avaliação"
+    case "AWAITING_GECC":
+      return "Aguardando GECC"
     case "RETURNED":
       return "Devolvido"
     case "APPROVED":
       return "Aprovado"
     case "REJECTED":
       return "Indeferido"
+    case "FINALIZED":
+      return "Finalizado"
     default:
       return status
   }
+}
+
+function processTypeLabel(process: Processo) {
+  if (process.processTypeCode === "PROGRESSION") return "Progressão"
+  if (process.processTypeCode === "PROMOTION") return "Promoção"
+  if (process.processTypeCode === "RSC") return "RSC"
+  if (process.processTypeCode === "FULL_PROFESSOR") return "Professor Titular"
+  return process.processTypeName
 }
 
 
@@ -134,7 +163,7 @@ export default function MeusProcessosPage() {
               Meus Processos
             </h1>
             <p className="text-sm text-[var(--text-secondary)]">
-              Acompanhe aqui as solicitações de progressão e promoção.
+              Acompanhe aqui todas as suas solicitações de carreira.
             </p>
           </div>
         </header>
@@ -179,9 +208,7 @@ export default function MeusProcessosPage() {
                     <th className="px-4 py-3">Nº</th>
                     <th className="px-4 py-3">Tipo</th>
                     <th className="px-4 py-3">Situação</th>
-                    <th className="px-4 py-3">Interstício</th>
-                    <th className="px-4 py-3">Origem</th>
-                    <th className="px-4 py-3">Destino</th>
+                    <th className="px-4 py-3">Detalhamento</th>
                     <th className="px-4 py-3 text-right">Ações</th>
                   </tr>
                 </thead>
@@ -195,7 +222,7 @@ export default function MeusProcessosPage() {
                         {p.processId}
                       </td>
                       <td className="px-4 py-2 align-top text-[var(--text-secondary)]">
-                        {p.type === "PROGRESSAO" ? "Progressão" : "Promoção"}
+                        {processTypeLabel(p)}
                       </td>
                       <td className="px-4 py-2 align-top">
                         <span
@@ -207,18 +234,19 @@ export default function MeusProcessosPage() {
                           {statusLabel(p.status)}
                         </span>
                       </td>
-                      <td className="px-4 py-2 align-top whitespace-nowrap text-[var(--text-secondary)]">
-                        {formatDate(p.intersticeStart)}{" "}
-                        <span className="text-[var(--text-muted)]">→</span>{" "}
-                        {formatDate(p.intersticeEnd)}
-                      </td>
                       <td className="px-4 py-2 align-top text-[var(--text-secondary)]">
-                        {p.classeOrigem}
-                        {p.nivelOrigem}
-                      </td>
-                      <td className="px-4 py-2 align-top text-[var(--text-secondary)]">
-                        {p.classeDestino}
-                        {p.nivelDestino}
+                        {p.processTypeCategory === "CAREER" || p.type ? (
+                          <>
+                            {formatDate(p.intersticeStart)} a {formatDate(p.intersticeEnd)}
+                            <span className="block text-xs text-[var(--text-muted)]">
+                              {p.classeOrigem}{p.nivelOrigem} para {p.classeDestino}{p.nivelDestino}
+                            </span>
+                          </>
+                        ) : p.processTypeCategory === "RSC" ? (
+                          p.rscDetails?.targetLevel?.replace("_", " ") || "RSC"
+                        ) : (
+                          "Memorial ou tese"
+                        )}
                       </td>
                       <td className="px-4 py-2 align-top text-right">
                         <Link

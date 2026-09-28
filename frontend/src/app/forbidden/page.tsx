@@ -1,12 +1,13 @@
 import { cookies } from "next/headers"
 import { LogoutButton } from "@/components/LogoutButton"
 
-type Role = "DOCENTE" | "CPPD_MEMBER" | "ADMIN"
+type Role = "DOCENTE" | "CPPD_MEMBER" | "CPPD_CENTRAL" | "ADMIN" | "EXTERNAL_EVALUATOR"
 
 function mapRoleToPath(role: Role | null | undefined) {
   if (role === "DOCENTE") return "/docente"
-  if (role === "CPPD_MEMBER") return "/cppd"
+  if (role === "CPPD_MEMBER" || role === "CPPD_CENTRAL") return "/cppd"
   if (role === "ADMIN") return "/dashboard"
+  if (role === "EXTERNAL_EVALUATOR") return "/avaliador"
   return "/dashboard"
 }
 
@@ -36,26 +37,28 @@ export default async function ForbiddenPage() {
       backPath = mapRoleToPath(selected)
     } else if (roles.length) {
       if (roles.includes("DOCENTE")) backPath = "/docente"
+      else if (roles.includes("CPPD_CENTRAL")) backPath = "/cppd"
       else if (roles.includes("CPPD_MEMBER")) backPath = "/cppd"
       else if (roles.includes("ADMIN")) backPath = "/dashboard"
+      else if (roles.includes("EXTERNAL_EVALUATOR")) backPath = "/avaliador"
     }
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6 
-                     bg-[var(--surface-muted)]">
-      <div className="
+    <main
+      className="min-h-screen flex items-center justify-center p-6
+                     bg-[var(--surface-muted)]"
+    >
+      <div
+        className="
         bg-[var(--surface-card)]
         border border-[var(--border-subtle)]
         rounded-2xl shadow-sm p-8 max-w-md w-full text-center
-      ">
-        <h1 className="text-2xl font-semibold mb-2 text-[var(--text-primary)]">
-          Acesso negado
-        </h1>
+      "
+      >
+        <h1 className="text-2xl font-semibold mb-2 text-[var(--text-primary)]">Acesso negado</h1>
 
-        <p className="text-[var(--text-secondary)] mb-6">
-          Você não tem permissão para acessar esta página.
-        </p>
+        <p className="text-[var(--text-secondary)] mb-6">Você não tem permissão para acessar esta página.</p>
 
         <div className="flex gap-3 justify-center">
           <a

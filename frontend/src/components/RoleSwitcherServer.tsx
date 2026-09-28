@@ -1,7 +1,7 @@
 import { cookies } from "next/headers"
 import RoleSwitcherClient from "./RoleSwitcherClient"
 
-type Role = "DOCENTE" | "CPPD_MEMBER" | "ADMIN"
+type Role = "DOCENTE" | "CPPD_MEMBER" | "CPPD_CENTRAL" | "ADMIN" | "EXTERNAL_EVALUATOR"
 
 function decodeJwtPayloadServer(token: string): any | null {
   try {
@@ -22,11 +22,22 @@ export default async function RoleSwitcherServer() {
   const payload = decodeJwtPayloadServer(access)
 
   const roles: Role[] = Array.isArray(payload?.roles)
-    ? payload.roles.filter((r: any) => r === "DOCENTE" || r === "CPPD_MEMBER" || r === "ADMIN")
+    ? payload.roles.filter(
+        (r: any) =>
+          r === "DOCENTE" ||
+          r === "CPPD_MEMBER" ||
+          r === "CPPD_CENTRAL" ||
+          r === "ADMIN" ||
+          r === "EXTERNAL_EVALUATOR"
+      )
     : []
 
   const selectedRole: Role | null =
-    payload?.selectedRole === "DOCENTE" || payload?.selectedRole === "CPPD_MEMBER" || payload?.selectedRole === "ADMIN"
+    payload?.selectedRole === "DOCENTE" ||
+    payload?.selectedRole === "CPPD_MEMBER" ||
+    payload?.selectedRole === "CPPD_CENTRAL" ||
+    payload?.selectedRole === "ADMIN" ||
+    payload?.selectedRole === "EXTERNAL_EVALUATOR"
       ? payload.selectedRole
       : null
 
@@ -34,9 +45,7 @@ export default async function RoleSwitcherServer() {
 
   return (
     <div className="mt-1 px-4 pt-2 border-t border-[var(--gray-800)] text-xs">
-      <p className="mb-2 font-semibold uppercase tracking-wide text-[var(--navbar-text-muted)]">
-        Alternar módulo
-      </p>
+      <p className="mb-2 font-semibold uppercase tracking-wide text-[var(--navbar-text-muted)]">Alternar módulo</p>
 
       <RoleSwitcherClient roles={roles} selectedRole={selectedRole} />
     </div>

@@ -1,5 +1,5 @@
 // src/type/dto/processoDto.ts
-import { ClassLevel, ProcessType } from "@prisma/client"
+import { ClassLevel, FullProfessorEvaluationMode, ProcessType } from "@prisma/client"
 
 export interface DocentePatchDto {
   siape?: string
@@ -27,19 +27,33 @@ export interface UserPatchDto {
 }
 
 export interface AberturaProcessoDto {
-  tipo: ProcessType
+  tipo?: ProcessType | string
+  processTypeCode?: string
+  processTypeId?: number
 
   campus: string
   cidadeUF: string
+  externalNumber?: string | null
 
-  dataEmissaoISO: string
-  intersticioInicioISO: string
-  intersticioFimISO: string
+  dataEmissaoISO?: string
+  intersticioInicioISO?: string
+  intersticioFimISO?: string
 
-  classeOrigem: string
-  nivelOrigem: string
-  classeDestino: string
-  nivelDestino: string
+  classeOrigem?: string
+  nivelOrigem?: string
+  classeDestino?: string
+  nivelDestino?: string
+
+  rscDetails?: {
+    targetLevel?: string
+    simecReference?: string | null
+  }
+
+  fullProfessorDetails?: {
+    evaluationMode?: FullProfessorEvaluationMode | string
+    doctorateDegreeId?: number | null
+    finalReferenceDateISO?: string | null
+  }
 }
 
 export interface UpdateProcessoDto {
@@ -51,4 +65,14 @@ export interface UpdateProcessoDto {
   nivelOrigem?: string
   classeDestino?: string
   nivelDestino?: string
+  externalNumber?: string | null
+  rscDetails?: {
+    targetLevel?: string
+    simecReference?: string | null
+  }
+  fullProfessorDetails?: {
+    evaluationMode?: FullProfessorEvaluationMode | string
+    doctorateDegreeId?: number | null
+    finalReferenceDateISO?: string | null
+  }
 }

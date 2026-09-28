@@ -1,4 +1,4 @@
-import Joi from "joi"
+import Joi from "joi";
 
 export const updateItemScoreSchema = Joi.object({
   scores: Joi.array()
@@ -10,26 +10,37 @@ export const updateItemScoreSchema = Joi.object({
             Joi.string()
               .allow("")
               .pattern(/^\d+([.,]\d+)?$/),
-            Joi.valid(null)
+            Joi.valid(null),
           )
           .required(),
-        evaluatorComment: Joi.string().allow(null, "").max(500).optional()
-      })
+        evaluatorComment: Joi.string().allow(null, "").max(500).optional(),
+      }),
     )
-    .required()
-})
+    .required(),
+});
 
 export const finalizeEvaluationSchema = Joi.object({
   decision: Joi.string().valid("APPROVED", "REJECTED").required(),
-  evaluatorUserIds: Joi.array().items(Joi.number().integer().positive()).optional(),
-  overrideOpinion: Joi.string().allow(null, "").optional()
-})
+  evaluatorUserIds: Joi.array()
+    .items(Joi.number().integer().positive())
+    .optional(),
+  overrideOpinion: Joi.string().allow(null, "").optional(),
+});
 
 export const setEvaluatorsSchema = Joi.object({
-  evaluatorUserIds: Joi.array().items(Joi.number().integer().positive()).required()
-})
+  evaluatorUserIds: Joi.array()
+    .items(Joi.number().integer().positive())
+    .required(),
+});
 
 export const generateParecerSchema = Joi.object({
-  evaluatorUserIds: Joi.array().items(Joi.number().integer().positive()).optional(),
-  overrideOpinion: Joi.string().allow(null, "").optional()
-})
+  evaluatorUserIds: Joi.array()
+    .items(Joi.number().integer().positive())
+    .optional(),
+  overrideOpinion: Joi.string().allow(null, "").optional(),
+});
+
+export const documentReviewDecisionSchema = Joi.object({
+  decision: Joi.string().valid("APPROVED", "REJECTED").required(),
+  opinionText: Joi.string().trim().min(1).max(10000).required(),
+});

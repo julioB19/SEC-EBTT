@@ -9,17 +9,12 @@ import { InvalidRefreshToken } from "../exception/invalid-refresh-token"
 import { RoleName } from "@prisma/client"
 import { UserNotFound } from "../exception/user-not-found"
 import { revokeAccessToken, revokeRefreshToken, isLikelyJwt } from "../util/tokenBlacklist"
+import { getCppdAccessScope } from "../middleware/cppdAccessMiddleware"
 
 function getAuthUser(req: any): { userId: number; roles: RoleName[] } | null {
   const u = req?.user
 
-  const rawUserId =
-    u?.userId ??
-    u?.idUser ??
-    u?.id ??
-    u?.sub ??
-    u?.user_id ??
-    u?.uid
+  const rawUserId = u?.userId ?? u?.idUser ?? u?.id ?? u?.sub ?? u?.user_id ?? u?.uid
 
   const userId = Number(rawUserId)
 
@@ -97,13 +92,17 @@ export class UserController {
   }
 
   async selectRole(req: any, res: any): Promise<void> {
-    console.log("SELECT-ROLE body:", req.body)
     try {
       const refreshToken: string | undefined = req.body?.refreshToken
       const role: RoleName | undefined = req.body?.role
 
       if (!refreshToken || !role) {
-        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "refreshToken e role são obrigatórios", null)
+        return HttpResponse.badRequest(
+          res,
+          StatusCodeDescription.INVALID_INPUT,
+          "refreshToken e role são obrigatórios",
+          null
+        )
       }
 
       const response = await this.userService.selectRole(refreshToken, role)
@@ -119,7 +118,9 @@ export class UserController {
 
   async createUser(req: any, res: any): Promise<void> {
     try {
-      const { error, value } = createUserSchema.validate(req.body, { abortEarly: false })
+      const { error, value } = createUserSchema.validate(req.body, {
+        abortEarly: false
+      })
       if (error) {
         return HttpResponse.badRequest(
           res,
@@ -153,6 +154,12 @@ export class UserController {
               division: value.docenteProfile.division,
               role: value.docenteProfile.role,
               immediateSupervisor: value.docenteProfile.immediateSupervisor
+            }
+          : undefined,
+        externalEvaluatorProfile: value.externalEvaluatorProfile
+          ? {
+              title: value.externalEvaluatorProfile.title ?? null,
+              institution: value.externalEvaluatorProfile.institution ?? null
             }
           : undefined
       }
@@ -188,7 +195,8 @@ export class UserController {
               role: user.docenteProfile.role ?? null,
               immediateSupervisor: user.docenteProfile.immediateSupervisor ?? null
             }
-          : null
+          : null,
+        externalEvaluatorProfile: user.externalEvaluatorProfile
       })
     } catch (error: any) {
       console.log("Request failed:", error?.message)
@@ -202,10 +210,13 @@ export class UserController {
       }
 
       if (error?.code === "P2002") {
-        const target = Array.isArray(error?.meta?.target)
-          ? error.meta.target.join(", ")
-          : "unique field"
-        return HttpResponse.badRequest(res, StatusCodeDescription.USER_EXISTS, `Violação de unicidade em: ${target}`, null)
+        const target = Array.isArray(error?.meta?.target) ? error.meta.target.join(", ") : "unique field"
+        return HttpResponse.badRequest(
+          res,
+          StatusCodeDescription.USER_EXISTS,
+          `Violação de unicidade em: ${target}`,
+          null
+        )
       }
 
       return HttpResponse.internalError(res)
@@ -231,7 +242,8 @@ export class UserController {
   async getMyProfile(req: any, res: any): Promise<void> {
     try {
       const auth = getAuthUser(req)
-      if (!auth) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Usuário não autenticado", null)
+      if (!auth)
+        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Usuário não autenticado", null)
 
       const me = await this.userService.getUserById(auth.userId)
       return HttpResponse.ok(res, "Perfil recuperado", me)
@@ -246,10 +258,16 @@ export class UserController {
   async updateMyProfile(req: any, res: any): Promise<void> {
     try {
       const auth = getAuthUser(req)
-      if (!auth) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Usuário não autenticado", null)
+      if (!auth)
+        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Usuário não autenticado", null)
 
       if (!hasRole(auth.roles, RoleName.DOCENTE) && req.body?.docenteProfile) {
-        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Apenas DOCENTE pode editar docenteProfile", null)
+        return HttpResponse.badRequest(
+          res,
+          StatusCodeDescription.INVALID_INPUT,
+          "Apenas DOCENTE pode editar docenteProfile",
+          null
+        )
       }
 
       const updated = await this.userService.updateOwnProfile(auth.userId, req.body)
@@ -346,9 +364,15 @@ export class UserController {
   async updateMyDocenteProfile(req: any, res: any): Promise<void> {
     try {
       const auth = getAuthUser(req)
-      if (!auth) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Usuário não autenticado", null)
+      if (!auth)
+        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Usuário não autenticado", null)
       if (!hasRole(auth.roles, RoleName.DOCENTE)) {
-        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Apenas DOCENTE pode editar o próprio perfil", null)
+        return HttpResponse.badRequest(
+          res,
+          StatusCodeDescription.INVALID_INPUT,
+          "Apenas DOCENTE pode editar o próprio perfil",
+          null
+        )
       }
 
       const updated = await this.userService.updateOwnDocenteProfile(auth.userId, req.body)
@@ -364,9 +388,11 @@ export class UserController {
     }
   }
 
-  async listDocentes(_req: any, res: any): Promise<void> {
+  async listDocentes(req: any, res: any): Promise<void> {
     try {
-      const docentes = await this.userService.listDocentes()
+      const scope = getCppdAccessScope(req)
+      if (!scope) return HttpResponse.unauthorized(res)
+      const docentes = await this.userService.listDocentes(scope.isCentral ? null : scope.campusIds)
       return HttpResponse.ok(res, "Docentes recuperados", docentes)
     } catch {
       return HttpResponse.internalError(res)
@@ -376,9 +402,15 @@ export class UserController {
   async updateDocenteByCppd(req: any, res: any): Promise<void> {
     try {
       const auth = getAuthUser(req)
-      if (!auth) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Usuário não autenticado", null)
-      if (!hasRole(auth.roles, RoleName.CPPD_MEMBER)) {
-        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Apenas CPPD_MEMBER pode editar por esta rota", null)
+      if (!auth)
+        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Usuário não autenticado", null)
+      if (!hasRole(auth.roles, RoleName.CPPD_MEMBER) && !hasRole(auth.roles, RoleName.CPPD_CENTRAL)) {
+        return HttpResponse.badRequest(
+          res,
+          StatusCodeDescription.INVALID_INPUT,
+          "Apenas perfis da CPPD podem editar por esta rota",
+          null
+        )
       }
 
       const userId = Number(req.params.userId)
@@ -402,9 +434,15 @@ export class UserController {
   async updateDocenteByAdmin(req: any, res: any): Promise<void> {
     try {
       const auth = getAuthUser(req)
-      if (!auth) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Usuário não autenticado", null)
+      if (!auth)
+        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Usuário não autenticado", null)
       if (!hasRole(auth.roles, RoleName.ADMIN)) {
-        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Apenas ADMIN pode editar por esta rota", null)
+        return HttpResponse.badRequest(
+          res,
+          StatusCodeDescription.INVALID_INPUT,
+          "Apenas ADMIN pode editar por esta rota",
+          null
+        )
       }
 
       const userId = Number(req.params.userId)
@@ -431,9 +469,15 @@ export class UserController {
   async deleteDocenteByAdmin(req: any, res: any): Promise<void> {
     try {
       const auth = getAuthUser(req)
-      if (!auth) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Usuário não autenticado", null)
+      if (!auth)
+        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Usuário não autenticado", null)
       if (!hasRole(auth.roles, RoleName.ADMIN)) {
-        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Apenas ADMIN pode excluir docente", null)
+        return HttpResponse.badRequest(
+          res,
+          StatusCodeDescription.INVALID_INPUT,
+          "Apenas ADMIN pode excluir docente",
+          null
+        )
       }
 
       const userId = Number(req.params.userId)
@@ -454,9 +498,15 @@ export class UserController {
   async setUserRolesByAdmin(req: any, res: any): Promise<void> {
     try {
       const auth = getAuthUser(req)
-      if (!auth) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Usuário não autenticado", null)
+      if (!auth)
+        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Usuário não autenticado", null)
       if (!hasRole(auth.roles, RoleName.ADMIN)) {
-        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Apenas ADMIN pode alterar roles", null)
+        return HttpResponse.badRequest(
+          res,
+          StatusCodeDescription.INVALID_INPUT,
+          "Apenas ADMIN pode alterar roles",
+          null
+        )
       }
 
       const userId = Number(req.params.userId)

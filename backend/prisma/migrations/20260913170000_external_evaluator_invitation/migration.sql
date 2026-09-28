@@ -1,0 +1,3 @@
+ALTER TABLE `user`
+  MODIFY `cpf` VARCHAR(14) NULL,
+  MODIFY `passwordHash` VARCHAR(200) NULL;

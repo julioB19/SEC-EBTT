@@ -20,6 +20,7 @@ import { decodeRefreshToken } from "../util/decodeToken"
 import { isRefreshTokenRevoked } from "../util/tokenBlacklist"
 import { InvalidRefreshToken } from "../exception/invalid-refresh-token"
 import { UserNotFound } from "../exception/user-not-found"
+import { readProtectedCpf } from "../util/cpfProtection"
 
 function normalizeCpf(cpf: string): string {
   return (cpf || "").replace(/\D/g, "")
@@ -36,14 +37,13 @@ function toDateOrUndefined(value: any): Date | undefined {
 }
 
 export class UserService {
-  constructor(
-    private readonly userRepository: UserRepository
-  ) {}
+  constructor(private readonly userRepository: UserRepository) {}
 
   async login(dto: LoginDto): Promise<LoginResponseWithRoles> {
     const cleanCpf = onlyDigits(dto.cpf)
     const user = await this.userRepository.findByCpf(cleanCpf)
-    if (!user) throw new InvalidCredentials()
+    if (!user || !user.active || user.deletedDate) throw new InvalidCredentials()
+    if (!user.passwordHash) throw new InvalidCredentials()
 
     const ok = await bcrypt.compare(dto.password, user.passwordHash)
     if (!ok) throw new InvalidCredentials()
@@ -85,7 +85,9 @@ export class UserService {
     const selectedRole: RoleName | null =
       decoded.selectedRole && roles.includes(decoded.selectedRole)
         ? decoded.selectedRole
-        : (hasMultiple ? null : (roles[0] ?? null))
+        : hasMultiple
+          ? null
+          : (roles[0] ?? null)
 
     return {
       accessToken: generateAccessToken(roles, user.idUser, selectedRole),
@@ -130,8 +132,13 @@ export class UserService {
   }
 
   async createUser(dto: CreateUserDto): Promise<UserResponseDto> {
-    const existing = await this.userRepository.findByCpf(onlyDigits(dto.cpf))
-    if (existing) {
+    const cleanCpf = dto.cpf ? onlyDigits(dto.cpf) : null
+    const normalizedEmail = dto.email.trim().toLowerCase()
+    const [existingByCpf, existingByEmail] = await Promise.all([
+      cleanCpf ? this.userRepository.findByCpf(cleanCpf) : Promise.resolve(null),
+      this.userRepository.findByEmail(normalizedEmail)
+    ])
+    if (existingByCpf || existingByEmail) {
       throw new UserExists()
     }
 
@@ -142,13 +149,21 @@ export class UserService {
       throw new Error('DocenteProfile é obrigatório quando roles inclui "DOCENTE"')
     }
 
-    const passwordHash = await bcrypt.hash(dto.password, 10)
-    const cleanCpf = onlyDigits(dto.cpf)
+    const isExternalEvaluator = dto.roles.includes(RoleName.EXTERNAL_EVALUATOR)
+    const canCompleteCredentialsByEmail = dto.roles.length === 1 && isExternalEvaluator
+    if (!cleanCpf && !canCompleteCredentialsByEmail) {
+      throw new Error("CPF é obrigatório para este tipo de usuário")
+    }
+    if (!dto.password && !canCompleteCredentialsByEmail) {
+      throw new Error("Senha provisória é obrigatória para este tipo de usuário")
+    }
+
+    const passwordHash = dto.password ? await bcrypt.hash(dto.password, 10) : null
 
     try {
       const created = await this.userRepository.createWithRolesAndDocente({
         name: dto.name,
-        email: dto.email,
+        email: normalizedEmail,
         phone: dto.phone ?? null,
         city: dto.city ?? null,
         uf: dto.uf ?? null,
@@ -159,7 +174,8 @@ export class UserService {
           ? {
               siape: dto.docenteProfile.siape,
               classLevel: dto.docenteProfile.classLevel,
-              startInterstice: toDateOrUndefined(dto.docenteProfile.startInterstice) ?? dto.docenteProfile.startInterstice,
+              startInterstice:
+                toDateOrUndefined(dto.docenteProfile.startInterstice) ?? dto.docenteProfile.startInterstice,
               educationLevel: dto.docenteProfile.educationLevel,
               improvement: dto.docenteProfile.improvement ?? null,
               specialization: dto.docenteProfile.specialization ?? null,
@@ -170,6 +186,12 @@ export class UserService {
               division: dto.docenteProfile.division ?? null,
               role: dto.docenteProfile.role ?? null,
               immediateSupervisor: dto.docenteProfile.immediateSupervisor ?? null
+            }
+          : undefined,
+        externalEvaluatorProfile: isExternalEvaluator
+          ? {
+              title: dto.externalEvaluatorProfile?.title ?? null,
+              institution: dto.externalEvaluatorProfile?.institution ?? null
             }
           : undefined
       })
@@ -213,7 +235,8 @@ export class UserService {
       if (!p.classLevel) missing.push("classLevel")
       if (!p.startInterstice) missing.push("startInterstice")
       if (!p.educationLevel) missing.push("educationLevel")
-      if (missing.length) throw new Error(`Campos obrigatórios para criar DocenteProfile ausentes: ${missing.join(", ")}`)
+      if (missing.length)
+        throw new Error(`Campos obrigatórios para criar DocenteProfile ausentes: ${missing.join(", ")}`)
     }
 
     const normalizedCpf = dto.cpf ? normalizeCpf(dto.cpf) : undefined
@@ -242,6 +265,12 @@ export class UserService {
             division: dto.docenteProfile.division ?? null,
             role: dto.docenteProfile.role ?? null,
             immediateSupervisor: dto.docenteProfile.immediateSupervisor ?? null
+          }
+        : undefined,
+      externalEvaluatorProfile: dto.externalEvaluatorProfile
+        ? {
+            title: dto.externalEvaluatorProfile.title ?? null,
+            institution: dto.externalEvaluatorProfile.institution ?? null
           }
         : undefined
     })
@@ -331,8 +360,8 @@ export class UserService {
     return this.toResponse(updated)
   }
 
-  async listDocentes(): Promise<UserResponseDto[]> {
-    const docentes = await this.userRepository.findManyDocentesActive()
+  async listDocentes(campusIds: number[] | null = null): Promise<UserResponseDto[]> {
+    const docentes = await this.userRepository.findManyDocentesActive(campusIds)
     return docentes.map(d => this.toResponse(d))
   }
 
@@ -395,19 +424,29 @@ export class UserService {
         }
       : null
 
+    const externalEvaluator = user.externalEvaluator
+      ? {
+          idExternalEvaluator: user.externalEvaluator.idExternalEvaluator,
+          title: user.externalEvaluator.title ?? null,
+          institution: user.externalEvaluator.institution ?? null,
+          active: Boolean(user.externalEvaluator.active)
+        }
+      : null
+
     return {
       idUser: user.idUser,
       name: user.name,
       email: user.email,
       phone: user.phone ?? null,
-      cpf: user.cpf,
+      cpf: readProtectedCpf(user),
       city: user.city ?? null,
       uf: user.uf ?? null,
       active: Boolean(user.active),
       createdAt: user.createdAt,
       deletedDate: user.deletedDate ?? null,
       roles,
-      docenteProfile: docente
+      docenteProfile: docente,
+      externalEvaluatorProfile: externalEvaluator
     }
   }
 }

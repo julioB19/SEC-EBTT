@@ -13,9 +13,17 @@ type ApiResponse<T = any> = {
 
 type CreateTablePayload = {
   name: string
+  purpose: ScoringTablePurpose
+  minRequiredPoints: string | null
   startsOn?: string | null
   endsOn?: string | null
 }
+
+type ScoringTablePurpose =
+  | "PROGRESSION_PROMOTION"
+  | "RSC"
+  | "FULL_PROFESSOR_EVALUATION"
+  | "OTHER"
 
 type CreatedTable = {
   idScoringTable: number
@@ -37,6 +45,8 @@ export default function NovaTabelaPontuacaoPage() {
   const router = useRouter()
 
   const [name, setName] = useState("")
+  const [purpose, setPurpose] = useState<ScoringTablePurpose>("PROGRESSION_PROMOTION")
+  const [minRequiredPoints, setMinRequiredPoints] = useState("120")
   const [startsOn, setStartsOn] = useState("")
   const [endsOn, setEndsOn] = useState("")
   const [loading, setLoading] = useState(false)
@@ -67,6 +77,8 @@ export default function NovaTabelaPontuacaoPage() {
 
     const payloadToSend: CreateTablePayload = {
       name: trimmed,
+      purpose,
+      minRequiredPoints: minRequiredPoints.trim() || null,
       startsOn: toIsoOrNull(startsOn),
       endsOn: toIsoOrNull(endsOn)
     }
@@ -170,6 +182,51 @@ export default function NovaTabelaPontuacaoPage() {
               placeholder="Ex: Tabela EBTT 2025"
               disabled={loading}
             />
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                Finalidade
+              </label>
+              <select
+                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
+                           px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
+                value={purpose}
+                onChange={e => {
+                  const next = e.target.value as ScoringTablePurpose
+                  setPurpose(next)
+                  if (next === "RSC" && minRequiredPoints === "120") {
+                    setMinRequiredPoints("60")
+                  } else if (next === "PROGRESSION_PROMOTION" && minRequiredPoints === "60") {
+                    setMinRequiredPoints("120")
+                  }
+                }}
+                disabled={loading}
+              >
+                <option value="PROGRESSION_PROMOTION">Progressão e promoção</option>
+                <option value="RSC">RSC</option>
+                <option value="FULL_PROFESSOR_EVALUATION">Classe Titular</option>
+                <option value="OTHER">Outra finalidade</option>
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                Pontuação mínima
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
+                           px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
+                value={minRequiredPoints}
+                onChange={e => setMinRequiredPoints(e.target.value)}
+                placeholder="Ex: 60"
+                disabled={loading}
+              />
+            </div>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-3">

@@ -8,7 +8,7 @@ const desktopLinkClass =
   "rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wide " +
   "text-[var(--navbar-text)] hover:bg-[var(--navbar-item-hover-bg)] transition-[background]"
 
-export function CppdNavLinks() {
+export function CppdNavLinks({ canManageCommissions = false }: { canManageCommissions?: boolean }) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -31,6 +31,12 @@ export function CppdNavLinks() {
         <Link href="/cppd/usuarios" className={desktopLinkClass}>
           Docentes
         </Link>
+
+        {canManageCommissions && (
+          <Link href="/cppd/comissoes" className={desktopLinkClass}>
+            Campi e comissões
+          </Link>
+        )}
       </div>
 
       {/* BOTÃO MOBILE */}
@@ -86,6 +92,16 @@ export function CppdNavLinks() {
           >
             Docentes
           </Link>
+
+          {canManageCommissions && (
+            <Link
+              href="/cppd/comissoes"
+              className="block px-4 py-2.5 text-sm hover:bg-[var(--navbar-item-hover-bg)]"
+              onClick={() => setOpen(false)}
+            >
+              Campi e comissões
+            </Link>
+          )}
 
           <div className="my-1 h-px bg-[var(--border-subtle)]" />
 

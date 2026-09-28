@@ -2,11 +2,20 @@ import { beforeEach, describe, expect, jest, test } from "@jest/globals"
 import { ScoringTableService } from "../../../src/service/scoringTableService"
 import { ScoringTableRepository } from "../../../src/repository/scoringTableRepository"
 import { BusinessRuleError } from "../../../src/service/processoService"
+import { ScoringTablePurpose } from "@prisma/client"
 
 describe("ScoringTableService", () => {
   let repo: jest.Mocked<ScoringTableRepository>
   let service: ScoringTableService
-  const table = { idScoringTable: 1, name: "Tabela", status: "DRAFT", startsOn: null, endsOn: null }
+  const table = {
+    idScoringTable: 1,
+    name: "Tabela",
+    purpose: ScoringTablePurpose.PROGRESSION_PROMOTION,
+    minRequiredPoints: null,
+    status: "DRAFT",
+    startsOn: null,
+    endsOn: null
+  }
 
   beforeEach(() => {
     repo = {
@@ -22,7 +31,11 @@ describe("ScoringTableService", () => {
     repo.createTable.mockResolvedValue({ ...table, startsOn: new Date("2025-01-01"), endsOn: null } as any)
     const result = await service.criarTabelaPontuacao({ name: "Tabela", startsOn: "2025-01-01", endsOn: null })
     expect(repo.createTable).toHaveBeenCalledWith({
-      name: "Tabela", startsOn: new Date("2025-01-01"), endsOn: null
+      name: "Tabela",
+      purpose: ScoringTablePurpose.PROGRESSION_PROMOTION,
+      minRequiredPoints: null,
+      startsOn: new Date("2025-01-01"),
+      endsOn: null
     })
     expect(result.idScoringTable).toBe(1)
   })

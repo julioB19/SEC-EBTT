@@ -34,6 +34,13 @@ Em seguida, execute as migrações do Prisma:
 npm run migrate
 ```
 
+Defina `CPF_ENCRYPTION_KEY` no `.env` do backend com uma chave aleatória de pelo menos 32 caracteres. Essa chave deve ser preservada entre implantações; sua perda impede a leitura dos CPFs criptografados.
+
+Ao atualizar um banco que já contém usuários, execute uma vez a migração dos CPFs legados:
+```bash
+npm run migrate:cpf
+```
+
 ### Teste Manual
 
 Inicie o backend em modo de desenvolvimento:

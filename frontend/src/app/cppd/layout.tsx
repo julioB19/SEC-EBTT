@@ -1,20 +1,9 @@
 import type { ReactNode } from "react"
-import { cookies, headers } from "next/headers"
+import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { ProfileMenu } from "@/components/ProfileMenu"
 import { CppdNavLinks } from "@/components/CppdNavLinks"
-
-async function resolveBaseUrl() {
-  const h = await headers()
-
-  const host = h.get("x-forwarded-host") || h.get("host")
-  const proto = h.get("x-forwarded-proto") || "http"
-
-  if (!host) return null
-
-  return `${proto}://${host}`
-}
 
 async function ensureCppdRole() {
   const jar = await cookies()
@@ -24,28 +13,20 @@ async function ensureCppdRole() {
     redirect("/login")
   }
 
-  const baseUrl = await resolveBaseUrl()
-  if (!baseUrl) {
+  try {
+    const payload = JSON.parse(Buffer.from(access.split(".")[1], "base64url").toString("utf8"))
+    if (payload?.selectedRole === "CPPD_MEMBER" || payload?.selectedRole === "CPPD_CENTRAL") {
+      return payload.selectedRole as "CPPD_MEMBER" | "CPPD_CENTRAL"
+    }
+  } catch {
     redirect("/login")
   }
 
-  const res = await fetch(`${baseUrl}/api/auth/select-role`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Cookie: jar.toString()
-    },
-    body: JSON.stringify({ role: "CPPD_MEMBER" }),
-    cache: "no-store"
-  })
-
-  if (!res.ok) {
-    redirect("/login")
-  }
+  redirect("/forbidden")
 }
 
 export default async function CppdLayout({ children }: { children: ReactNode }) {
-  await ensureCppdRole()
+  const cppdRole = await ensureCppdRole()
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--app-bg)]">
@@ -64,7 +45,7 @@ export default async function CppdLayout({ children }: { children: ReactNode }) 
 
           {/* Menu + perfil */}
           <div className="flex items-center gap-3">
-            <CppdNavLinks />
+            <CppdNavLinks canManageCommissions={cppdRole === "CPPD_CENTRAL"} />
             {/* ícone de perfil só no desktop */}
             <div className="hidden md:block">
               <ProfileMenu />

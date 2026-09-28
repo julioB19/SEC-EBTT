@@ -4,7 +4,14 @@ import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Modal from "@/components/Modal"
 
-type ProcessType = "PROGRESSAO" | "PROMOCAO"
+type LegacyProcessType = "PROGRESSAO" | "PROMOCAO"
+
+type ProcessTypeCode =
+  | "PROGRESSION"
+  | "PROMOTION"
+  | "RSC"
+  | "FULL_PROFESSOR"
+  | string
 
 type ApiResponse<T> = {
   status: string
@@ -14,6 +21,17 @@ type ApiResponse<T> = {
 
 type CreatedProcess = {
   processId: number
+}
+
+type ConfiguredProcessType = {
+  idProcessType: number
+  code: ProcessTypeCode
+  name: string
+  category: string
+  requiresScoring: boolean
+  requiresCommittee: boolean
+  requiresGecc: boolean
+  active: boolean
 }
 
 type ModalVariant = "success" | "error" | "info"
@@ -60,6 +78,53 @@ const PROMOCAO_MOVES = [
 const ORIGENS_PROGRESSAO = new Set(["B1", "B2", "B3", "C1", "C2", "C3"])
 const ORIGENS_PROMOCAO = new Set(["A1", "B4", "C4"])
 
+const FALLBACK_PROCESS_TYPES: ConfiguredProcessType[] = [
+  {
+    idProcessType: 1,
+    code: "PROGRESSION",
+    name: "Progression",
+    category: "CAREER",
+    requiresScoring: true,
+    requiresCommittee: false,
+    requiresGecc: false,
+    active: true
+  },
+  {
+    idProcessType: 2,
+    code: "PROMOTION",
+    name: "Promotion",
+    category: "CAREER",
+    requiresScoring: true,
+    requiresCommittee: false,
+    requiresGecc: false,
+    active: true
+  }
+]
+
+const PROCESS_TYPE_LABELS: Record<string, string> = {
+  PROGRESSION: "Progressão",
+  PROMOTION: "Promoção",
+  RSC: "RSC",
+  FULL_PROFESSOR: "Professor Titular",
+  TRAINING_LEAVE: "Afastamento",
+  QUALIFICATION_PAY: "Retribuição por Titulação",
+  IN_SERVICE_DEVELOPMENT: "Desenvolvimento em Serviço"
+}
+
+function mapLegacyTypeToProcessTypeCode(type: LegacyProcessType): ProcessTypeCode {
+  return type === "PROMOCAO" ? "PROMOTION" : "PROGRESSION"
+}
+
+function mapProcessTypeCodeToLegacy(code: ProcessTypeCode): LegacyProcessType | null {
+  if (code === "PROGRESSION") return "PROGRESSAO"
+  if (code === "PROMOTION") return "PROMOCAO"
+  return null
+}
+
+function getProcessTypeLabel(processType: ConfiguredProcessType) {
+  return PROCESS_TYPE_LABELS[processType.code] ?? processType.name
+}
+
 export default function Form() {
   const router = useRouter()
 
@@ -72,7 +137,10 @@ export default function Form() {
   const [cidade, setCidade] = useState("")
   const [estado, setEstado] = useState("")
 
-  const [tipo, setTipo] = useState<ProcessType>("PROGRESSAO")
+  const [selectedProcessTypeCode, setSelectedProcessTypeCode] =
+    useState<ProcessTypeCode>("PROGRESSION")
+  const [processTypes, setProcessTypes] = useState<ConfiguredProcessType[]>(FALLBACK_PROCESS_TYPES)
+  const [loadingProcessTypes, setLoadingProcessTypes] = useState(true)
   const [campus, setCampus] = useState("")
   const [intersticioInicio, setIntersticioInicio] = useState("")
   const [intersticioFim, setIntersticioFim] = useState("")
@@ -81,6 +149,11 @@ export default function Form() {
   const [nivelOrigem, setNivelOrigem] = useState("")
   const [classeDestino, setClasseDestino] = useState("")
   const [nivelDestino, setNivelDestino] = useState("")
+  const [externalNumber, setExternalNumber] = useState("")
+  const [rscTargetLevel, setRscTargetLevel] = useState("")
+  const [simecReference, setSimecReference] = useState("")
+  const [fullProfessorEvaluationMode, setFullProfessorEvaluationMode] =
+    useState<"MEMORIAL" | "THESIS">("MEMORIAL")
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -96,6 +169,15 @@ export default function Form() {
     () => (cidade && estado ? `${cidade} - ${estado}` : ""),
     [cidade, estado]
   )
+
+  const selectedProcessType = useMemo(
+    () => processTypes.find(item => item.code === selectedProcessTypeCode) ?? null,
+    [processTypes, selectedProcessTypeCode]
+  )
+
+  const isCareerProcess = selectedProcessType?.category === "CAREER"
+  const isRscProcess = selectedProcessType?.category === "RSC"
+  const isFullProfessorProcess = selectedProcessType?.category === "FULL_PROFESSOR"
 
   function openModal(payload: Omit<ModalState, "open">) {
     setModal({
@@ -120,15 +202,15 @@ export default function Form() {
     }
   }
 
-  function inferTipoByOrigem(code: string): ProcessType | null {
+  function inferTipoByOrigem(code: string): LegacyProcessType | null {
     if (ORIGENS_PROGRESSAO.has(code)) return "PROGRESSAO"
     if (ORIGENS_PROMOCAO.has(code)) return "PROMOCAO"
     return null
   }
 
   const moves = useMemo(
-    () => (tipo === "PROGRESSAO" ? PROGRESSAO_MOVES : PROMOCAO_MOVES),
-    [tipo]
+    () => (selectedProcessTypeCode === "PROGRESSION" ? PROGRESSAO_MOVES : PROMOCAO_MOVES),
+    [selectedProcessTypeCode]
   )
 
   const origemCode = useMemo(
@@ -160,6 +242,45 @@ export default function Form() {
         label: m.label
       }))
   }, [moves, origemCode])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadProcessTypes() {
+      setLoadingProcessTypes(true)
+
+      try {
+        const r = await fetch("/api/processos/tipos", {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store"
+        })
+
+        const json: ApiResponse<ConfiguredProcessType[]> = await r.json().catch(() => ({
+          status: "error",
+          message: "Falha ao ler resposta",
+          data: null
+        }))
+
+        if (cancelled) return
+
+        if (r.ok && Array.isArray(json?.data) && json.data.length) {
+          setProcessTypes(json.data)
+        }
+      } catch {
+      } finally {
+        if (!cancelled) {
+          setLoadingProcessTypes(false)
+        }
+      }
+    }
+
+    loadProcessTypes()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -207,7 +328,7 @@ export default function Form() {
             const currentCode = `${classe}${nivel}`
             const inferred = inferTipoByOrigem(currentCode)
             if (inferred) {
-              setTipo(inferred)
+              setSelectedProcessTypeCode(mapLegacyTypeToProcessTypeCode(inferred))
             }
           }
 
@@ -303,16 +424,31 @@ export default function Form() {
       const payload = {
         patchUsuario,
         processo: {
-          tipo,
+          tipo:
+            mapProcessTypeCodeToLegacy(selectedProcessTypeCode) ??
+            selectedProcessTypeCode,
+          processTypeCode: selectedProcessTypeCode,
           campus,
           cidadeUF,
+          externalNumber: externalNumber.trim() || null,
           dataEmissaoISO: new Date().toISOString(),
-          intersticioInicioISO: intersticioInicio,
-          intersticioFimISO: intersticioFim,
-          classeOrigem,
-          nivelOrigem,
-          classeDestino,
-          nivelDestino
+          intersticioInicioISO: isCareerProcess ? intersticioInicio : undefined,
+          intersticioFimISO: isCareerProcess ? intersticioFim : undefined,
+          classeOrigem: isCareerProcess ? classeOrigem : undefined,
+          nivelOrigem: isCareerProcess ? nivelOrigem : undefined,
+          classeDestino: isCareerProcess ? classeDestino : undefined,
+          nivelDestino: isCareerProcess ? nivelDestino : undefined,
+          rscDetails: isRscProcess
+            ? {
+                targetLevel: rscTargetLevel,
+                simecReference: simecReference.trim() || null
+              }
+            : undefined,
+          fullProfessorDetails: isFullProfessorProcess
+            ? {
+                evaluationMode: fullProfessorEvaluationMode
+              }
+            : undefined
         }
       }
 
@@ -337,7 +473,7 @@ export default function Form() {
       if (processId) {
         openModal({
           title: "Processo aberto",
-          message: `Processo nº ${processId} aberto com sucesso. Você poderá gerar o requerimento quando completar o interstício.`,
+          message: `Processo nº ${processId} aberto com sucesso. Complete os dados, a pontuação e os documentos exigidos para enviá-lo à CPPD.`,
           variant: "success"
         })
 
@@ -388,7 +524,7 @@ export default function Form() {
             Abrir novo processo
           </h1>
           <p className="text-sm text-[var(--text-secondary)]">
-            Revise seus dados e informe o interstício e a movimentação desejada para iniciar o processo.
+            Revise seus dados e informe os detalhes necessários para iniciar o processo.
           </p>
         </header>
 
@@ -455,15 +591,26 @@ export default function Form() {
               </label>
               <select
                 className={selectClass}
-                value={tipo}
+                value={selectedProcessTypeCode}
                 onChange={e => {
-                  setTipo(e.target.value as ProcessType)
+                  setSelectedProcessTypeCode(e.target.value)
                   setClasseDestino("")
                   setNivelDestino("")
                 }}
+                disabled={loadingProcessTypes}
               >
-                <option value="PROGRESSAO">Progressão</option>
-                <option value="PROMOCAO">Promoção</option>
+                {processTypes.map(processType => {
+                  const label = getProcessTypeLabel(processType)
+
+                  return (
+                    <option
+                      key={processType.idProcessType}
+                      value={processType.code}
+                    >
+                      {label}
+                    </option>
+                  )
+                })}
               </select>
             </div>
 
@@ -506,74 +653,158 @@ export default function Form() {
           <section className="grid md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1 text-sm">
               <label className="font-medium text-[var(--text-primary)]">
-                Início do interstício
+                Número do processo externo (opcional)
               </label>
               <input
-                type="date"
                 className={inputClass}
-                value={intersticioInicio}
-                onChange={e => setIntersticioInicio(e.target.value)}
-              />
-            </div>
-            <div className="flex flex-col gap-1 text-sm">
-              <label className="font-medium text-[var(--text-primary)]">
-                Fim do interstício
-              </label>
-              <input
-                type="date"
-                className={inputClass}
-                value={intersticioFim}
-                onChange={e => setIntersticioFim(e.target.value)}
+                value={externalNumber}
+                onChange={e => setExternalNumber(e.target.value)}
+                maxLength={120}
               />
             </div>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-[var(--text-primary)]">
-              Movimentação na carreira
-            </h2>
+          {isCareerProcess && (
+            <>
+              <section className="grid md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1 text-sm">
+                  <label className="font-medium text-[var(--text-primary)]">
+                    Início do interstício
+                  </label>
+                  <input
+                    type="date"
+                    className={inputClass}
+                    value={intersticioInicio}
+                    onChange={e => setIntersticioInicio(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="flex flex-col gap-1 text-sm">
+                  <label className="font-medium text-[var(--text-primary)]">
+                    Fim do interstício
+                  </label>
+                  <input
+                    type="date"
+                    className={inputClass}
+                    value={intersticioFim}
+                    onChange={e => setIntersticioFim(e.target.value)}
+                    required
+                  />
+                </div>
+              </section>
 
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1 text-sm">
-                <label className="text-[var(--text-primary)]">
-                  Classe / nível de origem
+              <section className="space-y-3">
+                <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+                  Movimentação na carreira
+                </h2>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1 text-sm">
+                    <label className="text-[var(--text-primary)]">
+                      Classe / nível de origem
+                    </label>
+                    <select
+                      className={selectClass}
+                      value={origemCode}
+                      onChange={handleChangeOrigem}
+                      required
+                    >
+                      <option value="">Selecione a origem...</option>
+                      {origemOptions.map(opt => (
+                        <option key={opt.code} value={opt.code}>
+                          {opt.code}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1 text-sm">
+                    <label className="text-[var(--text-primary)]">
+                      Classe / nível de destino
+                    </label>
+                    <select
+                      className={selectClass}
+                      value={classeDestino && nivelDestino ? `${classeDestino}${nivelDestino}` : ""}
+                      onChange={handleChangeDestino}
+                      disabled={!origemCode}
+                      required
+                    >
+                      <option value="">
+                        {origemCode ? "Selecione o destino..." : "Escolha primeiro a origem"}
+                      </option>
+                      {destinoOptions.map(opt => (
+                        <option key={opt.code} value={opt.code}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </section>
+            </>
+          )}
+
+          {isRscProcess && (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+                Dados do RSC
+              </h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1 text-sm">
+                  <label className="font-medium text-[var(--text-primary)]">
+                    Nível pretendido
+                  </label>
+                  <select
+                    className={selectClass}
+                    value={rscTargetLevel}
+                    onChange={e => setRscTargetLevel(e.target.value)}
+                    required
+                  >
+                    <option value="">Selecione...</option>
+                    <option value="RSC_I">RSC I</option>
+                    <option value="RSC_II">RSC II</option>
+                    <option value="RSC_III">RSC III</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1 text-sm">
+                  <label className="font-medium text-[var(--text-primary)]">
+                    Referência SIMEC (opcional)
+                  </label>
+                  <input
+                    className={inputClass}
+                    value={simecReference}
+                    onChange={e => setSimecReference(e.target.value)}
+                    maxLength={120}
+                  />
+                </div>
+              </div>
+            </section>
+          )}
+
+          {isFullProfessorProcess && (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+                Dados da Classe Titular
+              </h2>
+              <div className="max-w-sm flex flex-col gap-1 text-sm">
+                <label className="font-medium text-[var(--text-primary)]">
+                  Modalidade de avaliação
                 </label>
                 <select
                   className={selectClass}
-                  value={origemCode}
-                  onChange={handleChangeOrigem}
+                  value={fullProfessorEvaluationMode}
+                  onChange={e =>
+                    setFullProfessorEvaluationMode(
+                      e.target.value as "MEMORIAL" | "THESIS"
+                    )
+                  }
                 >
-                  <option value="">Selecione a origem...</option>
-                  {origemOptions.map(opt => (
-                    <option key={opt.code} value={opt.code}>
-                      {opt.code}
-                    </option>
-                  ))}
+                  <option value="MEMORIAL">Memorial</option>
+                  <option value="THESIS">Tese acadêmica inédita</option>
                 </select>
               </div>
-
-              <div className="flex flex-col gap-1 text-sm">
-                <label className="text-[var(--text-primary)]">
-                  Classe / nível de destino
-                </label>
-                <select
-                  className={selectClass}
-                  value={classeDestino && nivelDestino ? `${classeDestino}${nivelDestino}` : ""}
-                  onChange={handleChangeDestino}
-                  disabled={!origemCode}
-                >
-                  <option value="">
-                    {origemCode ? "Selecione o destino..." : "Escolha primeiro a origem"}
-                  </option>
-                  {destinoOptions.map(opt => (
-                    <option key={opt.code} value={opt.code}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </section>
+            </section>
+          )}
 
           <div className="flex gap-3">
             <button

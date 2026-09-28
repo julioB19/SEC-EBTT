@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, use } from "react"
 import { useRouter } from "next/navigation"
 import ConfirmModal from "@/components/ui/ConfirmModal"
 
-type Role = "DOCENTE" | "CPPD_MEMBER" | "ADMIN"
+type Role = "DOCENTE" | "CPPD_MEMBER" | "CPPD_CENTRAL" | "ADMIN" | "EXTERNAL_EVALUATOR"
 
 type ApiResponse<T = any> = {
   status: "success" | "error"
@@ -37,10 +37,16 @@ type UserDetail = {
   phone: string | null
   city: string | null
   uf: string | null
-  cpf: string
+  cpf: string | null
   active: boolean
   roles: Role[]
   docenteProfile: DocenteProfile | null
+  externalEvaluatorProfile: null | {
+    idExternalEvaluator: number
+    title: string | null
+    institution: string | null
+    active: boolean
+  }
 }
 
 function inputClass() {
@@ -58,6 +64,8 @@ function onlyDigits(value: string) {
 
 function roleLabel(r: Role) {
   if (r === "CPPD_MEMBER") return "MEMBRO DA CPPD"
+  if (r === "CPPD_CENTRAL") return "CPPD CENTRAL"
+  if (r === "EXTERNAL_EVALUATOR") return "AVALIADOR EXTERNO"
   return r
 }
 
@@ -86,6 +94,7 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
 
   const [roles, setRoles] = useState<Role[]>([])
   const hasDocente = useMemo(() => roles.includes("DOCENTE"), [roles])
+  const hasExternalEvaluator = useMemo(() => roles.includes("EXTERNAL_EVALUATOR"), [roles])
 
   const [siape, setSiape] = useState("")
   const [classLevel, setClassLevel] = useState("")
@@ -100,6 +109,8 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
   const [division, setDivision] = useState("")
   const [roleText, setRoleText] = useState("")
   const [immediateSupervisor, setImmediateSupervisor] = useState("")
+  const [evaluatorTitle, setEvaluatorTitle] = useState("")
+  const [evaluatorInstitution, setEvaluatorInstitution] = useState("")
 
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
 
@@ -117,7 +128,10 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
     setOk(null)
 
     try {
-      const r = await fetch(`/api/admin/usuarios/${userId}`, { method: "GET", credentials: "include" })
+      const r = await fetch(`/api/admin/usuarios/${userId}`, {
+        method: "GET",
+        credentials: "include"
+      })
       const payload = (await r.json().catch(() => null)) as ApiResponse<UserDetail> | null
 
       if (!payload || !r.ok || payload.status === "error" || !payload.data) {
@@ -136,6 +150,8 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
       setCity(u.city ?? "")
       setUf(u.uf ?? "")
       setRoles([...(u.roles ?? [])].sort((a, b) => roleLabel(a).localeCompare(roleLabel(b))) as Role[])
+      setEvaluatorTitle(u.externalEvaluatorProfile?.title ?? "")
+      setEvaluatorInstitution(u.externalEvaluatorProfile?.institution ?? "")
 
       if (u.docenteProfile) {
         setSiape(u.docenteProfile.siape ?? "")
@@ -191,12 +207,13 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
     const payload: any = {
       name,
       email,
-      cpf,
       phone: phone || null,
       city: city || null,
       uf: uf || null,
       roles
     }
+
+    if (cpf.trim()) payload.cpf = cpf
 
     if (hasDocente) {
       payload.docenteProfile = {
@@ -213,6 +230,13 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
         division: division || null,
         role: roleText || null,
         immediateSupervisor: immediateSupervisor || null
+      }
+    }
+
+    if (hasExternalEvaluator) {
+      payload.externalEvaluatorProfile = {
+        title: evaluatorTitle || null,
+        institution: evaluatorInstitution || null
       }
     }
 
@@ -246,18 +270,12 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
 
     const cleanCpf = onlyDigits(cpf)
 
-    if (!cleanCpf) {
-      setInviting(false)
-      setErr("Informe um CPF válido para reenviar o link de redefinição de senha")
-      return
-    }
-
     try {
       const r = await fetch("/api/admin/usuarios/invite", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cpf: cleanCpf })
+        body: JSON.stringify(cleanCpf ? { cpf: cleanCpf } : { email })
       })
 
       const res = (await r.json().catch(() => null)) as ApiResponse<any> | null
@@ -282,7 +300,10 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
     setOk(null)
 
     try {
-      const r = await fetch(`/api/admin/usuarios/${userId}`, { method: "DELETE", credentials: "include" })
+      const r = await fetch(`/api/admin/usuarios/${userId}`, {
+        method: "DELETE",
+        credentials: "include"
+      })
       const res = (await r.json().catch(() => null)) as ApiResponse<any> | null
 
       if (!res || !r.ok || res.status === "error") {
@@ -323,15 +344,9 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
 
         {loading && <p className="text-sm text-[var(--text-secondary)]">Carregando...</p>}
 
-        {err && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {err}
-          </div>
-        )}
+        {err && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{err}</div>}
         {ok && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
-            {ok}
-          </div>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">{ok}</div>
         )}
 
         {!loading && user && (
@@ -343,32 +358,44 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
 
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Nome</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                    Nome
+                  </label>
                   <input className={inputClass()} value={name} onChange={e => setName(e.target.value)} />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Email</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                    Email
+                  </label>
                   <input className={inputClass()} value={email} onChange={e => setEmail(e.target.value)} />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">CPF</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                    CPF
+                  </label>
                   <input className={inputClass()} value={cpf} onChange={e => setCpf(e.target.value)} />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Telefone</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                    Telefone
+                  </label>
                   <input className={inputClass()} value={phone} onChange={e => setPhone(e.target.value)} />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Cidade</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                    Cidade
+                  </label>
                   <input className={inputClass()} value={city} onChange={e => setCity(e.target.value)} />
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">UF</label>
+                  <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                    UF
+                  </label>
                   <input
                     className={inputClass()}
                     value={uf}
@@ -386,7 +413,7 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
                   className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
                                border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition disabled:opacity-60"
                 >
-                  {inviting ? "Enviando link..." : "Redefinir Senha"}
+                  {inviting ? "Enviando link..." : cpf.trim() ? "Redefinir senha" : "Reenviar convite"}
                 </button>
 
                 <button
@@ -410,7 +437,7 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
             <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 space-y-3">
               <h2 className="text-base font-semibold text-[var(--text-primary)]">Tipo de usuário</h2>
 
-              <div className="grid sm:grid-cols-3 gap-3 text-sm">
+              <div className="grid sm:grid-cols-2 gap-3 text-sm">
                 <label className="flex items-center gap-2">
                   <input type="checkbox" checked={roles.includes("ADMIN")} onChange={() => toggleRole("ADMIN")} />
                   ADMIN
@@ -429,8 +456,56 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
                   />
                   MEMBRO DA CPPD
                 </label>
+
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={roles.includes("CPPD_CENTRAL")}
+                    onChange={() => toggleRole("CPPD_CENTRAL")}
+                  />
+                  CPPD CENTRAL
+                </label>
+
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={roles.includes("EXTERNAL_EVALUATOR")}
+                    onChange={() => toggleRole("EXTERNAL_EVALUATOR")}
+                  />
+                  AVALIADOR EXTERNO
+                </label>
               </div>
             </section>
+
+            {hasExternalEvaluator && (
+              <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 space-y-3">
+                <h2 className="text-base font-semibold text-[var(--text-primary)]">Perfil do avaliador externo</h2>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                      Titulação
+                    </label>
+                    <input
+                      className={inputClass()}
+                      value={evaluatorTitle}
+                      onChange={e => setEvaluatorTitle(e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                      Instituição
+                    </label>
+                    <input
+                      className={inputClass()}
+                      value={evaluatorInstitution}
+                      onChange={e => setEvaluatorInstitution(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </section>
+            )}
 
             {hasDocente && (
               <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 space-y-3">
@@ -443,17 +518,23 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
 
                 <div className="grid sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">SIAPE *</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                      SIAPE *
+                    </label>
                     <input className={inputClass()} value={siape} onChange={e => setSiape(e.target.value)} />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Classe/Nível *</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                      Classe/Nível *
+                    </label>
                     <input className={inputClass()} value={classLevel} onChange={e => setClassLevel(e.target.value)} />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Início do interstício *</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                      Início do interstício *
+                    </label>
                     <input
                       className={inputClass()}
                       type="date"
@@ -463,52 +544,88 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Nível de formação *</label>
-                    <input className={inputClass()} value={educationLevel} onChange={e => setEducationLevel(e.target.value)} />
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                      Nível de formação *
+                    </label>
+                    <input
+                      className={inputClass()}
+                      value={educationLevel}
+                      onChange={e => setEducationLevel(e.target.value)}
+                    />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Aperfeiçoamento</label>
-                    <input className={inputClass()} value={improvement} onChange={e => setImprovement(e.target.value)} />
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                      Aperfeiçoamento
+                    </label>
+                    <input
+                      className={inputClass()}
+                      value={improvement}
+                      onChange={e => setImprovement(e.target.value)}
+                    />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Especialização</label>
-                    <input className={inputClass()} value={specialization} onChange={e => setSpecialization(e.target.value)} />
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                      Especialização
+                    </label>
+                    <input
+                      className={inputClass()}
+                      value={specialization}
+                      onChange={e => setSpecialization(e.target.value)}
+                    />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Mestrado</label>
-                    <input className={inputClass()} value={mastersDegree} onChange={e => setMastersDegree(e.target.value)} />
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                      Mestrado
+                    </label>
+                    <input
+                      className={inputClass()}
+                      value={mastersDegree}
+                      onChange={e => setMastersDegree(e.target.value)}
+                    />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Doutorado</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                      Doutorado
+                    </label>
                     <input className={inputClass()} value={doctorate} onChange={e => setDoctorate(e.target.value)} />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Lotação</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                      Lotação
+                    </label>
                     <input className={inputClass()} value={assignment} onChange={e => setAssignment(e.target.value)} />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Departamento</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                      Departamento
+                    </label>
                     <input className={inputClass()} value={department} onChange={e => setDepartment(e.target.value)} />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Divisão</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                      Divisão
+                    </label>
                     <input className={inputClass()} value={division} onChange={e => setDivision(e.target.value)} />
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Cargo/Função</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                      Cargo/Função
+                    </label>
                     <input className={inputClass()} value={roleText} onChange={e => setRoleText(e.target.value)} />
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Chefia imediata</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
+                      Chefia imediata
+                    </label>
                     <input
                       className={inputClass()}
                       value={immediateSupervisor}

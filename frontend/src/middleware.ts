@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-type Role = "DOCENTE" | "CPPD_MEMBER" | "ADMIN"
+type Role = "DOCENTE" | "CPPD_MEMBER" | "CPPD_CENTRAL" | "ADMIN" | "EXTERNAL_EVALUATOR"
 
 function decodeJwtPayload(token: string): any | null {
   try {
@@ -9,7 +9,7 @@ function decodeJwtPayload(token: string): any | null {
     if (parts.length !== 3) return null
 
     const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/")
-    const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, "=")
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=")
     const json = atob(padded)
     return JSON.parse(json)
   } catch {
@@ -70,10 +70,15 @@ export function middleware(req: NextRequest) {
   }
 
   if (pathname.startsWith("/cppd")) {
-    if (!hasRole("CPPD_MEMBER")) return redirectToForbidden(req)
+    const cppdRole = hasRole("CPPD_CENTRAL")
+      ? "CPPD_CENTRAL"
+      : hasRole("CPPD_MEMBER")
+        ? "CPPD_MEMBER"
+        : null
+    if (!cppdRole) return redirectToForbidden(req)
 
-    if (!selectedRole || selectedRole !== "CPPD_MEMBER") {
-      return redirectToEnsureRole(req, "CPPD_MEMBER")
+    if (selectedRole !== "CPPD_MEMBER" && selectedRole !== "CPPD_CENTRAL") {
+      return redirectToEnsureRole(req, cppdRole)
     }
   }
 
@@ -85,14 +90,17 @@ export function middleware(req: NextRequest) {
     }
   }
 
+  if (pathname.startsWith("/avaliador")) {
+    if (!hasRole("EXTERNAL_EVALUATOR")) return redirectToForbidden(req)
+
+    if (!selectedRole || selectedRole !== "EXTERNAL_EVALUATOR") {
+      return redirectToEnsureRole(req, "EXTERNAL_EVALUATOR")
+    }
+  }
+
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: [
-    "/admin/:path*",
-    "/docente/:path*",
-    "/cppd/:path*",
-    "/dashboard/:path*"
-  ]
+  matcher: ["/admin/:path*", "/docente/:path*", "/cppd/:path*", "/dashboard/:path*", "/avaliador/:path*"]
 }

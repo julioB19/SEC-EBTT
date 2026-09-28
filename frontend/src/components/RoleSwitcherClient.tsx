@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import RoleDropdown from "@/components/ui/RoleDropdown"
 
-type Role = "DOCENTE" | "CPPD_MEMBER" | "ADMIN"
+type Role = "DOCENTE" | "CPPD_MEMBER" | "CPPD_CENTRAL" | "ADMIN" | "EXTERNAL_EVALUATOR"
 
 type Props = {
   roles: Role[]
@@ -13,7 +13,9 @@ type Props = {
 const ROLE_LABEL: Record<Role, string> = {
   DOCENTE: "Docente",
   CPPD_MEMBER: "Membro da CPPD",
-  ADMIN: "Administrador"
+  CPPD_CENTRAL: "CPPD Central",
+  ADMIN: "Administrador",
+  EXTERNAL_EVALUATOR: "Avaliador externo"
 }
 
 export default function RoleSwitcherClient({ roles, selectedRole }: Props) {
@@ -24,7 +26,14 @@ export default function RoleSwitcherClient({ roles, selectedRole }: Props) {
   const options = useMemo(
     () =>
       roles
-        .filter(r => r === "DOCENTE" || r === "CPPD_MEMBER" || r === "ADMIN")
+        .filter(
+          r =>
+            r === "DOCENTE" ||
+            r === "CPPD_MEMBER" ||
+            r === "CPPD_CENTRAL" ||
+            r === "ADMIN" ||
+            r === "EXTERNAL_EVALUATOR"
+        )
         .map(r => ({ value: r, label: ROLE_LABEL[r] })),
     [roles]
   )
@@ -54,8 +63,10 @@ export default function RoleSwitcherClient({ roles, selectedRole }: Props) {
 
       if (nextRole === "DOCENTE") {
         window.location.href = "/docente"
-      } else if (nextRole === "CPPD_MEMBER") {
+      } else if (nextRole === "CPPD_MEMBER" || nextRole === "CPPD_CENTRAL") {
         window.location.href = "/cppd"
+      } else if (nextRole === "EXTERNAL_EVALUATOR") {
+        window.location.href = "/avaliador"
       } else {
         window.location.href = "/admin"
       }

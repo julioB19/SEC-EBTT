@@ -1,14 +1,22 @@
-import { RoleName, ClassLevel } from "@prisma/client"
+import { RoleName, ClassLevel, PersonType } from "@prisma/client"
 import { prisma } from "../infra/prismaClient"
+import { hashCpf, protectCpf } from "../util/cpfProtection"
+
+function personTypeForRoles(roles: RoleName[]): PersonType {
+  if (roles.includes(RoleName.EXTERNAL_EVALUATOR)) return PersonType.EXTERNAL_EVALUATOR
+  if (roles.includes(RoleName.CPPD_MEMBER) || roles.includes(RoleName.CPPD_CENTRAL)) return PersonType.CPPD_MEMBER
+  if (roles.includes(RoleName.DOCENTE)) return PersonType.TEACHER
+  return PersonType.OTHER
+}
 
 export interface CreateWithRolesAndDocenteInput {
   name: string
   email: string
-  cpf: string
+  cpf: string | null
   phone: string | null
   city: string | null
   uf: string | null
-  passwordHash: string
+  passwordHash: string | null
   roles: RoleName[]
   docenteProfile?: {
     siape: string
@@ -24,6 +32,10 @@ export interface CreateWithRolesAndDocenteInput {
     division?: string | null
     role?: string | null
     immediateSupervisor?: string | null
+  }
+  externalEvaluatorProfile?: {
+    title?: string | null
+    institution?: string | null
   }
 }
 
@@ -53,15 +65,35 @@ export interface UpdateUserWithRolesAndDocenteInput {
   active?: boolean
   roles?: RoleName[]
   docenteProfile?: UpdateDocenteProfileInput
+  externalEvaluatorProfile?: {
+    title?: string | null
+    institution?: string | null
+  }
 }
 
 export class UserRepository {
   async findByCpf(cpf: string) {
-    return prisma.user.findUnique({
-      where: { cpf },
+    return prisma.user.findFirst({
+      where: {
+        OR: [{ cpfHash: hashCpf(cpf) }, { cpf }]
+      },
       include: {
         roles: { include: { role: true } },
-        docente: true
+        docente: true,
+        externalEvaluator: true,
+        person: true
+      }
+    })
+  }
+
+  async findByEmail(email: string) {
+    return prisma.user.findUnique({
+      where: { email },
+      include: {
+        roles: { include: { role: true } },
+        docente: true,
+        externalEvaluator: true,
+        person: true
       }
     })
   }
@@ -75,7 +107,9 @@ export class UserRepository {
       where: { idUser, deletedDate: null },
       include: {
         roles: { include: { role: true } },
-        docente: true
+        docente: true,
+        externalEvaluator: true,
+        person: true
       }
     })
   }
@@ -85,7 +119,9 @@ export class UserRepository {
       where: { deletedDate: null, active: true },
       include: {
         roles: { include: { role: true } },
-        docente: true
+        docente: true,
+        externalEvaluator: true,
+        person: true
       },
       orderBy: { createdAt: "desc" }
     })
@@ -99,131 +135,246 @@ export class UserRepository {
     })
   }
 
-  async findManyDocentesActive() {
+  async findManyDocentesActive(campusIds: number[] | null = null) {
     return prisma.user.findMany({
       where: {
         deletedDate: null,
         active: true,
-        docente: { isNot: null }
+        docente:
+          campusIds === null
+            ? { isNot: null }
+            : { is: { campusId: { in: campusIds }, deletedDate: null } }
       },
       include: {
         roles: { include: { role: true } },
-        docente: true
+        docente: true,
+        externalEvaluator: true,
+        person: true
       },
       orderBy: { createdAt: "desc" }
     })
   }
 
   async createWithRolesAndDocente(input: CreateWithRolesAndDocenteInput) {
-    const created = await prisma.user.create({
-      data: {
-        name: input.name,
-        email: input.email,
-        cpf: input.cpf,
-        phone: input.phone,
-        city: input.city,
-        uf: input.uf,
-        passwordHash: input.passwordHash,
-        roles: {
-          create: input.roles.map(name => ({
-            role: { connect: { name } }
-          }))
-        },
-        docente: input.docenteProfile
-          ? {
-              create: {
-                siape: input.docenteProfile.siape,
-                classLevel: input.docenteProfile.classLevel,
-                start_interstice: input.docenteProfile.startInterstice,
-                educationLevel: input.docenteProfile.educationLevel,
-                improvement: input.docenteProfile.improvement ?? null,
-                specialization: input.docenteProfile.specialization ?? null,
-                mastersDegree: input.docenteProfile.mastersDegree ?? null,
-                doctorate: input.docenteProfile.doctorate ?? null,
-                assignment: input.docenteProfile.assignment ?? null,
-                department: input.docenteProfile.department ?? null,
-                division: input.docenteProfile.division ?? null,
-                role: input.docenteProfile.role ?? null,
-                immediate_supervisor: input.docenteProfile.immediateSupervisor ?? null
+    return prisma.$transaction(async tx => {
+      const protectedCpf = input.cpf ? protectCpf(input.cpf) : null
+      const person = await tx.person.upsert({
+        where: { email: input.email },
+        update: {
+          name: input.name,
+          phone: input.phone,
+          type: personTypeForRoles(input.roles),
+          active: true,
+          deletedDate: null,
+          ...(protectedCpf
+            ? {
+                cpfEncrypted: protectedCpf.cpfEncrypted,
+                cpfHash: protectedCpf.cpfHash
               }
-            }
-          : undefined
-      },
-      include: {
-        roles: { include: { role: true } },
-        docente: true
-      }
-    })
+            : {})
+        },
+        create: {
+          name: input.name,
+          email: input.email,
+          phone: input.phone,
+          type: personTypeForRoles(input.roles),
+          cpfEncrypted: protectedCpf?.cpfEncrypted ?? null,
+          cpfHash: protectedCpf?.cpfHash ?? null
+        }
+      })
 
-    return created
+      return tx.user.create({
+        data: {
+          name: input.name,
+          email: input.email,
+          cpf: null,
+          cpfEncrypted: protectedCpf?.cpfEncrypted ?? null,
+          cpfHash: protectedCpf?.cpfHash ?? null,
+          phone: input.phone,
+          city: input.city,
+          uf: input.uf,
+          passwordHash: input.passwordHash,
+          person: { connect: { idPerson: person.idPerson } },
+          roles: {
+            create: input.roles.map(name => ({
+              role: { connect: { name } }
+            }))
+          },
+          docente: input.docenteProfile
+            ? {
+                create: {
+                  siape: input.docenteProfile.siape,
+                  classLevel: input.docenteProfile.classLevel,
+                  start_interstice: input.docenteProfile.startInterstice,
+                  educationLevel: input.docenteProfile.educationLevel,
+                  improvement: input.docenteProfile.improvement ?? null,
+                  specialization: input.docenteProfile.specialization ?? null,
+                  mastersDegree: input.docenteProfile.mastersDegree ?? null,
+                  doctorate: input.docenteProfile.doctorate ?? null,
+                  assignment: input.docenteProfile.assignment ?? null,
+                  department: input.docenteProfile.department ?? null,
+                  division: input.docenteProfile.division ?? null,
+                  role: input.docenteProfile.role ?? null,
+                  immediate_supervisor: input.docenteProfile.immediateSupervisor ?? null
+                }
+              }
+            : undefined,
+          externalEvaluator: input.roles.includes(RoleName.EXTERNAL_EVALUATOR)
+            ? {
+                create: {
+                  title: input.externalEvaluatorProfile?.title ?? null,
+                  institution: input.externalEvaluatorProfile?.institution ?? null
+                }
+              }
+            : undefined
+        },
+        include: {
+          roles: { include: { role: true } },
+          docente: true,
+          externalEvaluator: true,
+          person: true
+        }
+      })
+    })
   }
 
   async updateWithRolesAndDocente(userId: number, input: UpdateUserWithRolesAndDocenteInput) {
-    const data: any = {}
+    return prisma.$transaction(async tx => {
+      const current = await tx.user.findUnique({
+        where: { idUser: userId },
+        include: {
+          roles: { include: { role: true } },
+          externalEvaluator: true,
+          person: true
+        }
+      })
+      if (!current) throw new Error("User not found")
 
-    if (input.name !== undefined) data.name = input.name
-    if (input.email !== undefined) data.email = input.email
-    if (input.phone !== undefined) data.phone = input.phone
-    if (input.city !== undefined) data.city = input.city
-    if (input.uf !== undefined) data.uf = input.uf
-    if (input.cpf !== undefined) data.cpf = input.cpf
-    if (input.active !== undefined) data.active = input.active
+      const data: any = {}
 
-    if (input.roles) {
-      data.roles = {
-        deleteMany: {},
-        create: input.roles.map(name => ({
-          role: { connect: { name } }
-        }))
+      if (input.name !== undefined) data.name = input.name
+      if (input.email !== undefined) data.email = input.email
+      if (input.phone !== undefined) data.phone = input.phone
+      if (input.city !== undefined) data.city = input.city
+      if (input.uf !== undefined) data.uf = input.uf
+      const protectedCpf = input.cpf !== undefined ? protectCpf(input.cpf) : null
+      if (protectedCpf) {
+        data.cpf = null
+        data.cpfEncrypted = protectedCpf.cpfEncrypted
+        data.cpfHash = protectedCpf.cpfHash
       }
-    }
+      if (input.active !== undefined) data.active = input.active
 
-    if (input.docenteProfile) {
-      const p = input.docenteProfile
-      const docenteUpdate: any = {}
-      if (p.siape !== undefined) docenteUpdate.siape = p.siape
-      if (p.classLevel !== undefined) docenteUpdate.classLevel = p.classLevel
-      if (p.startInterstice !== undefined) docenteUpdate.start_interstice = p.startInterstice
-      if (p.educationLevel !== undefined) docenteUpdate.educationLevel = p.educationLevel
-      if (p.improvement !== undefined) docenteUpdate.improvement = p.improvement
-      if (p.specialization !== undefined) docenteUpdate.specialization = p.specialization
-      if (p.mastersDegree !== undefined) docenteUpdate.mastersDegree = p.mastersDegree
-      if (p.doctorate !== undefined) docenteUpdate.doctorate = p.doctorate
-      if (p.assignment !== undefined) docenteUpdate.assignment = p.assignment
-      if (p.department !== undefined) docenteUpdate.department = p.department
-      if (p.division !== undefined) docenteUpdate.division = p.division
-      if (p.role !== undefined) docenteUpdate.role = p.role
-      if (p.immediateSupervisor !== undefined) docenteUpdate.immediate_supervisor = p.immediateSupervisor
+      const effectiveRoles = input.roles ?? current.roles.map(item => item.role.name)
+      const personData = {
+        name: input.name ?? current.name,
+        email: input.email ?? current.email,
+        phone: input.phone !== undefined ? input.phone : current.phone,
+        type: personTypeForRoles(effectiveRoles),
+        active: input.active ?? current.active,
+        deletedDate: null,
+        ...(protectedCpf
+          ? {
+              cpfEncrypted: protectedCpf.cpfEncrypted,
+              cpfHash: protectedCpf.cpfHash
+            }
+          : {})
+      }
 
-      data.docente = {
-        upsert: {
-          update: docenteUpdate,
-          create: {
-            siape: p.siape!,
-            classLevel: p.classLevel!,
-            start_interstice: p.startInterstice!,
-            educationLevel: p.educationLevel!,
-            improvement: p.improvement ?? null,
-            specialization: p.specialization ?? null,
-            mastersDegree: p.mastersDegree ?? null,
-            doctorate: p.doctorate ?? null,
-            assignment: p.assignment ?? null,
-            department: p.department ?? null,
-            division: p.division ?? null,
-            role: p.role ?? null,
-            immediate_supervisor: p.immediateSupervisor ?? null
+      if (current.personId) {
+        await tx.person.update({
+          where: { idPerson: current.personId },
+          data: personData
+        })
+      } else {
+        const person = await tx.person.upsert({
+          where: { email: personData.email },
+          update: personData,
+          create: personData
+        })
+        data.person = { connect: { idPerson: person.idPerson } }
+      }
+
+      if (input.roles) {
+        data.roles = {
+          deleteMany: {},
+          create: input.roles.map(name => ({
+            role: { connect: { name } }
+          }))
+        }
+      }
+
+      if (input.docenteProfile) {
+        const p = input.docenteProfile
+        const docenteUpdate: any = {}
+        if (p.siape !== undefined) docenteUpdate.siape = p.siape
+        if (p.classLevel !== undefined) docenteUpdate.classLevel = p.classLevel
+        if (p.startInterstice !== undefined) docenteUpdate.start_interstice = p.startInterstice
+        if (p.educationLevel !== undefined) docenteUpdate.educationLevel = p.educationLevel
+        if (p.improvement !== undefined) docenteUpdate.improvement = p.improvement
+        if (p.specialization !== undefined) docenteUpdate.specialization = p.specialization
+        if (p.mastersDegree !== undefined) docenteUpdate.mastersDegree = p.mastersDegree
+        if (p.doctorate !== undefined) docenteUpdate.doctorate = p.doctorate
+        if (p.assignment !== undefined) docenteUpdate.assignment = p.assignment
+        if (p.department !== undefined) docenteUpdate.department = p.department
+        if (p.division !== undefined) docenteUpdate.division = p.division
+        if (p.role !== undefined) docenteUpdate.role = p.role
+        if (p.immediateSupervisor !== undefined) docenteUpdate.immediate_supervisor = p.immediateSupervisor
+
+        data.docente = {
+          upsert: {
+            update: docenteUpdate,
+            create: {
+              siape: p.siape!,
+              classLevel: p.classLevel!,
+              start_interstice: p.startInterstice!,
+              educationLevel: p.educationLevel!,
+              improvement: p.improvement ?? null,
+              specialization: p.specialization ?? null,
+              mastersDegree: p.mastersDegree ?? null,
+              doctorate: p.doctorate ?? null,
+              assignment: p.assignment ?? null,
+              department: p.department ?? null,
+              division: p.division ?? null,
+              role: p.role ?? null,
+              immediate_supervisor: p.immediateSupervisor ?? null
+            }
           }
         }
       }
-    }
 
-    return prisma.user.update({
-      where: { idUser: userId },
-      data,
-      include: {
-        roles: { include: { role: true } },
-        docente: true
+      const hasExternalEvaluatorRole = effectiveRoles.includes(RoleName.EXTERNAL_EVALUATOR)
+      if (hasExternalEvaluatorRole) {
+        data.externalEvaluator = {
+          upsert: {
+            update: {
+              title: input.externalEvaluatorProfile?.title,
+              institution: input.externalEvaluatorProfile?.institution,
+              active: true,
+              deletedDate: null
+            },
+            create: {
+              title: input.externalEvaluatorProfile?.title ?? null,
+              institution: input.externalEvaluatorProfile?.institution ?? null
+            }
+          }
+        }
+      } else if (input.roles && current.externalEvaluator) {
+        data.externalEvaluator = {
+          update: { active: false, deletedDate: new Date() }
+        }
       }
+
+      return tx.user.update({
+        where: { idUser: userId },
+        data,
+        include: {
+          roles: { include: { role: true } },
+          docente: true,
+          externalEvaluator: true,
+          person: true
+        }
+      })
     })
   }
 
@@ -233,7 +384,9 @@ export class UserRepository {
       data: { active: false, deletedDate: new Date() },
       include: {
         roles: { include: { role: true } },
-        docente: true
+        docente: true,
+        externalEvaluator: true,
+        person: true
       }
     })
   }

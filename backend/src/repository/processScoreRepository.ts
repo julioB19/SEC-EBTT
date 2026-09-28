@@ -146,7 +146,7 @@ export class ProcessScoreRepository {
       }
     })
 
-    if (!process) {
+    if (!process?.scoringTableId) {
       return []
     }
 

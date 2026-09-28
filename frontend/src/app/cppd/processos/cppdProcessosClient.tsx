@@ -8,11 +8,17 @@ type ViewMode = "pending" | "evaluated"
 
 type ProcessStatus =
   | "DRAFT"
+  | "DOCUMENTATION_PENDING"
   | "SUBMITTED"
+  | "AWAITING_EVALUATOR_ACCEPTANCE"
+  | "AWAITING_ORDINANCE"
   | "UNDER_REVIEW"
+  | "IN_EVALUATION"
+  | "AWAITING_GECC"
   | "APPROVED"
   | "REJECTED"
   | "RETURNED"
+  | "FINALIZED"
 
 type ProcessType = "PROGRESSAO" | "PROMOCAO"
 
@@ -36,6 +42,12 @@ interface ListProcessDto {
     name: string
     minRequiredPoints: string | null
   }
+  processTypeConfig: {
+    name: string
+    category: string
+    requiresCommittee: boolean
+    requiresScoring: boolean
+  } | null
 }
 
 interface ApiResponse<T = any> {
@@ -47,10 +59,16 @@ interface ApiResponse<T = any> {
 
 function statusLabel(s: ProcessStatus) {
   if (s === "SUBMITTED") return "Enviado"
+  if (s === "DOCUMENTATION_PENDING") return "Documentação pendente"
+  if (s === "AWAITING_EVALUATOR_ACCEPTANCE") return "Aguardando avaliadores"
+  if (s === "AWAITING_ORDINANCE") return "Aguardando portaria"
   if (s === "UNDER_REVIEW") return "Em análise"
+  if (s === "IN_EVALUATION") return "Em avaliação"
+  if (s === "AWAITING_GECC") return "Aguardando GECC"
   if (s === "APPROVED") return "Deferido"
   if (s === "REJECTED") return "Indeferido"
   if (s === "RETURNED") return "Devolvido"
+  if (s === "FINALIZED") return "Finalizado"
   return s
 }
 
@@ -70,7 +88,9 @@ export default function CppdProcessosClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const initialView = (searchParams.get("view") === "evaluated" ? "evaluated" : "pending") as ViewMode
+  const initialView = (
+    searchParams.get("view") === "evaluated" ? "evaluated" : "pending"
+  ) as ViewMode
   const [view, setView] = useState<ViewMode>(initialView)
 
   const [loading, setLoading] = useState(true)
@@ -90,10 +110,12 @@ export default function CppdProcessosClient() {
     try {
       const res = await fetch(`/api/cppd/processos?view=${mode}`, {
         method: "GET",
-        credentials: "include"
+        credentials: "include",
       })
 
-      const payload = (await res.json().catch(() => null)) as ApiResponse<ListProcessDto[]> | null
+      const payload = (await res.json().catch(() => null)) as ApiResponse<
+        ListProcessDto[]
+      > | null
 
       if (!payload || !res.ok || payload.status === "error" || !payload.data) {
         setItems([])
@@ -123,10 +145,14 @@ export default function CppdProcessosClient() {
       <div className="px-4 md:px-6 lg:px-8 py-6 space-y-4">
         <header className="flex flex-wrap gap-3 justify-between items-center">
           <div>
-            <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Processos</h1>
+            <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
+              Processos
+            </h1>
             <p className="text-sm text-[var(--text-secondary)]">
-              {view === "pending" ? "Pendentes de avaliação" : "Avaliados (com parecer)"} •{" "}
-              <span className="font-semibold">{count}</span>
+              {view === "pending"
+                ? "Pendentes de avaliação"
+                : "Avaliados (com parecer)"}{" "}
+              • <span className="font-semibold">{count}</span>
             </p>
           </div>
 
@@ -165,13 +191,19 @@ export default function CppdProcessosClient() {
           </div>
         </header>
 
-        {error && <p className="text-xs text-[var(--state-danger-text)] whitespace-pre-wrap">{error}</p>}
+        {error && (
+          <p className="text-xs text-[var(--state-danger-text)] whitespace-pre-wrap">
+            {error}
+          </p>
+        )}
 
         {loading ? (
           <p className="text-sm text-[var(--text-secondary)]">Carregando...</p>
         ) : items.length === 0 ? (
           <p className="text-sm text-[var(--text-secondary)]">
-            {view === "pending" ? "Nenhum processo pendente." : "Nenhum processo avaliado encontrado."}
+            {view === "pending"
+              ? "Nenhum processo pendente."
+              : "Nenhum processo avaliado encontrado."}
           </p>
         ) : (
           <section className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl shadow-sm overflow-hidden">
@@ -190,9 +222,14 @@ export default function CppdProcessosClient() {
                 </thead>
 
                 <tbody>
-                  {items.map(p => (
-                    <tr key={p.idProcess} className="border-t border-[var(--border-subtle)]">
-                      <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">#{p.idProcess}</td>
+                  {items.map((p) => (
+                    <tr
+                      key={p.idProcess}
+                      className="border-t border-[var(--border-subtle)]"
+                    >
+                      <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">
+                        #{p.idProcess}
+                      </td>
 
                       <td className="px-4 py-3 text-[var(--text-primary)]">
                         {p.user?.name ?? "—"}
@@ -204,18 +241,47 @@ export default function CppdProcessosClient() {
                         ) : null}
                       </td>
 
-                      <td className="px-4 py-3 text-[var(--text-primary)]">{typeLabel(p.type)}</td>
+                      <td className="px-4 py-3 text-[var(--text-primary)]">
+                        {p.processTypeConfig?.name ?? typeLabel(p.type)}
+                      </td>
 
-                      <td className="px-4 py-3 text-[var(--text-primary)]">{statusLabel(p.status)}</td>
+                      <td className="px-4 py-3 text-[var(--text-primary)]">
+                        {statusLabel(p.status)}
+                      </td>
 
-                      <td className="px-4 py-3 text-[var(--text-primary)]">{p.table?.name ?? "—"}</td>
+                      <td className="px-4 py-3 text-[var(--text-primary)]">
+                        {p.table?.name ?? "—"}
+                      </td>
 
-                      <td className="px-4 py-3 text-[var(--text-primary)]">{formatDate(p.updatedAt)}</td>
+                      <td className="px-4 py-3 text-[var(--text-primary)]">
+                        {formatDate(p.updatedAt)}
+                      </td>
 
                       <td className="px-4 py-3 text-right">
-                        {view === "pending" ? (
+                        {view === "pending" && p.status === "AWAITING_GECC" ? (
                           <Link
-                            href={`/cppd/processos/${p.idProcess}/avaliacao`}
+                            href={`/cppd/processos/${p.idProcess}/gecc`}
+                            className="inline-flex items-center rounded-md px-4 py-2 text-[11px] font-semibold bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover-bg)] transition"
+                          >
+                            Organizar GECC
+                          </Link>
+                        ) : view === "pending" &&
+                          p.processTypeConfig?.requiresCommittee ? (
+                          <Link
+                            href={`/cppd/processos/${p.idProcess}/comissao`}
+                            className="inline-flex items-center rounded-full px-4 py-2 text-[11px] font-semibold
+                                      bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
+                                      hover:bg-[var(--btn-primary-hover-bg)] transition"
+                          >
+                            Comissão
+                          </Link>
+                        ) : view === "pending" ? (
+                          <Link
+                            href={
+                              p.processTypeConfig?.requiresScoring === false
+                                ? `/cppd/processos/${p.idProcess}/analise`
+                                : `/cppd/processos/${p.idProcess}/avaliacao`
+                            }
                             className="inline-flex items-center rounded-full px-4 py-2 text-[11px] font-semibold
                                       bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                                       hover:bg-[var(--btn-primary-hover-bg)] transition"

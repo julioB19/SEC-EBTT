@@ -152,6 +152,13 @@ export class ProcessScoreService {
     private readonly nodeScoreRepo: ProcessNodeScoreRepository
   ) {}
 
+  private requireScoringTableId(process: { scoringTableId: number | null }) {
+    if (!process.scoringTableId) {
+      throw new BusinessRuleError("Este tipo de processo não utiliza tabela de pontuação.")
+    }
+    return process.scoringTableId
+  }
+
   async listarEstruturaPontuacao(processId: number, userId: number) {
     const process = await this.processRepo.findById(processId)
     if (!process || process.deletedDate) {
@@ -162,7 +169,7 @@ export class ProcessScoreService {
       throw new NotFoundError("Processo não encontrado")
     }
 
-    const tableId = process.scoringTableId
+    const tableId = this.requireScoringTableId(process)
 
     const [nodes, items, scores, nodeScores] = await Promise.all([
       this.tableRepo.findNodesByTableId(tableId) as Promise<RepoNode[]>,
@@ -257,9 +264,11 @@ export class ProcessScoreService {
       throw new NotFoundError("Processo não encontrado")
     }
 
+    const scoringTableId = this.requireScoringTableId(careerProcess)
+
     const [scores, items] = await Promise.all([
       this.scoreRepo.listByProcess(processId) as Promise<RepoScore[]>,
-      this.tableRepo.findItemsByTableId(careerProcess.scoringTableId) as Promise<RepoItem[]>
+      this.tableRepo.findItemsByTableId(scoringTableId) as Promise<RepoItem[]>
     ])
 
     const quantityByItemId = new Map<number, number>()
@@ -341,9 +350,11 @@ export class ProcessScoreService {
       throw new NotFoundError("Processo não encontrado")
     }
 
+    const scoringTableId = this.requireScoringTableId(careerProcess)
+
     const [nodes, items, scores] = await Promise.all([
-      this.tableRepo.findNodesByTableId(careerProcess.scoringTableId) as Promise<RepoNode[]>,
-      this.tableRepo.findItemsByTableId(careerProcess.scoringTableId) as Promise<RepoItem[]>,
+      this.tableRepo.findNodesByTableId(scoringTableId) as Promise<RepoNode[]>,
+      this.tableRepo.findItemsByTableId(scoringTableId) as Promise<RepoItem[]>,
       this.scoreRepo.listByProcess(processId) as Promise<RepoScore[]>
     ])
 
@@ -790,7 +801,7 @@ export class ProcessScoreService {
       throw new NotFoundError("Processo não encontrado")
     }
 
-    const tableId = process.scoringTableId
+    const tableId = this.requireScoringTableId(process)
 
     const [nodes, items, scores] = await Promise.all([
       this.tableRepo.findNodesByTableId(tableId) as Promise<RepoNode[]>,

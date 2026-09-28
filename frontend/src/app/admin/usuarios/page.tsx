@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 
-type Role = "DOCENTE" | "CPPD_MEMBER" | "ADMIN"
+type Role = "DOCENTE" | "CPPD_MEMBER" | "CPPD_CENTRAL" | "ADMIN" | "EXTERNAL_EVALUATOR"
 
 type ApiResponse<T = any> = {
   status: "success" | "error"
@@ -16,7 +16,7 @@ type UserRow = {
   idUser: number
   name: string
   email: string
-  cpf: string
+  cpf: string | null
   active: boolean
   roles: Role[]
   docenteProfile: null | { siape: string }
@@ -24,12 +24,16 @@ type UserRow = {
 
 function roleLabel(role: Role) {
   if (role === "CPPD_MEMBER") return "MEMBRO DA CPPD"
+  if (role === "CPPD_CENTRAL") return "CPPD CENTRAL"
+  if (role === "EXTERNAL_EVALUATOR") return "AVALIADOR EXTERNO"
   return role
 }
 
 function badge(role: Role) {
   if (role === "ADMIN") return "bg-amber-50 text-amber-700 border-amber-100"
   if (role === "CPPD_MEMBER") return "bg-sky-50 text-sky-700 border-sky-100"
+  if (role === "CPPD_CENTRAL") return "bg-cyan-50 text-cyan-800 border-cyan-100"
+  if (role === "EXTERNAL_EVALUATOR") return "bg-violet-50 text-violet-700 border-violet-100"
   return "bg-emerald-50 text-emerald-700 border-emerald-100"
 }
 
@@ -61,7 +65,10 @@ export default function AdminUsuariosPage() {
     setErr(null)
 
     try {
-      const r = await fetch("/api/admin/usuarios", { method: "GET", credentials: "include" })
+      const r = await fetch("/api/admin/usuarios", {
+        method: "GET",
+        credentials: "include"
+      })
       const payload = (await r.json().catch(() => null)) as ApiResponse<UserRow[]> | null
 
       if (!payload || !r.ok || payload.status === "error" || !payload.data) {
@@ -89,9 +96,7 @@ export default function AdminUsuariosPage() {
         {/* HEADER */}
         <header className="space-y-3">
           {/* TÍTULO */}
-          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">
-            Usuários
-          </h1>
+          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Usuários</h1>
 
           {/* AÇÕES */}
           <div className="flex items-center justify-between">
@@ -115,11 +120,7 @@ export default function AdminUsuariosPage() {
           </div>
         </header>
 
-        {err && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {err}
-          </div>
-        )}
+        {err && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{err}</div>}
 
         <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4 space-y-3">
           <div className="grid sm:grid-cols-3 gap-3">
@@ -139,6 +140,8 @@ export default function AdminUsuariosPage() {
               <option value="ADMIN">ADMIN</option>
               <option value="DOCENTE">DOCENTE</option>
               <option value="CPPD_MEMBER">MEMBRO DA CPPD</option>
+              <option value="CPPD_CENTRAL">CPPD CENTRAL</option>
+              <option value="EXTERNAL_EVALUATOR">AVALIADOR EXTERNO</option>
             </select>
 
             <button
@@ -172,7 +175,7 @@ export default function AdminUsuariosPage() {
                   <tr key={u.idUser} className="border-t border-[var(--border-subtle)]">
                     <td className="px-4 py-3">{u.name}</td>
                     <td className="px-4 py-3">{u.email}</td>
-                    <td className="px-4 py-3">{u.cpf}</td>
+                    <td className="px-4 py-3">{u.cpf || "Pendente"}</td>
                     <td className="px-4 py-3">{u.docenteProfile?.siape ?? "—"}</td>
 
                     <td className="px-4 py-3">

@@ -10,7 +10,7 @@ export default function DocentePage() {
               Módulo do Docente
             </h1>
             <p className="text-sm text-[var(--text-secondary)]">
-              Gerencie seus processos de progressão e promoção.
+              Gerencie seus processos de carreira, RSC e Classe Titular.
             </p>
           </div>
         </header>
@@ -22,7 +22,7 @@ export default function DocentePage() {
                           rounded-2xl shadow-sm p-6 space-y-2">
             <p className="text-[var(--text-primary)]">
               Bem-vindo ao módulo do Docente! Aqui você pode abrir novos processos
-              de progressão/promoção e acompanhar o andamento dos processos em andamento.
+              e acompanhar cada etapa das solicitações em andamento.
             </p>
           </div>
 
@@ -53,7 +53,7 @@ export default function DocentePage() {
                 Abrir novo processo
               </h2>
               <p className="text-sm text-[var(--text-secondary)] mt-1">
-                Inicie um novo processo de progressão ou promoção.
+                Inicie uma nova solicitação usando o tipo adequado.
               </p>
             </a>
 

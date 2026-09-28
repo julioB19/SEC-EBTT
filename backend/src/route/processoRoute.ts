@@ -1,34 +1,51 @@
-import { Router } from "express"
-import { ProcessoController } from "../controller/processoController"
-import { ProcessoService } from "../service/processoService"
-import { ProcessRepository } from "../repository/processoRepository"
-import { ScoringTableRepository } from "../repository/scoringTableRepository"
-import { UserRepository } from "../repository/userRepository"
+import { Router } from "express";
+import { ProcessoController } from "../controller/processoController";
+import { ProcessoService } from "../service/processoService";
+import { ProcessRepository } from "../repository/processoRepository";
+import { ScoringTableRepository } from "../repository/scoringTableRepository";
+import { UserRepository } from "../repository/userRepository";
 
 export function processoRoute() {
-  const router = Router()
+  const router = Router();
 
   const controller = new ProcessoController(
     new ProcessoService(
       new ProcessRepository(),
       new ScoringTableRepository(),
-      new UserRepository()
-    )
-  )
+      new UserRepository(),
+    ),
+  );
 
-  router.post("/processos/abrir", controller.abrirProcesso)
+  router.post("/processos/abrir", controller.abrirProcesso);
 
-  router.get("/processos", controller.listarProcessos)
+  router.get("/processos", controller.listarProcessos);
 
-  router.get("/processos/:id", controller.obterProcesso)
+  router.get("/processos/tipos", controller.listarTiposProcesso);
 
-  router.patch("/processos/:id", controller.editarProcesso)
+  router.get("/processos/:id", controller.obterProcesso);
 
-  router.delete("/processos/:id", controller.excluirProcesso)
+  router.patch("/processos/:id", controller.editarProcesso);
 
-  router.post("/processos/requerimento/:id", controller.gerarRequerimento)
+  router.delete("/processos/:id", controller.excluirProcesso);
 
-  router.post("/processos/:id/enviar", controller.enviarProcesso)
+  router.post("/processos/requerimento/:id", controller.gerarRequerimento);
 
-  return router
+  router.post("/processos/:id/enviar", controller.enviarProcesso);
+
+  router.post(
+    "/processos/:id/documentos/:kind",
+    controller.anexarDocumentoEspecifico,
+  );
+
+  router.post(
+    "/processos/:id/documentos-configurados/:requirementCode",
+    controller.anexarDocumentoConfigurado,
+  );
+
+  router.delete(
+    "/processos/:id/documentos-configurados/:documentId",
+    controller.removerDocumentoConfigurado,
+  );
+
+  return router;
 }

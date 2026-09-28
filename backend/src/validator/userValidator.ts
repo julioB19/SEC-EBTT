@@ -35,35 +35,61 @@ const docenteProfileSchema = Joi.object({
   immediateSupervisor: Joi.string().trim().optional().allow(null)
 })
 
+const externalEvaluatorProfileSchema = Joi.object({
+  title: Joi.string().trim().max(120).allow(null, "").optional(),
+  institution: Joi.string().trim().max(180).allow(null, "").optional()
+})
+
 export const createUserSchema = Joi.object({
   name: Joi.string().trim().required(),
   email: Joi.string().email().required(),
-  cpf: Joi.string()
-    .trim()
-    .custom((value, helpers) => {
-      const digits = onlyDigits(value)
-      if (!cpfValidator.isValid(digits)) return helpers.error("any.invalid")
-      return digits
-    })
-    .messages({ "any.invalid": "CPF inválido" })
-    .required(),
+  cpf: Joi.alternatives()
+    .try(
+      Joi.string()
+        .trim()
+        .custom((value, helpers) => {
+          const digits = onlyDigits(value)
+          if (!cpfValidator.isValid(digits)) return helpers.error("any.invalid")
+          return digits
+        })
+        .messages({ "any.invalid": "CPF inválido" }),
+      Joi.valid(null, "")
+    )
+    .optional(),
   phone: Joi.string()
     .trim()
     .custom(validatePhone)
     .messages({ "any.invalid": "Telefone inválido (use 10 ou 11 dígitos)" })
-    .required(),
+    .allow(null, "")
+    .optional(),
   city: Joi.string().max(100).allow(null, "").optional(),
   uf: Joi.string().length(2).uppercase().allow(null, "").optional(),
-  password: Joi.string().min(8).required(),
+  password: Joi.string().min(8).allow(null, "").optional(),
   roles: Joi.array()
-    .items(Joi.string().valid(RoleName.ADMIN, RoleName.CPPD_MEMBER, RoleName.DOCENTE))
+    .items(Joi.string().valid(RoleName.ADMIN, RoleName.CPPD_MEMBER, RoleName.CPPD_CENTRAL, RoleName.DOCENTE, RoleName.EXTERNAL_EVALUATOR))
     .min(1)
     .required(),
   docenteProfile: Joi.when("roles", {
     is: Joi.array().items(Joi.valid(RoleName.DOCENTE)).has(RoleName.DOCENTE),
     then: docenteProfileSchema.required(),
     otherwise: docenteProfileSchema.optional()
-  })
+  }),
+  externalEvaluatorProfile: externalEvaluatorProfileSchema.optional()
+}).custom((value, helpers) => {
+  const roles = Array.isArray(value.roles) ? value.roles : []
+  const externalOnly = roles.length === 1 && roles.includes(RoleName.EXTERNAL_EVALUATOR)
+
+  if (!externalOnly && !value.cpf) {
+    return helpers.message({
+      custom: "CPF é obrigatório para este tipo de usuário"
+    })
+  }
+  if (!externalOnly && !value.password) {
+    return helpers.message({
+      custom: "Senha provisória é obrigatória para este tipo de usuário"
+    })
+  }
+  return value
 })
 
 export const loginSchema = Joi.object({
@@ -85,7 +111,9 @@ export const refreshTokenSchema = Joi.object({
 
 export const selectRoleSchema = Joi.object({
   refreshToken: Joi.string().trim().required(),
-  role: Joi.string().valid(RoleName.DOCENTE, RoleName.CPPD_MEMBER, RoleName.ADMIN).required()
+  role: Joi.string()
+    .valid(RoleName.DOCENTE, RoleName.CPPD_MEMBER, RoleName.CPPD_CENTRAL, RoleName.ADMIN, RoleName.EXTERNAL_EVALUATOR)
+    .required()
 })
 
 export const logoutSchema = Joi.object({
@@ -134,9 +162,10 @@ export const updateUserSchema = Joi.object({
   uf: Joi.string().length(2).uppercase().allow(null, "").optional(),
   active: Joi.boolean().optional(),
   roles: Joi.array()
-    .items(Joi.string().valid(RoleName.ADMIN, RoleName.CPPD_MEMBER, RoleName.DOCENTE))
+    .items(Joi.string().valid(RoleName.ADMIN, RoleName.CPPD_MEMBER, RoleName.CPPD_CENTRAL, RoleName.DOCENTE, RoleName.EXTERNAL_EVALUATOR))
     .optional(),
-  docenteProfile: updateDocenteSchema.optional()
+  docenteProfile: updateDocenteSchema.optional(),
+  externalEvaluatorProfile: externalEvaluatorProfileSchema.optional()
 })
 
 export const userIdParamSchema = Joi.object({
@@ -212,11 +241,27 @@ export const updateDocenteByCppdSchema = Joi.object({
 
 export const setUserRolesSchema = Joi.object({
   roles: Joi.array()
-    .items(Joi.string().valid(RoleName.ADMIN, RoleName.CPPD_MEMBER, RoleName.DOCENTE))
+    .items(Joi.string().valid(RoleName.ADMIN, RoleName.CPPD_MEMBER, RoleName.CPPD_CENTRAL, RoleName.DOCENTE, RoleName.EXTERNAL_EVALUATOR))
     .min(1)
     .required()
 })
 
 export const inviteFirstAccessSchema = Joi.object({
-  cpf: Joi.string().required()
+  cpf: Joi.string().trim().optional(),
+  email: Joi.string().email().optional()
+}).or("cpf", "email")
+
+export const confirmInvitationSchema = Joi.object({
+  email: Joi.string().email().required(),
+  code: Joi.string().min(16).max(200).required(),
+  cpf: Joi.string()
+    .trim()
+    .custom((value, helpers) => {
+      const digits = onlyDigits(value)
+      if (!cpfValidator.isValid(digits)) return helpers.error("any.invalid")
+      return digits
+    })
+    .messages({ "any.invalid": "CPF inválido" })
+    .required(),
+  newPassword: Joi.string().min(8).max(100).required()
 })

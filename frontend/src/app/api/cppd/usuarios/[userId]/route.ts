@@ -109,7 +109,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ userId: st
     return NextResponse.json(body, { status: 400 })
   }
 
-  const url = `${b.backendUrl}/users/${userId}`
+  const url = `${b.backendUrl}/docentes/${userId}/cppd`
 
   const r = await safeFetch(url, {
     method: "GET",

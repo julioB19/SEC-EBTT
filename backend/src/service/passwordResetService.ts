@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs"
+import { randomBytes } from "crypto"
 import { sendMail } from "../util/mailer"
 import { PasswordResetRepository } from "../repository/passwordResetRepository"
 
@@ -39,7 +40,7 @@ export class PasswordResetService {
 
     await this.repository.invalidateActiveCodes(userId, new Date())
 
-    const code = generateNumericCode(codeLen)
+    const code = context === "INVITE" ? randomBytes(32).toString("base64url") : generateNumericCode(codeLen)
     const codeHash = await bcrypt.hash(code, 10)
     const expiresAt = new Date(Date.now() + ttlMin * 60 * 1000)
 
@@ -68,10 +69,20 @@ export class PasswordResetService {
     })
   }
 
-  private async sendInviteEmail(input: { to: string; name?: string | null; cpf: string; code: string; ttlMin: number }) {
+  private async sendInviteEmail(input: {
+    to: string
+    name?: string | null
+    cpf?: string | null
+    code: string
+    ttlMin: number
+  }) {
     const appUrl = getAppUrl()
-    const qs = `cpf=${encodeURIComponent(input.cpf)}&code=${encodeURIComponent(input.code)}`
-    const link = appUrl ? `${appUrl}/reset-password?${qs}` : ""
+    const invitationByEmail = !input.cpf
+    const qs = invitationByEmail
+      ? `email=${encodeURIComponent(input.to)}&code=${encodeURIComponent(input.code)}`
+      : `cpf=${encodeURIComponent(input.cpf!)}&code=${encodeURIComponent(input.code)}`
+    const page = invitationByEmail ? "accept-invitation" : "reset-password"
+    const link = appUrl ? `${appUrl}/${page}?${qs}` : ""
 
     const subject = "Acesso ao sistema: defina sua senha"
     const hours = Math.round((input.ttlMin / 60) * 10) / 10
@@ -110,6 +121,11 @@ export class PasswordResetService {
 
     const user = await this.repository.findUserByCpf(cleanCpf)
 
+    if (!user) {
+      if (context === "RESET") return
+      throw new Error("Usuário não encontrado")
+    }
+
     if (context === "RESET") {
       if (!user || user.deletedDate || !user.active) return
     }
@@ -119,14 +135,30 @@ export class PasswordResetService {
       if (user.deletedDate || !user.active) throw new Error("Usuário inativo")
     }
 
-    const { code, ttlMin } = await this.createResetCode(user!.idUser, context)
+    if (!user.email) {
+      if (context === "RESET") return
+      throw new Error("Usuário sem e-mail cadastrado")
+    }
+
+    const { code, ttlMin } = await this.createResetCode(user.idUser, context)
 
     if (context === "RESET") {
-      await this.sendResetEmail({ to: user!.email, name: user!.name, code, ttlMin })
+      await this.sendResetEmail({
+        to: user.email,
+        name: user.name,
+        code,
+        ttlMin
+      })
       return
     }
 
-    await this.sendInviteEmail({ to: user!.email, name: user!.name, cpf: user!.cpf, code, ttlMin })
+    await this.sendInviteEmail({
+      to: user.email,
+      name: user.name,
+      cpf: user.cpf ?? cleanCpf,
+      code,
+      ttlMin
+    })
   }
 
   async requestReset(cpf: string): Promise<void> {
@@ -135,6 +167,25 @@ export class PasswordResetService {
 
   async inviteFirstAccessByCpf(cpf: string): Promise<void> {
     await this.issueCodeForCpf(cpf, "INVITE")
+  }
+
+  async inviteFirstAccessByEmail(email: string): Promise<void> {
+    const normalizedEmail = String(email || "")
+      .trim()
+      .toLowerCase()
+    const user = await this.repository.findUserByEmail(normalizedEmail)
+
+    if (!user) throw new Error("Usuário não encontrado")
+    if (user.deletedDate || !user.active) throw new Error("Usuário inativo")
+
+    const { code, ttlMin } = await this.createResetCode(user.idUser, "INVITE")
+    await this.sendInviteEmail({
+      to: user.email,
+      name: user.name,
+      cpf: user.cpf,
+      code,
+      ttlMin
+    })
   }
 
   async confirmReset(cpf: string, code: string, newPassword: string): Promise<void> {
@@ -155,11 +206,44 @@ export class PasswordResetService {
 
     const passwordHash = await bcrypt.hash(newPassword, 10)
 
-    await this.repository.updatePasswordAndUseCode(
-      user.idUser,
-      passwordHash,
-      record.idPasswordResetCode,
-      new Date()
-    )
+    await this.repository.updatePasswordAndUseCode(user.idUser, passwordHash, record.idPasswordResetCode, new Date())
+  }
+
+  async confirmInvitation(email: string, code: string, cpf: string, newPassword: string): Promise<void> {
+    const normalizedEmail = String(email || "")
+      .trim()
+      .toLowerCase()
+    const cleanCpf = onlyDigits(cpf)
+    const user = await this.repository.findUserByEmail(normalizedEmail)
+
+    if (!user || user.deletedDate || !user.active) {
+      throw new Error("Convite inválido ou expirado")
+    }
+    if (user.cpf && user.cpf !== cleanCpf) {
+      throw new Error("O CPF informado não corresponde ao cadastro")
+    }
+
+    const record = await this.repository.findLatestActiveCode(user.idUser, new Date())
+    if (!record) throw new Error("Convite inválido ou expirado")
+
+    const ok = await bcrypt.compare(String(code || "").trim(), record.codeHash)
+    if (!ok) throw new Error("Convite inválido ou expirado")
+
+    const passwordHash = await bcrypt.hash(newPassword, 10)
+
+    try {
+      await this.repository.updateCredentialsAndUseCode(
+        user.idUser,
+        cleanCpf,
+        passwordHash,
+        record.idPasswordResetCode,
+        new Date()
+      )
+    } catch (error: any) {
+      if (error?.code === "P2002") {
+        throw new Error("Este CPF já está vinculado a outro usuário")
+      }
+      throw error
+    }
   }
 }
