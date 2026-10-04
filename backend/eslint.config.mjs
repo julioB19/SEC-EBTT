@@ -13,7 +13,9 @@ const compat = new FlatCompat({
   allConfig: js.configs.all
 })
 
-export default [...compat.extends(
+export default [{
+  ignores: ["dist/**", "coverage/**", "node_modules/**"],
+}, ...compat.extends(
   "eslint:recommended",
   "plugin:@typescript-eslint/recommended",
   "prettier",
@@ -30,7 +32,8 @@ export default [...compat.extends(
 
   rules: {
     "@typescript-eslint/no-explicit-any": "off",
-    quotes: ["error", "double"],
-    semi: ["error", "never"],
+    "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+    quotes: "off",
+    semi: "off",
   },
 }]

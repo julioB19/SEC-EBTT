@@ -49,25 +49,46 @@ describe("IndividualEvaluationService", () => {
           idScoringTable: 3,
           name: "Tabela RSC",
           minRequiredPoints: 60,
-          nodes: []
+          nodes: [
+            { idScoringNode: 1, parentId: null, code: "RSC_I", name: "RSC I", maxPoints: 100 },
+            { idScoringNode: 2, parentId: 1, code: "DIRETRIZ_I", name: "Diretriz I", maxPoints: 40 },
+            { idScoringNode: 3, parentId: null, code: "RSC_II", name: "RSC II", maxPoints: 100 },
+            { idScoringNode: 4, parentId: 3, code: "DIRETRIZ_I", name: "Diretriz I", maxPoints: 50 }
+          ]
         },
         scores: [
           {
             itemId: 20,
             quantity: 2,
             awardedPoints: 20,
-            item: { nodeId: 2, description: "Atividade de ensino", unit: "item" },
+            item: {
+              nodeId: 2,
+              description: "Atividade de ensino",
+              unit: "item",
+              points: 10,
+              factor: 1,
+              weight: 1,
+              maxQuantity: 2
+            },
             evidenceFile: null
           },
           {
             itemId: 21,
             quantity: 1,
             awardedPoints: 5,
-            item: { nodeId: 2, description: "Orientação", unit: "item" },
+            item: {
+              nodeId: 2,
+              description: "Orientação",
+              unit: "item",
+              points: 5,
+              factor: 1,
+              weight: 1,
+              maxQuantity: 1
+            },
             evidenceFile: null
           }
         ],
-        rscDetail: null,
+        rscDetail: { targetLevel: "RSC_I" },
         fullProfessorDetail: null
       }
     }
@@ -93,11 +114,10 @@ describe("IndividualEvaluationService", () => {
 
   test("calcula o total RSC a partir dos itens reconhecidos", async () => {
     await service.submit(7, 5, {
-      result: IndividualEvaluationResult.DENIED,
       opinionText: "A documentação apresentada comprova as atividades informadas.",
       scores: [
-        { itemId: 20, awardedPoints: 15, evaluatorComment: "Parcialmente comprovado" },
-        { itemId: 21, awardedPoints: 5 }
+        { itemId: 20, recognizedQuantity: 1, evaluatorComment: "Parcialmente comprovado" },
+        { itemId: 21, recognizedQuantity: 1 }
       ]
     })
 
@@ -106,9 +126,9 @@ describe("IndividualEvaluationService", () => {
       status: IndividualEvaluationStatus.SUBMITTED,
       result: IndividualEvaluationResult.DENIED,
       opinionText: "A documentação apresentada comprova as atividades informadas.",
-      recognizedPoints: "20.00",
+      recognizedPoints: "15.00",
       scores: [
-        { itemId: 20, quantity: 2, awardedPoints: 15, evaluatorComment: "Parcialmente comprovado" },
+        { itemId: 20, quantity: 1, awardedPoints: 10, evaluatorComment: "Parcialmente comprovado" },
         { itemId: 21, quantity: 1, awardedPoints: 5, evaluatorComment: null }
       ]
     })
@@ -117,33 +137,113 @@ describe("IndividualEvaluationService", () => {
   test("exige avaliação de todos os itens declarados ao enviar RSC", async () => {
     await expect(
       service.submit(7, 5, {
-        result: IndividualEvaluationResult.DENIED,
         opinionText: "Os documentos não comprovam integralmente as atividades.",
-        scores: [{ itemId: 20, awardedPoints: 0 }]
+        scores: [{ itemId: 20, recognizedQuantity: 0 }]
       })
     ).rejects.toThrow("Avalie todos os itens")
     expect(repository.saveEvaluation).not.toHaveBeenCalled()
   })
 
-  test("não permite resultado favorável abaixo do mínimo RSC", async () => {
-    await expect(
-      service.submit(7, 5, {
-        result: IndividualEvaluationResult.DEFERRED,
-        opinionText: "A documentação foi analisada, mas a pontuação ficou abaixo do mínimo.",
-        scores: [
-          { itemId: 20, awardedPoints: 20 },
-          { itemId: 21, awardedPoints: 5 }
-        ]
+  test("calcula indeferimento automático abaixo do mínimo RSC", async () => {
+    await service.submit(7, 5, {
+      result: IndividualEvaluationResult.DEFERRED,
+      opinionText: "A documentação foi analisada, mas a pontuação ficou abaixo do mínimo.",
+      scores: [
+        { itemId: 20, recognizedQuantity: 2 },
+        { itemId: 21, recognizedQuantity: 1 }
+      ]
+    })
+
+    expect(repository.saveEvaluation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: IndividualEvaluationResult.DENIED,
+        recognizedPoints: "25.00"
       })
-    ).rejects.toThrow("exige ao menos 60.00 pontos")
+    )
   })
 
-  test("não permite reconhecer mais pontos do que o docente declarou", async () => {
+  test("não permite resultado favorável com menos de 36 pontos no nível pretendido", async () => {
+    repository.findAssignmentForUser.mockResolvedValue({
+      ...assignment,
+      specialCommission: {
+        ...assignment.specialCommission,
+        process: {
+          ...assignment.specialCommission.process,
+          scores: [
+            {
+              itemId: 20,
+              quantity: 2,
+              awardedPoints: 20,
+              item: {
+                nodeId: 2,
+                description: "Atividade de ensino",
+                unit: "item",
+                points: 10,
+                factor: 1,
+                weight: 1,
+                maxQuantity: 2
+              },
+              evidenceFile: null
+            },
+            {
+              itemId: 21,
+              quantity: 1,
+              awardedPoints: 5,
+              item: {
+                nodeId: 2,
+                description: "Orientação",
+                unit: "item",
+                points: 5,
+                factor: 1,
+                weight: 1,
+                maxQuantity: 1
+              },
+              evidenceFile: null
+            },
+            {
+              itemId: 22,
+              quantity: 1,
+              awardedPoints: 40,
+              item: {
+                nodeId: 4,
+                description: "Pesquisa",
+                unit: "item",
+                points: 40,
+                factor: 1,
+                weight: 1,
+                maxQuantity: 1
+              },
+              evidenceFile: null
+            }
+          ]
+        }
+      }
+    } as any)
+
+    await service.submit(7, 5, {
+      result: IndividualEvaluationResult.DEFERRED,
+      opinionText: "A pontuação total foi atingida, mas não no nível pretendido.",
+      scores: [
+        { itemId: 20, recognizedQuantity: 2 },
+        { itemId: 21, recognizedQuantity: 1 },
+        { itemId: 22, recognizedQuantity: 1 }
+      ]
+    })
+
+    expect(repository.saveEvaluation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: IndividualEvaluationResult.DENIED,
+        recognizedPoints: "65.00"
+      })
+    )
+  })
+
+  test("não permite reconhecer quantidade maior do que a declarada pelo docente", async () => {
     await expect(
       service.saveDraft(7, 5, {
-        scores: [{ itemId: 20, awardedPoints: 20.01 }]
+        scores: [{ itemId: 20, recognizedQuantity: 3 }]
       })
-    ).rejects.toThrow("deve ficar entre 0 e 20.00")
+    ).rejects.toThrow("deve ficar entre 0 e 2")
   })
 
   test("Professor Titular exige parecer e não utiliza itens de pontuação", async () => {
@@ -166,7 +266,7 @@ describe("IndividualEvaluationService", () => {
     ).rejects.toThrow("Informe o parecer individual")
 
     await expect(
-      service.saveDraft(7, 5, { scores: [{ itemId: 20, awardedPoints: 1 }] })
+      service.saveDraft(7, 5, { scores: [{ itemId: 20, recognizedQuantity: 1 }] })
     ).rejects.toThrow("não utiliza pontuação por item")
   })
 

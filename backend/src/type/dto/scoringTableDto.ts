@@ -33,6 +33,7 @@ export interface CreateScoringNodeDto {
   parentId?: number | null
   hasFormula?: boolean
   formulaExpression?: string | null
+  maxPoints?: string | number | null
 }
 
 export interface UpdateScoringNodeParentDto {
@@ -46,6 +47,9 @@ export interface CreateScoringItemDto {
   hasMaxPoints?: boolean
   maxPoints?: string | number | null
   formulaKey?: string | null
+  factor?: string | number | null
+  weight?: string | number | null
+  maxQuantity?: number | null
 }
 
 export interface SaveScoringBlockItemDto {
@@ -55,6 +59,9 @@ export interface SaveScoringBlockItemDto {
   hasMaxPoints?: boolean
   maxPoints?: string | null
   formulaKey?: string | null
+  factor?: string | null
+  weight?: string | null
+  maxQuantity?: number | null
 }
 
 export interface SaveScoringBlockNodeDto {
@@ -65,6 +72,7 @@ export interface SaveScoringBlockNodeDto {
   sortOrder?: number
   hasFormula?: boolean
   formulaExpression?: string | null
+  maxPoints?: string | null
   items?: SaveScoringBlockItemDto[]
 }
 
@@ -80,6 +88,7 @@ export interface UpdateScoringNodeDto {
   parentId?: number | null
   hasFormula?: boolean
   formulaExpression?: string | null
+  maxPoints?: string | number | null
 }
 
 export interface UpdateScoringItemDto {
@@ -89,4 +98,7 @@ export interface UpdateScoringItemDto {
   hasMaxPoints?: boolean
   maxPoints?: string | number | null
   formulaKey?: string | null
+  factor?: string | number | null
+  weight?: string | number | null
+  maxQuantity?: number | null
 }

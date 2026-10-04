@@ -13,9 +13,8 @@ import { processEvaluationRoute } from "./route/processEvaluationRoute";
 import { cppdProcessoRoute } from "./route/cppdProcessoRoute";
 import { scoringTableRoute } from "./route/scoringTableRoute";
 import { specialCommissionRoute } from "./route/specialCommissionRoute";
-import { geccRoute } from "./route/geccRoute";
 import { cppdManagementRoute } from "./route/cppdManagementRoute";
-import { processConfigurationRoute } from "./route/processConfigurationRoute";
+import { fullProfessorProcedureRoute } from "./route/fullProfessorProcedureRoute";
 
 const app = express();
 
@@ -38,7 +37,6 @@ app.use(processEvaluationRoute());
 app.use(cppdProcessoRoute());
 app.use(scoringTableRoute());
 app.use(specialCommissionRoute());
-app.use(geccRoute());
 app.use(cppdManagementRoute());
-app.use(processConfigurationRoute());
+app.use(fullProfessorProcedureRoute());
 export default app;

@@ -33,8 +33,11 @@ describe("cpfProtection", () => {
 
   test("detecta adulteração do conteúdo criptografado", () => {
     const encrypted = encryptCpf("52998224725");
-    const replacement = encrypted.endsWith("A") ? "B" : "A";
-    const tampered = `${encrypted.slice(0, -1)}${replacement}`;
+    const parts = encrypted.split(".");
+    const encryptedBytes = Buffer.from(parts[3], "base64url");
+    encryptedBytes[0] ^= 1;
+    parts[3] = encryptedBytes.toString("base64url");
+    const tampered = parts.join(".");
 
     expect(() => decryptCpf(tampered)).toThrow();
   });

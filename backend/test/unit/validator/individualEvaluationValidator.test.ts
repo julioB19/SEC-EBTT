@@ -8,7 +8,7 @@ describe("individualEvaluationValidator", () => {
       saveIndividualEvaluationSchema.validate({
         result: "DEFERRED",
         opinionText: "Parecer fundamentado",
-        scores: [{ itemId: 1, awardedPoints: 10.5, evaluatorComment: "Comprovado" }]
+        scores: [{ itemId: 1, recognizedQuantity: 10, evaluatorComment: "Comprovado" }]
       }).error
     ).toBeUndefined()
   })
@@ -16,13 +16,13 @@ describe("individualEvaluationValidator", () => {
   test("rejeita resultado, pontuação e itens duplicados inválidos", () => {
     expect(saveIndividualEvaluationSchema.validate({ result: "PENDING" }).error).toBeDefined()
     expect(
-      saveIndividualEvaluationSchema.validate({ scores: [{ itemId: 1, awardedPoints: -1 }] }).error
+      saveIndividualEvaluationSchema.validate({ scores: [{ itemId: 1, recognizedQuantity: -1 }] }).error
     ).toBeDefined()
     expect(
       saveIndividualEvaluationSchema.validate({
         scores: [
-          { itemId: 1, awardedPoints: 1 },
-          { itemId: 1, awardedPoints: 2 }
+          { itemId: 1, recognizedQuantity: 1 },
+          { itemId: 1, recognizedQuantity: 2 }
         ]
       }).error
     ).toBeDefined()

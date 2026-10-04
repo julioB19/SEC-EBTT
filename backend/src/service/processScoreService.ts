@@ -1,4 +1,10 @@
-import { ProcessStatus, Prisma, ProcessType } from "@prisma/client"
+import {
+  ProcessStatus,
+  ProcessTypeCategory,
+  Prisma,
+  ProcessType,
+  ScoringTablePurpose
+} from "@prisma/client"
 import path from "path"
 import fs from "fs"
 import os from "os"
@@ -14,6 +20,8 @@ import { EvidenceFileRepository } from "../repository/evidenceFileRepository"
 import { ProcessNodeScoreRepository } from "../repository/processNodeScoreRepository"
 import { UpdateItemScoreDto } from "../type/dto/processScoreDto"
 import { BusinessRuleError, NotFoundError } from "./processoService"
+import { calculateRscItemPoints, capScore } from "../util/rscScoring"
+import { resolveLibreOfficeBinary } from "../util/libreOffice"
 
 const execFileAsync = promisify(execFile)
 
@@ -86,6 +94,7 @@ async function safeUnlink(filePath: string) {
       await fs.promises.unlink(filePath)
     }
   } catch {
+    // A limpeza é de melhor esforço; o arquivo temporário pode já ter sido removido.
   }
 }
 
@@ -98,6 +107,7 @@ type RepoNode = {
   sortOrder: number
   hasFormula: boolean
   formulaExpression: string | null
+  maxPoints: DecimalLike
   deletedDate: Date | null
   active: boolean
 }
@@ -114,6 +124,10 @@ type RepoItem = {
   active: boolean
   deletedDate: Date | null
   formulaKey: string | null
+  factor: DecimalLike
+  weight: DecimalLike
+  maxQuantity: number | null
+  table?: { purpose: ScoringTablePurpose }
 }
 
 type RepoEvidence = {
@@ -216,6 +230,9 @@ export class ProcessScoreService {
         maxPoints: item.maxPoints,
         active: item.active,
         formulaKey: item.formulaKey,
+        factor: item.factor,
+        weight: item.weight,
+        maxQuantity: item.maxQuantity,
         currentScore: score
           ? {
               processScoreId: score.idProcessScore,
@@ -240,6 +257,7 @@ export class ProcessScoreService {
         sortOrder: node.sortOrder,
         hasFormula: node.hasFormula,
         formulaExpression: node.formulaExpression,
+        maxPoints: node.maxPoints,
         totalPoints: nodeScore ? decimalToNumber(nodeScore.totalPoints) : null,
         items: itemsByNodeId.get(node.idScoringNode) ?? []
       }
@@ -249,6 +267,7 @@ export class ProcessScoreService {
       processId: process.idProcess,
       scoringTableId: tableId,
       type: process.type,
+      processTypeCategory: process.processTypeConfig?.category ?? null,
       status: process.status,
       blocks
     }
@@ -636,7 +655,7 @@ export class ProcessScoreService {
   }
 
   private async converterXlsxBufferParaPdfBuffer(xlsxBuffer: Buffer, baseName: string) {
-    const sofficeBin = process.env.LIBREOFFICE_BIN || "soffice"
+    const sofficeBin = resolveLibreOfficeBinary()
 
     const tmpRoot = path.join(os.tmpdir(), "sec-ebtt-score-spreadsheets")
     await ensureDir(tmpRoot)
@@ -715,7 +734,25 @@ export class ProcessScoreService {
     let finalQuantity = rawQuantity
     let finalPointsNumber = 0
 
-    if (!item.hasMaxPoints) {
+    const isRscItem = item.table?.purpose === ScoringTablePurpose.RSC
+
+    if (isRscItem) {
+      const quantityNumber = Number(rawQuantity)
+      try {
+        finalPointsNumber = calculateRscItemPoints({
+          quantity: quantityNumber,
+          basePoints: decimalToNumber(item.points),
+          factor: decimalToNumber(item.factor),
+          weight: decimalToNumber(item.weight),
+          maxQuantity: item.maxQuantity
+        })
+      } catch (error) {
+        throw new BusinessRuleError(
+          error instanceof Error ? error.message : "Pontuação RSC inválida"
+        )
+      }
+      finalQuantity = quantityNumber
+    } else if (!item.hasMaxPoints) {
       const quantityNumber = Number(rawQuantity)
 
       if (Number.isNaN(quantityNumber) || quantityNumber < 0) {
@@ -880,7 +917,11 @@ export class ProcessScoreService {
         childrenTotal += computeTotalForNode(childId)
       }
 
-      const total = ownTotal + childrenTotal
+      const maxPoints = decimalToNumber(node.maxPoints)
+      const total = capScore(
+        ownTotal + childrenTotal,
+        Number.isNaN(maxPoints) ? null : maxPoints
+      )
       totalByNodeId.set(nodeId, total)
       return total
     }
@@ -936,6 +977,14 @@ export class ProcessScoreService {
 
     if (item.scoringTableId !== process.scoringTableId) {
       throw new BusinessRuleError("Item de pontuação não pertence à tabela vinculada a este processo.")
+    }
+
+    if (
+      process.processTypeConfig?.category === ProcessTypeCategory.RSC &&
+      params.mimeType !== "application/pdf"
+    ) {
+      await safeUnlink(params.filePath)
+      throw new BusinessRuleError("Os comprovantes do RSC devem ser enviados em arquivo PDF.")
     }
 
     let score = await this.scoreRepo.findByProcessAndItem(processId, itemId) as RepoScore | null
@@ -1029,6 +1078,13 @@ export class ProcessScoreService {
     const file = await this.evidenceFileRepo.findById(evidenceFileId) as RepoEvidence | null
     if (!file || file.deletedDate) {
       throw new NotFoundError("Arquivo de evidência não encontrado")
+    }
+
+    if (
+      process.processTypeConfig?.category === ProcessTypeCategory.RSC &&
+      file.mimeType !== "application/pdf"
+    ) {
+      throw new BusinessRuleError("Somente comprovantes em PDF podem ser reutilizados no RSC.")
     }
 
     if (file.userId !== userId) {

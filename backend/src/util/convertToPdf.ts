@@ -2,6 +2,7 @@ import { execFile } from "child_process"
 import fs from "fs"
 import os from "os"
 import path from "path"
+import { resolveLibreOfficeBinary } from "./libreOffice"
 
 export function convertDocxToPdf(docxBuffer: Buffer): Promise<Buffer> {
   console.log("[PDF] Tamanho do buffer DOCX recebido:", docxBuffer.length)
@@ -16,7 +17,7 @@ export function convertDocxToPdf(docxBuffer: Buffer): Promise<Buffer> {
     fs.writeFileSync(inputPath, docxBuffer)
 
     execFile(
-      "soffice",
+      resolveLibreOfficeBinary(),
       ["--headless", "--convert-to", "pdf", inputPath, "--outdir", tmpDir],
       (err, stdout, stderr) => {
         if (err) {

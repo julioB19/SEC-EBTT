@@ -30,9 +30,6 @@ export function AdminNavLinks() {
           Campi e CPPD
         </Link>
 
-        <Link href="/admin/tipos-processo" className={desktopLinkClass}>
-          Tipos de Processo
-        </Link>
       </div>
 
       <button
@@ -84,14 +81,6 @@ export function AdminNavLinks() {
             onClick={() => setOpen(false)}
           >
             Campi e CPPD
-          </Link>
-
-          <Link
-            href="/admin/tipos-processo"
-            className="block px-4 py-2.5 text-sm hover:bg-[var(--navbar-item-hover-bg)]"
-            onClick={() => setOpen(false)}
-          >
-            Tipos de Processo
           </Link>
 
           <div className="my-1 h-px bg-[var(--border-subtle)]" />

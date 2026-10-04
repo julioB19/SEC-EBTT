@@ -49,7 +49,7 @@ export const adminListScoringTablesQuerySchema = Joi.object<AdminListScoringTabl
 })
 
 export const createScoringNodeSchema = Joi.object<CreateScoringNodeDto>({
-  name: Joi.string().max(150).required(),
+  name: Joi.string().max(500).required(),
   code: Joi.string().max(50).allow(null, ""),
   sortOrder: Joi.number().integer().min(0).default(0),
   parentId: Joi.number().integer().min(1).allow(null),
@@ -57,7 +57,8 @@ export const createScoringNodeSchema = Joi.object<CreateScoringNodeDto>({
   formulaExpression: Joi.string()
     .max(255)
     .allow(null, "")
-    .when("hasFormula", { is: true, then: Joi.required() })
+    .when("hasFormula", { is: true, then: Joi.required() }),
+  maxPoints: Joi.alternatives().try(Joi.number().min(0), Joi.string()).allow(null, "")
 })
 
 export const updateScoringNodeParentSchema =
@@ -66,7 +67,7 @@ export const updateScoringNodeParentSchema =
   })
 
 export const createScoringItemSchema = Joi.object<CreateScoringItemDto>({
-  description: Joi.string().max(255).required(),
+  description: Joi.string().max(1000).required(),
   unit: Joi.string().max(30).allow(null, ""),
   points: Joi.alternatives().try(Joi.number(), Joi.string()).required(),
   hasMaxPoints: Joi.boolean().default(false),
@@ -77,11 +78,14 @@ export const createScoringItemSchema = Joi.object<CreateScoringItemDto>({
   formulaKey: Joi.string()
     .max(30)
     .pattern(/^[A-Z][A-Z0-9_]*$/)
-    .allow(null, "")
+    .allow(null, ""),
+  factor: Joi.alternatives().try(Joi.number().min(0), Joi.string()).allow(null, ""),
+  weight: Joi.alternatives().try(Joi.number().min(0), Joi.string()).allow(null, ""),
+  maxQuantity: Joi.number().integer().min(0).allow(null)
 })
 
 const saveBlockItemSchema = Joi.object({
-  description: Joi.string().max(255).required(),
+  description: Joi.string().max(1000).required(),
   unit: Joi.string().max(30).allow(null, ""),
   points: Joi.alternatives().try(Joi.number(), Joi.string()).required(),
   hasMaxPoints: Joi.boolean().default(false),
@@ -92,12 +96,15 @@ const saveBlockItemSchema = Joi.object({
   formulaKey: Joi.string()
     .max(30)
     .pattern(/^[A-Z][A-Z0-9_]*$/)
-    .allow(null, "")
+    .allow(null, ""),
+  factor: Joi.alternatives().try(Joi.number().min(0), Joi.string()).allow(null, ""),
+  weight: Joi.alternatives().try(Joi.number().min(0), Joi.string()).allow(null, ""),
+  maxQuantity: Joi.number().integer().min(0).allow(null)
 })
 
 const saveBlockNodeSchema = Joi.object({
   draftId: Joi.string().min(1).required(),
-  name: Joi.string().max(150).required(),
+  name: Joi.string().max(500).required(),
   code: Joi.string().max(50).required(),
   parentDraftId: Joi.string().allow(null, ""),
   sortOrder: Joi.number().integer().min(0).default(0),
@@ -106,6 +113,7 @@ const saveBlockNodeSchema = Joi.object({
     .max(255)
     .allow(null, "")
     .when("hasFormula", { is: true, then: Joi.required() }),
+  maxPoints: Joi.alternatives().try(Joi.number().min(0), Joi.string()).allow(null, ""),
   items: Joi.array().items(saveBlockItemSchema).default([])
 })
 
@@ -115,16 +123,17 @@ export const saveScoringBlockSchema = Joi.object<SaveScoringBlockDto>({
 })
 
 export const updateScoringNodeSchema = Joi.object<UpdateScoringNodeDto>({
-  name: Joi.string().max(150),
+  name: Joi.string().max(500),
   code: Joi.string().max(50).allow(null, ""),
   sortOrder: Joi.number().integer().min(0),
   parentId: Joi.number().integer().min(1).allow(null),
   hasFormula: Joi.boolean(),
-  formulaExpression: Joi.string().max(255).allow(null, "")
+  formulaExpression: Joi.string().max(255).allow(null, ""),
+  maxPoints: Joi.alternatives().try(Joi.number().min(0), Joi.string()).allow(null, "")
 }).min(1)
 
 export const updateScoringItemSchema = Joi.object<UpdateScoringItemDto>({
-  description: Joi.string().max(255),
+  description: Joi.string().max(1000),
   unit: Joi.string().max(30).allow(null, ""),
   points: Joi.alternatives().try(Joi.number(), Joi.string()),
   hasMaxPoints: Joi.boolean(),
@@ -132,5 +141,8 @@ export const updateScoringItemSchema = Joi.object<UpdateScoringItemDto>({
   formulaKey: Joi.string()
     .max(30)
     .pattern(/^[A-Z][A-Z0-9_]*$/)
-    .allow(null, "")
+    .allow(null, ""),
+  factor: Joi.alternatives().try(Joi.number().min(0), Joi.string()).allow(null, ""),
+  weight: Joi.alternatives().try(Joi.number().min(0), Joi.string()).allow(null, ""),
+  maxQuantity: Joi.number().integer().min(0).allow(null)
 }).min(1)

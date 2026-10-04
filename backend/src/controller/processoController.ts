@@ -123,7 +123,16 @@ export class ProcessoController {
           processoRaw.rscDetails && typeof processoRaw.rscDetails === "object"
             ? {
                 targetLevel: processoRaw.rscDetails.targetLevel,
-                simecReference: processoRaw.rscDetails.simecReference,
+                careerEntryDateISO:
+                  processoRaw.rscDetails.careerEntryDateISO,
+                previousRscGrantedAtISO:
+                  processoRaw.rscDetails.previousRscGrantedAtISO,
+                activityPeriodStartISO:
+                  processoRaw.rscDetails.activityPeriodStartISO,
+                activityPeriodEndISO:
+                  processoRaw.rscDetails.activityPeriodEndISO,
+                truthDeclarationAccepted:
+                  processoRaw.rscDetails.truthDeclarationAccepted,
               }
             : undefined,
         fullProfessorDetails:
@@ -337,7 +346,16 @@ export class ProcessoController {
           processoRaw.rscDetails && typeof processoRaw.rscDetails === "object"
             ? {
                 targetLevel: processoRaw.rscDetails.targetLevel,
-                simecReference: processoRaw.rscDetails.simecReference,
+                careerEntryDateISO:
+                  processoRaw.rscDetails.careerEntryDateISO,
+                previousRscGrantedAtISO:
+                  processoRaw.rscDetails.previousRscGrantedAtISO,
+                activityPeriodStartISO:
+                  processoRaw.rscDetails.activityPeriodStartISO,
+                activityPeriodEndISO:
+                  processoRaw.rscDetails.activityPeriodEndISO,
+                truthDeclarationAccepted:
+                  processoRaw.rscDetails.truthDeclarationAccepted,
               }
             : undefined,
         fullProfessorDetails:

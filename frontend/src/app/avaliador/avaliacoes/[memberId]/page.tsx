@@ -35,7 +35,6 @@ type EvaluationData = {
     externalNumber: string | null
     rscDetails: {
       targetLevel: string | null
-      simecReference: string | null
       reportFile: EvidenceFile | null
     } | null
     fullProfessorDetails: {
@@ -61,12 +60,17 @@ type EvaluationData = {
       name: string
       code: string | null
       sortOrder: number
+      maxPoints: number | null
     }>
     items: Array<{
       idScoringItem: number
       nodeId: number
       description: string
       unit: string | null
+      basePoints: number
+      factor: number | null
+      weight: number | null
+      maxQuantity: number | null
       claimedQuantity: number
       claimedPoints: number
       evidenceFile: EvidenceFile | null
@@ -82,6 +86,7 @@ type EvaluationData = {
     scores: Array<{
       itemId: number
       quantity: number
+      recognizedQuantity: number
       awardedPoints: number
       evaluatorComment: string | null
     }>
@@ -89,7 +94,7 @@ type EvaluationData = {
 }
 
 type ApiResponse<T> = { status: string; message: string; data: T | null }
-type ScoreInput = { awardedPoints: string; evaluatorComment: string }
+type ScoreInput = { recognizedQuantity: string; evaluatorComment: string }
 
 const inputClass =
   "mt-1 w-full rounded-md border border-[var(--input-border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--input-border-focus)] disabled:bg-[var(--surface-muted-bg)] disabled:opacity-80"
@@ -105,6 +110,46 @@ function resultLabel(value: EvaluationResult | null) {
   if (value === "DEFERRED") return "Deferido"
   if (value === "DENIED") return "Indeferido"
   return "Não informado"
+}
+
+function calculateRecognizedSummary(
+  data: EvaluationData | null,
+  scores: Record<number, ScoreInput>
+) {
+  if (!data?.scoringTable) return { total: 0, byRscLevel: {} as Record<string, number> }
+  const pointsByNode = new Map<number, number>()
+  for (const item of data.scoringTable.items) {
+    const quantity = Number(scores[item.idScoringItem]?.recognizedQuantity ?? 0)
+    if (!Number.isInteger(quantity) || quantity < 0) continue
+    const factor = item.factor ?? 1
+    const weight = item.weight ?? 1
+    const points = Math.round(quantity * item.basePoints * factor * weight)
+    pointsByNode.set(item.nodeId, (pointsByNode.get(item.nodeId) ?? 0) + points)
+  }
+  const nodeById = new Map(data.scoringTable.nodes.map(node => [node.idScoringNode, node]))
+  const children = new Map<number | null, number[]>()
+  for (const node of data.scoringTable.nodes) {
+    const parentId = node.parentId ?? null
+    children.set(parentId, [...(children.get(parentId) ?? []), node.idScoringNode])
+  }
+  const calculateNode = (nodeId: number): number => {
+    const node = nodeById.get(nodeId)
+    const childPoints = (children.get(nodeId) ?? [])
+      .reduce((total, childId) => total + calculateNode(childId), 0)
+    const total = (pointsByNode.get(nodeId) ?? 0) + childPoints
+    return node?.maxPoints === null || node?.maxPoints === undefined
+      ? total
+      : Math.min(total, node.maxPoints)
+  }
+  const byRscLevel: Record<string, number> = {}
+  let total = 0
+  for (const rootId of children.get(null) ?? []) {
+    const node = nodeById.get(rootId)
+    const nodeTotal = calculateNode(rootId)
+    total += nodeTotal
+    if (node?.code && /^RSC_(I|II|III)$/.test(node.code)) byRscLevel[node.code] = nodeTotal
+  }
+  return { total, byRscLevel }
 }
 
 export default function IndividualEvaluationPage() {
@@ -129,7 +174,7 @@ export default function IndividualEvaluationPage() {
         next.evaluation.scores.map(score => [
           score.itemId,
           {
-            awardedPoints: String(score.awardedPoints).replace(".", ","),
+            recognizedQuantity: String(score.recognizedQuantity ?? score.quantity),
             evaluatorComment: score.evaluatorComment ?? ""
           }
         ])
@@ -166,14 +211,17 @@ export default function IndividualEvaluationPage() {
     data?.commission.status === "ACTIVE" &&
     (data.evaluation.status === "DRAFT" || data.evaluation.status === "RETURNED")
 
-  const recognizedPoints = useMemo(
-    () =>
-      Object.values(scores).reduce((total, score) => {
-        const value = Number(score.awardedPoints.replace(",", "."))
-        return total + (Number.isFinite(value) ? value : 0)
-      }, 0),
-    [scores]
+  const recognizedSummary = useMemo(
+    () => calculateRecognizedSummary(data, scores),
+    [data, scores]
   )
+  const recognizedPoints = recognizedSummary.total
+  const targetLevel = data?.process.rscDetails?.targetLevel ?? ""
+  const automaticRscResult: EvaluationResult =
+    recognizedPoints >= (data?.scoringTable?.minRequiredPoints ?? 60) &&
+    (recognizedSummary.byRscLevel[targetLevel] ?? 0) >= 36
+      ? "DEFERRED"
+      : "DENIED"
 
   function nodePath(nodeId: number) {
     if (!data?.scoringTable) return "Pontuação"
@@ -189,13 +237,13 @@ export default function IndividualEvaluationPage() {
 
   function buildPayload() {
     return {
-      result: result || null,
+      result: data?.commission.type === "RSC" ? null : result || null,
       opinionText: opinionText.trim() || null,
       scores: Object.entries(scores)
-        .filter(([, score]) => score.awardedPoints.trim() !== "")
+        .filter(([, score]) => score.recognizedQuantity.trim() !== "")
         .map(([itemId, score]) => ({
           itemId: Number(itemId),
-          awardedPoints: Number(score.awardedPoints.replace(",", ".")),
+          recognizedQuantity: Number(score.recognizedQuantity),
           evaluatorComment: score.evaluatorComment.trim() || null
         }))
     }
@@ -347,7 +395,7 @@ export default function IndividualEvaluationPage() {
 
           <div className="divide-y divide-[var(--border-subtle)] border-y border-[var(--border-subtle)] md:hidden">
             {data.scoringTable.items.map(item => {
-              const current = scores[item.idScoringItem] ?? { awardedPoints: "", evaluatorComment: "" }
+              const current = scores[item.idScoringItem] ?? { recognizedQuantity: "", evaluatorComment: "" }
               return (
                 <article key={item.idScoringItem} className="space-y-3 py-4">
                   <div>
@@ -356,19 +404,22 @@ export default function IndividualEvaluationPage() {
                     <p className="text-xs text-[var(--text-secondary)]">
                       Quantidade: {item.claimedQuantity} · Pontuação declarada: {item.claimedPoints.toFixed(2).replace(".", ",")}
                     </p>
+                    <p className="text-xs text-[var(--text-secondary)]">
+                      Fator: {item.factor ?? 1} · Peso: {item.weight ?? 1} · Limite: {item.maxQuantity ?? "—"} {item.unit ?? "unidades"}
+                    </p>
                     <FileLink file={item.evidenceFile} label="Evidência" />
                   </div>
                   <label className="block text-xs font-medium text-[var(--text-primary)]">
-                    Pontuação reconhecida
+                    Quantidade reconhecida
                     <input
                       type="number"
                       min="0"
-                      max={item.claimedPoints}
-                      step="0.01"
-                      value={current.awardedPoints.replace(",", ".")}
+                      max={item.claimedQuantity}
+                      step="1"
+                      value={current.recognizedQuantity}
                       onChange={event => setScores(previous => ({
                         ...previous,
-                        [item.idScoringItem]: { ...current, awardedPoints: event.target.value }
+                        [item.idScoringItem]: { ...current, recognizedQuantity: event.target.value }
                       }))}
                       disabled={!editable || busy}
                       className={inputClass}
@@ -398,19 +449,20 @@ export default function IndividualEvaluationPage() {
                 <tr>
                   <th className="px-3 py-2 font-semibold">Item</th>
                   <th className="w-28 px-3 py-2 text-right font-semibold">Declarado</th>
-                  <th className="w-36 px-3 py-2 font-semibold">Reconhecido</th>
+                  <th className="w-36 px-3 py-2 font-semibold">Qtd. reconhecida</th>
                   <th className="w-64 px-3 py-2 font-semibold">Observação</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)]">
                 {data.scoringTable.items.map(item => {
-                  const current = scores[item.idScoringItem] ?? { awardedPoints: "", evaluatorComment: "" }
+                  const current = scores[item.idScoringItem] ?? { recognizedQuantity: "", evaluatorComment: "" }
                   return (
                     <tr key={item.idScoringItem}>
                       <td className="px-3 py-3 align-top">
                         <span className="block text-xs text-[var(--text-secondary)]">{nodePath(item.nodeId)}</span>
                         <span className="font-medium text-[var(--text-primary)]">{item.description}</span>
                         <span className="block text-xs text-[var(--text-secondary)]">Quantidade declarada: {item.claimedQuantity}</span>
+                        <span className="block text-xs text-[var(--text-secondary)]">Fator: {item.factor ?? 1} · Peso: {item.weight ?? 1}</span>
                         <FileLink file={item.evidenceFile} label="Evidência" />
                       </td>
                       <td className="px-3 py-3 text-right align-top font-semibold">{item.claimedPoints.toFixed(2).replace(".", ",")}</td>
@@ -418,15 +470,15 @@ export default function IndividualEvaluationPage() {
                         <input
                           type="number"
                           min="0"
-                          max={item.claimedPoints}
-                          step="0.01"
-                          value={current.awardedPoints.replace(",", ".")}
+                          max={item.claimedQuantity}
+                          step="1"
+                          value={current.recognizedQuantity}
                           onChange={event => setScores(previous => ({
                             ...previous,
-                            [item.idScoringItem]: { ...current, awardedPoints: event.target.value }
+                            [item.idScoringItem]: { ...current, recognizedQuantity: event.target.value }
                           }))}
                           disabled={!editable || busy}
-                          aria-label={`Pontuação reconhecida para ${item.description}`}
+                          aria-label={`Quantidade reconhecida para ${item.description}`}
                           className={inputClass.replace("mt-1 ", "")}
                         />
                       </td>
@@ -454,28 +506,33 @@ export default function IndividualEvaluationPage() {
 
       <section className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-[220px_1fr]">
-          <label className="text-sm font-medium text-[var(--text-primary)]">
-            Resultado
-            <select
-              className={inputClass}
-              value={result}
-              onChange={event => setResult(event.target.value as EvaluationResult | "")}
-              disabled={!editable || busy}
-            >
-              <option value="">Selecione</option>
-              {data.commission.type === "RSC" ? (
-                <>
-                  <option value="DEFERRED">Deferido</option>
-                  <option value="DENIED">Indeferido</option>
-                </>
-              ) : (
-                <>
-                  <option value="APPROVED">Aprovado</option>
-                  <option value="REJECTED">Reprovado</option>
-                </>
-              )}
-            </select>
-          </label>
+          {data.commission.type === "RSC" ? (
+            <div className="text-sm font-medium text-[var(--text-primary)]">
+              Resultado calculado
+              <div className={inputClass}>
+                {resultLabel(data.evaluation.status === "SUBMITTED"
+                  ? data.evaluation.result
+                  : automaticRscResult)}
+              </div>
+              <p className="mt-1 text-xs font-normal text-[var(--text-secondary)]">
+                Regra: 60 pontos totais e 36 no nível pretendido.
+              </p>
+            </div>
+          ) : (
+            <label className="text-sm font-medium text-[var(--text-primary)]">
+              Resultado
+              <select
+                className={inputClass}
+                value={result}
+                onChange={event => setResult(event.target.value as EvaluationResult | "")}
+                disabled={!editable || busy}
+              >
+                <option value="">Selecione</option>
+                <option value="APPROVED">Aprovado</option>
+                <option value="REJECTED">Reprovado</option>
+              </select>
+            </label>
+          )}
           <div className="text-sm text-[var(--text-secondary)] sm:self-end">
             {data.evaluation.status === "SUBMITTED" && `Resultado enviado: ${resultLabel(data.evaluation.result)}`}
           </div>
@@ -511,6 +568,16 @@ export default function IndividualEvaluationPage() {
           >
             Enviar avaliação
           </button>
+        </div>
+      )}
+      {data.evaluation.status === "SUBMITTED" && (
+        <div className="flex justify-end border-t border-[var(--border-subtle)] pt-5">
+          <a
+            href={`/api/avaliador/avaliacoes/${memberId}/parecer`}
+            className="rounded-md border border-[var(--btn-secondary-border)] px-4 py-2 text-sm font-semibold text-[var(--btn-secondary-text)]"
+          >
+            Baixar parecer em PDF
+          </a>
         </div>
       )}
     </div>

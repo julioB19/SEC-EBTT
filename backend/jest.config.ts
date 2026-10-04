@@ -10,5 +10,14 @@ module.exports = {
   coverageProvider: "v8",
   coverageReporters: ["json", "text", "lcov", "clover"],
   resetMocks: true,
-  resetModules: true,
+  resetModules: false,
+  testTimeout: 30000,
+  coverageThreshold: {
+    global: {
+      statements: 80,
+      lines: 80,
+      functions: 80,
+      branches: 60,
+    },
+  },
 }

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import { FormEvent, useCallback, useEffect, useState } from "react"
 import ConfirmModal from "@/components/ConfirmModal"
+import FullProfessorProcedurePanel from "@/components/FullProfessorProcedurePanel"
 
 type CommissionStatus = "DRAFT" | "ACTIVE" | "COMPLETED" | "CANCELED"
 type AcceptanceStatus = "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELED"
@@ -14,8 +15,11 @@ interface CommissionMember {
   name: string
   email: string | null
   role: MemberRole
+  origin: "INTERNAL" | "EXTERNAL"
   acceptanceStatus: AcceptanceStatus
   acceptedAt: string | null
+  conflictDeclarationAt: string | null
+  responseReason: string | null
   evaluation: {
     idIndividualEvaluation: number
     status: string
@@ -48,11 +52,11 @@ interface CommissionData {
     idProcess: number
     status: string
     processTypeName: string
+    processTypeCategory: string | null
     teacherName: string
     teacherSiape: string | null
     campus: string
     cityState: string
-    requiresGecc: boolean
     finalPoints: number | null
     evaluationOpinion: string | null
   }
@@ -62,6 +66,8 @@ interface CommissionData {
     status: CommissionStatus
     ordinance: string | null
     ordinanceDate: string | null
+    evaluationDeadlineAt: string | null
+    evaluationOverdue: boolean
     members: CommissionMember[]
     consolidation: CommissionConsolidation
   } | null
@@ -116,6 +122,7 @@ export default function SpecialCommissionPage() {
   const [ordinance, setOrdinance] = useState("")
   const [ordinanceDate, setOrdinanceDate] = useState("")
   const [memberEmail, setMemberEmail] = useState("")
+  const [memberOrigin, setMemberOrigin] = useState<"INTERNAL" | "EXTERNAL">("EXTERNAL")
   const [memberRole, setMemberRole] = useState<MemberRole>("MEMBER")
   const [decisionOpinion, setDecisionOpinion] = useState("")
   const [pendingDecision, setPendingDecision] = useState<"APPROVED" | "REJECTED" | null>(null)
@@ -192,7 +199,7 @@ export default function SpecialCommissionPage() {
     event.preventDefault()
     const saved = await mutate(
       `/api/cppd/processos/${processId}/comissao/membros`,
-      { method: "POST", body: JSON.stringify({ email: memberEmail, role: memberRole }) },
+      { method: "POST", body: JSON.stringify({ email: memberEmail, origin: memberOrigin, role: memberRole }) },
       "Avaliador adicionado e avaliação individual criada."
     )
     if (saved) setMemberEmail("")
@@ -233,7 +240,7 @@ export default function SpecialCommissionPage() {
         body: JSON.stringify({ decision, opinionText: decisionOpinion.trim() })
       },
       decision === "APPROVED"
-        ? "Decisão deferida e organização do GECC iniciada."
+        ? "Decisão de deferimento registrada."
         : "Decisão de indeferimento registrada."
     )
     if (saved) setDecisionOpinion("")
@@ -264,7 +271,7 @@ export default function SpecialCommissionPage() {
         title={pendingDecision === "APPROVED" ? "Deferir o processo?" : "Indeferir o processo?"}
         description={
           pendingDecision === "APPROVED"
-            ? "O parecer consolidado será registrado e o organizador documental do GECC será iniciado."
+            ? "O parecer consolidado será registrado e o processo será deferido."
             : "O parecer consolidado será registrado e o processo será encerrado como indeferido."
         }
         confirmText={pendingDecision === "APPROVED" ? "Deferir" : "Indeferir"}
@@ -355,7 +362,7 @@ export default function SpecialCommissionPage() {
           </div>
 
           {editable && (
-            <form onSubmit={addMember} className="grid items-end gap-3 sm:grid-cols-[1fr_190px_auto]">
+            <form onSubmit={addMember} className="grid items-end gap-3 sm:grid-cols-[1fr_150px_190px_auto]">
               <label className="text-sm text-[var(--text-primary)]">
                 E-mail do avaliador
                 <input
@@ -366,6 +373,24 @@ export default function SpecialCommissionPage() {
                   onChange={event => setMemberEmail(event.target.value)}
                   disabled={busy}
                 />
+              </label>
+              <label className="text-sm text-[var(--text-primary)]">
+                Origem
+                <select
+                  className={inputClass}
+                  value={memberOrigin}
+                  onChange={event => {
+                    const origin = event.target.value as "INTERNAL" | "EXTERNAL"
+                    setMemberOrigin(origin)
+                    if (data.process.processTypeCategory === "FULL_PROFESSOR") {
+                      setMemberRole(origin === "INTERNAL" ? "PRESIDENT" : "MEMBER")
+                    }
+                  }}
+                  disabled={busy || data.process.processTypeCategory !== "FULL_PROFESSOR"}
+                >
+                  <option value="EXTERNAL">Externo</option>
+                  <option value="INTERNAL">Interno</option>
+                </select>
               </label>
               <label className="text-sm text-[var(--text-primary)]">
                 Função
@@ -400,7 +425,7 @@ export default function SpecialCommissionPage() {
                   <div>
                     <p className="text-sm font-semibold text-[var(--text-primary)]">{member.name}</p>
                     <p className="text-xs text-[var(--text-secondary)]">
-                      {member.email} · {member.role}
+                      {member.email} · {member.origin === "INTERNAL" ? "Interno" : "Externo"} · {member.role}
                     </p>
                     {member.acceptanceStatus === "ACCEPTED" && data.commission?.status !== "DRAFT" && (
                       <p className="mt-1 text-xs text-[var(--text-secondary)]">
@@ -412,6 +437,16 @@ export default function SpecialCommissionPage() {
                               ` · ${member.evaluation.recognizedPoints.toFixed(2).replace(".", ",")} pontos`}
                           </>
                         )}
+                      </p>
+                    )}
+                    {member.conflictDeclarationAt && (
+                      <p className="mt-1 text-xs text-[var(--state-success-text)]">
+                        Ausência de conflito declarada em {new Date(member.conflictDeclarationAt).toLocaleString("pt-BR")}
+                      </p>
+                    )}
+                    {member.acceptanceStatus === "DECLINED" && member.responseReason && (
+                      <p className="mt-1 text-xs text-[var(--state-danger-text)]">
+                        Motivo da recusa: {member.responseReason}
                       </p>
                     )}
                   </div>
@@ -535,7 +570,7 @@ export default function SpecialCommissionPage() {
                       disabled={busy || !decisionOpinion.trim()}
                       className="rounded-md bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-50"
                     >
-                      {data.process.requiresGecc ? "Deferir e iniciar GECC" : "Deferir"}
+                      Deferir
                     </button>
                   </div>
                 </div>
@@ -545,7 +580,7 @@ export default function SpecialCommissionPage() {
                 <div className="border-t border-[var(--border-subtle)] pt-5">
                   <h3 className="text-sm font-semibold text-[var(--text-primary)]">Decisão da CPPD</h3>
                   <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                    {data.process.status === "AWAITING_GECC" || data.process.status === "APPROVED"
+                    {data.process.status === "APPROVED"
                       ? "Processo deferido."
                       : "Processo indeferido."}
                     {data.process.finalPoints !== null &&
@@ -560,6 +595,10 @@ export default function SpecialCommissionPage() {
               )}
             </section>
           )}
+
+        {data.process.processTypeCategory === "FULL_PROFESSOR" && (
+          <FullProfessorProcedurePanel processId={processId} actor="CPPD" />
+        )}
 
         {data.commission?.status === "DRAFT" && (
           <div className="flex flex-wrap justify-end gap-3 border-t border-[var(--border-subtle)] pt-5">

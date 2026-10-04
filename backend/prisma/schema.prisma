@@ -20,7 +20,6 @@ enum PersonType {
   TEACHER
   CPPD_MEMBER
   EXTERNAL_EVALUATOR
-  GECC_INTERESTED
   OTHER
 }
 
@@ -28,8 +27,6 @@ enum ProcessTypeCategory {
   CAREER
   RSC
   FULL_PROFESSOR
-  SIMPLE
-  OTHER
 }
 
 enum ScoringTablePurpose {
@@ -86,6 +83,32 @@ enum FullProfessorEvaluationMode {
   THESIS
 }
 
+enum FullProfessorProcedureStage {
+  INITIAL_EVALUATION
+  AWAITING_REASSESSMENT
+  REASSESSMENT_REQUESTED
+  ORAL_DEFENSE_SCHEDULED
+  THESIS_DEFENSE_RECORDED
+  AWAITING_APPEAL
+  APPEAL_SUBMITTED
+  COMPLETED
+}
+
+enum FullProfessorProcedureOutcome {
+  APPROVED
+  REJECTED
+}
+
+enum FullProfessorProcedureEventType {
+  INITIAL_OUTCOME_RECORDED
+  REASSESSMENT_REQUESTED
+  ORAL_DEFENSE_SCHEDULED
+  ORAL_DEFENSE_RECORDED
+  APPEAL_SUBMITTED
+  APPEAL_DECIDED
+  DEADLINE_EXPIRED
+}
+
 enum IndividualEvaluationType {
   RSC
   FULL_PROFESSOR
@@ -107,22 +130,6 @@ enum IndividualEvaluationResult {
   DENIED
 }
 
-enum GeccStatus {
-  DRAFT
-  PENDING_DOCUMENTS
-  READY_TO_SEND
-  SENT_TO_CGP
-  COMPLETED
-  CANCELED
-}
-
-enum GeccInterestedType {
-  INTERNAL_EVALUATOR
-  EXTERNAL_EVALUATOR
-  CPPD_UNIT
-  OTHER
-}
-
 model User {
   idUser       Int       @id @default(autoincrement())
   name         String    @db.VarChar(120)
@@ -140,15 +147,16 @@ model User {
   deletedDate  DateTime?
   updatedAt    DateTime  @updatedAt
 
-  person               Person?                   @relation(fields: [personId], references: [idPerson], onDelete: SetNull)
-  roles                UserRole[]
-  docente              DocenteProfile?
-  externalEvaluator    ExternalEvaluatorProfile?
-  CareerProcess        CareerProcess[]
-  ProcessStatusHistory ProcessStatusHistory[]
-  evidenceFiles        EvidenceFile[]
-  passwordResetCodes   PasswordResetCode[]
-  generatedDocuments   DocumentProcess[]
+  person                       Person?                       @relation(fields: [personId], references: [idPerson], onDelete: SetNull)
+  roles                        UserRole[]
+  docente                      DocenteProfile?
+  externalEvaluator            ExternalEvaluatorProfile?
+  CareerProcess                CareerProcess[]
+  ProcessStatusHistory         ProcessStatusHistory[]
+  evidenceFiles                EvidenceFile[]
+  passwordResetCodes           PasswordResetCode[]
+  generatedDocuments           DocumentProcess[]
+  fullProfessorProcedureEvents FullProfessorProcedureEvent[]
 
   @@map("user")
 }
@@ -212,8 +220,6 @@ model Person {
   users                        User[]
   cppdMemberships              CppdCommissionMember[]
   specialCommissionMemberships SpecialCommissionMember[]
-  geccInterests                GeccInterested[]
-  geccDocuments                GeccDocument[]
 
   @@index([type, active])
   @@map("person")
@@ -306,7 +312,7 @@ model ScoringNode {
   idScoringNode     Int                @id @default(autoincrement())
   scoringTableId    Int
   parentId          Int?
-  name              String             @db.VarChar(150)
+  name              String             @db.VarChar(500)
   code              String?            @db.VarChar(50)
   sortOrder         Int                @default(0)
   active            Boolean            @default(true)
@@ -315,6 +321,7 @@ model ScoringNode {
   deletedDate       DateTime?
   hasFormula        Boolean            @default(false)
   formulaExpression String?            @db.VarChar(255)
+  maxPoints         Decimal?           @db.Decimal(10, 2)
   table             ScoringTable       @relation(fields: [scoringTableId], references: [idScoringTable], onDelete: Cascade)
   parent            ScoringNode?       @relation("NodeChildren", fields: [parentId], references: [idScoringNode], onDelete: Cascade)
   children          ScoringNode[]      @relation("NodeChildren")
@@ -330,13 +337,14 @@ model ScoringItem {
   idScoringItem  Int       @id @default(autoincrement())
   scoringTableId Int
   nodeId         Int
-  description    String    @db.VarChar(255)
+  description    String    @db.VarChar(1000)
   points         Decimal   @db.Decimal(10, 2)
   unit           String?   @db.VarChar(30)
   weight         Decimal?  @db.Decimal(10, 2)
   factor         Decimal?  @db.Decimal(10, 2)
   hasMaxPoints   Boolean   @default(false)
   maxPoints      Decimal?  @db.Decimal(10, 2)
+  maxQuantity    Int?
   active         Boolean   @default(true)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -382,7 +390,6 @@ enum ProcessStatus {
   AWAITING_ORDINANCE
   UNDER_REVIEW //em análise pela CPPD
   IN_EVALUATION
-  AWAITING_GECC
   APPROVED
   REJECTED
   RETURNED //devolvido ao docente para ajustes
@@ -428,7 +435,6 @@ model CareerProcess {
   documents             DocumentProcess[]
   specialCommissions    SpecialCommission[]
   individualEvaluations IndividualEvaluation[]
-  geccProcesses         ProcessGecc[]
 
   @@index([userId, status])
   @@index([campusId])
@@ -486,13 +492,12 @@ model ProcessTypeConfig {
   idProcessType      Int                 @id @default(autoincrement())
   code               String              @db.VarChar(60)
   name               String              @db.VarChar(120)
-  category           ProcessTypeCategory @default(OTHER)
+  category           ProcessTypeCategory
   version            Int                 @default(1)
   validFrom          DateTime            @default(now())
   validUntil         DateTime?
   requiresScoring    Boolean             @default(false)
   requiresCommittee  Boolean             @default(false)
-  requiresGecc       Boolean             @default(false)
   defaultDestination String?             @db.VarChar(120)
   opinionTemplateId  Int?
   active             Boolean             @default(true)
@@ -576,9 +581,13 @@ model ProgressionProcessDetail {
 model RscProcessDetail {
   processId                  Int       @id
   targetLevel                String?   @db.VarChar(20)
+  careerEntryDate            DateTime?
+  previousRscGrantedAt       DateTime?
+  activityPeriodStart        DateTime?
+  activityPeriodEnd          DateTime?
+  truthDeclarationAcceptedAt DateTime?
   reportFileId               Int?
   generatedSpreadsheetFileId Int?
-  simecReference             String?   @db.VarChar(120)
   finalResult                String?   @db.VarChar(60)
   createdAt                  DateTime  @default(now())
   updatedAt                  DateTime  @updatedAt
@@ -594,25 +603,61 @@ model RscProcessDetail {
 }
 
 model FullProfessorProcessDetail {
-  processId          Int                          @id
-  evaluationMode     FullProfessorEvaluationMode?
-  memorialFileId     Int?
-  thesisFileId       Int?
-  doctorateDegreeId  Int?
-  finalReferenceDate DateTime?
-  createdAt          DateTime                     @default(now())
-  updatedAt          DateTime                     @updatedAt
-  deletedDate        DateTime?
+  processId               Int                            @id
+  evaluationMode          FullProfessorEvaluationMode?
+  memorialFileId          Int?
+  thesisFileId            Int?
+  doctorateDegreeId       Int?
+  finalReferenceDate      DateTime?
+  procedureStage          FullProfessorProcedureStage    @default(INITIAL_EVALUATION)
+  currentOutcome          FullProfessorProcedureOutcome?
+  evaluationDeadlineAt    DateTime?
+  initialOpinionAt        DateTime?
+  reassessmentDeadlineAt  DateTime?
+  reassessmentRequestedAt DateTime?
+  reassessmentReason      String?                        @db.Text
+  oralDefenseDeadlineAt   DateTime?
+  oralDefenseScheduledAt  DateTime?
+  oralDefenseAccessUrl    String?                        @db.VarChar(500)
+  oralDefenseHeldAt       DateTime?
+  oralDefenseRecordingUrl String?                        @db.VarChar(500)
+  oralDefenseNotes        String?                        @db.Text
+  appealDeadlineAt        DateTime?
+  appealSubmittedAt       DateTime?
+  appealReason            String?                        @db.Text
+  appealDecidedAt         DateTime?
+  appealDecisionText      String?                        @db.Text
+  createdAt               DateTime                       @default(now())
+  updatedAt               DateTime                       @updatedAt
+  deletedDate             DateTime?
 
-  process         CareerProcess  @relation(fields: [processId], references: [idProcess], onDelete: Cascade)
-  memorialFile    EvidenceFile?  @relation("FullProfessorMemorialFile", fields: [memorialFileId], references: [idEvidenceFile], onDelete: SetNull)
-  thesisFile      EvidenceFile?  @relation("FullProfessorThesisFile", fields: [thesisFileId], references: [idEvidenceFile], onDelete: SetNull)
-  doctorateDegree TeacherDegree? @relation(fields: [doctorateDegreeId], references: [idTeacherDegree], onDelete: SetNull)
+  process         CareerProcess                 @relation(fields: [processId], references: [idProcess], onDelete: Cascade)
+  memorialFile    EvidenceFile?                 @relation("FullProfessorMemorialFile", fields: [memorialFileId], references: [idEvidenceFile], onDelete: SetNull)
+  thesisFile      EvidenceFile?                 @relation("FullProfessorThesisFile", fields: [thesisFileId], references: [idEvidenceFile], onDelete: SetNull)
+  doctorateDegree TeacherDegree?                @relation(fields: [doctorateDegreeId], references: [idTeacherDegree], onDelete: SetNull)
+  procedureEvents FullProfessorProcedureEvent[]
 
   @@index([memorialFileId])
   @@index([thesisFileId])
   @@index([doctorateDegreeId])
   @@map("full_professor_process_detail")
+}
+
+model FullProfessorProcedureEvent {
+  idFullProfessorProcedureEvent Int                             @id @default(autoincrement())
+  processId                     Int
+  type                          FullProfessorProcedureEventType
+  actorId                       Int
+  details                       Json?
+  occurredAt                    DateTime                        @default(now())
+  deletedDate                   DateTime?
+
+  processDetail FullProfessorProcessDetail @relation(fields: [processId], references: [processId], onDelete: Cascade)
+  actor         User                       @relation(fields: [actorId], references: [idUser], onDelete: Restrict)
+
+  @@index([processId, occurredAt])
+  @@index([actorId])
+  @@map("full_professor_procedure_event")
 }
 
 model DocumentTemplate {
@@ -652,11 +697,10 @@ model DocumentProcess {
   updatedAt         DateTime  @updatedAt
   deletedDate       DateTime?
 
-  process        CareerProcess     @relation(fields: [processId], references: [idProcess], onDelete: Cascade)
-  template       DocumentTemplate? @relation(fields: [templateId], references: [idDocumentTemplate], onDelete: SetNull)
-  evidenceFile   EvidenceFile?     @relation(fields: [evidenceFileId], references: [idEvidenceFile], onDelete: SetNull)
-  generatedBy    User?             @relation(fields: [generatedById], references: [idUser], onDelete: SetNull)
-  geccChecklists ProcessGecc[]     @relation("GeccChecklistDocument")
+  process      CareerProcess     @relation(fields: [processId], references: [idProcess], onDelete: Cascade)
+  template     DocumentTemplate? @relation(fields: [templateId], references: [idDocumentTemplate], onDelete: SetNull)
+  evidenceFile EvidenceFile?     @relation(fields: [evidenceFileId], references: [idEvidenceFile], onDelete: SetNull)
+  generatedBy  User?             @relation(fields: [generatedById], references: [idUser], onDelete: SetNull)
 
   @@index([processId])
   @@index([templateId])
@@ -703,15 +747,16 @@ model CppdCommissionMember {
 }
 
 model SpecialCommission {
-  idSpecialCommission Int                   @id @default(autoincrement())
-  processId           Int
-  type                SpecialCommissionType
-  ordinance           String?               @db.VarChar(120)
-  ordinanceDate       DateTime?
-  status              CommissionStatus      @default(DRAFT)
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  deletedDate         DateTime?
+  idSpecialCommission  Int                   @id @default(autoincrement())
+  processId            Int
+  type                 SpecialCommissionType
+  ordinance            String?               @db.VarChar(120)
+  ordinanceDate        DateTime?
+  evaluationDeadlineAt DateTime?
+  status               CommissionStatus      @default(DRAFT)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  deletedDate          DateTime?
 
   process CareerProcess             @relation(fields: [processId], references: [idProcess], onDelete: Cascade)
   members SpecialCommissionMember[]
@@ -729,6 +774,8 @@ model SpecialCommissionMember {
   sortOrder                 Int                           @default(0)
   acceptanceStatus          AcceptanceStatus              @default(PENDING)
   acceptedAt                DateTime?
+  conflictDeclarationAt     DateTime?
+  responseReason            String?                       @db.VarChar(1000)
   createdAt                 DateTime                      @default(now())
   updatedAt                 DateTime                      @updatedAt
   deletedDate               DateTime?
@@ -784,65 +831,6 @@ model IndividualEvaluationScore {
   @@map("individual_evaluation_score")
 }
 
-model ProcessGecc {
-  idProcessGecc       Int        @id @default(autoincrement())
-  processOriginId     Int
-  externalNumber      String?    @db.VarChar(120)
-  status              GeccStatus @default(DRAFT)
-  checklistDocumentId Int?
-  sentToCgpAt         DateTime?
-  createdAt           DateTime   @default(now())
-  updatedAt           DateTime   @updatedAt
-  deletedDate         DateTime?
-
-  processOrigin     CareerProcess    @relation(fields: [processOriginId], references: [idProcess], onDelete: Cascade)
-  checklistDocument DocumentProcess? @relation("GeccChecklistDocument", fields: [checklistDocumentId], references: [idDocumentProcess], onDelete: SetNull)
-  interestedPeople  GeccInterested[]
-  documents         GeccDocument[]
-
-  @@index([processOriginId])
-  @@index([checklistDocumentId])
-  @@map("process_gecc")
-}
-
-model GeccInterested {
-  processGeccId Int
-  personId      Int
-  type          GeccInterestedType
-  informedEmail String?            @db.VarChar(180)
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  deletedDate   DateTime?
-
-  processGecc ProcessGecc @relation(fields: [processGeccId], references: [idProcessGecc], onDelete: Cascade)
-  person      Person      @relation(fields: [personId], references: [idPerson], onDelete: Restrict)
-
-  @@id([processGeccId, personId, type])
-  @@index([personId])
-  @@map("gecc_interested")
-}
-
-model GeccDocument {
-  idGeccDocument Int       @id @default(autoincrement())
-  processGeccId  Int
-  personId       Int?
-  documentType   String    @db.VarChar(80)
-  evidenceFileId Int?
-  receivedAt     DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  deletedDate    DateTime?
-
-  processGecc  ProcessGecc   @relation(fields: [processGeccId], references: [idProcessGecc], onDelete: Cascade)
-  person       Person?       @relation(fields: [personId], references: [idPerson], onDelete: SetNull)
-  evidenceFile EvidenceFile? @relation(fields: [evidenceFileId], references: [idEvidenceFile], onDelete: SetNull)
-
-  @@index([processGeccId])
-  @@index([personId])
-  @@index([evidenceFileId])
-  @@map("gecc_document")
-}
-
 model EvidenceFile {
   idEvidenceFile Int       @id @default(autoincrement())
   userId         Int
@@ -865,7 +853,6 @@ model EvidenceFile {
   rscGeneratedSpreadsheets RscProcessDetail[]           @relation("RscGeneratedSpreadsheetFile")
   fullProfessorMemorials   FullProfessorProcessDetail[] @relation("FullProfessorMemorialFile")
   fullProfessorTheses      FullProfessorProcessDetail[] @relation("FullProfessorThesisFile")
-  geccDocuments            GeccDocument[]
 
   @@index([userId, deletedDate])
   @@index([usageType])

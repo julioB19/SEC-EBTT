@@ -1,5 +1,6 @@
 import {
   AcceptanceStatus,
+  ClassLevel,
   CommissionStatus,
   IndividualEvaluationStatus,
   IndividualEvaluationType,
@@ -82,6 +83,27 @@ export class SpecialCommissionRepository {
     })
   }
 
+  async findInternalEvaluatorByEmail(email: string) {
+    return prisma.user.findFirst({
+      where: {
+        email,
+        active: true,
+        deletedDate: null,
+        personId: { not: null },
+        roles: {
+          some: {
+            deletedDate: null,
+            role: {
+              name: { in: [RoleName.DOCENTE, RoleName.CPPD_MEMBER, RoleName.CPPD_CENTRAL] },
+              deletedDate: null
+            }
+          }
+        }
+      },
+      include: { person: true, externalEvaluator: true }
+    })
+  }
+
   async findActiveMember(specialCommissionId: number, personId: number) {
     return prisma.specialCommissionMember.findFirst({
       where: { specialCommissionId, personId, deletedDate: null }
@@ -93,6 +115,7 @@ export class SpecialCommissionRepository {
     specialCommissionId: number
     commissionType: SpecialCommissionType
     personId: number
+    origin: SpecialCommissionMemberOrigin
     role: SpecialCommissionMemberRole
     sortOrder: number
     changedById: number
@@ -110,7 +133,7 @@ export class SpecialCommissionRepository {
         ? await tx.specialCommissionMember.update({
             where: key,
             data: {
-              origin: SpecialCommissionMemberOrigin.EXTERNAL,
+              origin: params.origin,
               role: params.role,
               sortOrder: params.sortOrder,
               acceptanceStatus: AcceptanceStatus.PENDING,
@@ -122,7 +145,7 @@ export class SpecialCommissionRepository {
             data: {
               specialCommissionId: params.specialCommissionId,
               personId: params.personId,
-              origin: SpecialCommissionMemberOrigin.EXTERNAL,
+              origin: params.origin,
               role: params.role,
               sortOrder: params.sortOrder
             }
@@ -214,17 +237,28 @@ export class SpecialCommissionRepository {
     })
   }
 
-  async respondToInvitation(memberId: number, userId: number, response: AcceptanceStatus) {
+  async respondToInvitation(params: {
+    memberId: number
+    userId: number
+    response: AcceptanceStatus
+    absenceOfConflictDeclared: boolean
+    reason: string | null
+  }) {
     return prisma.$transaction(async tx => {
       const member = await tx.specialCommissionMember.update({
-        where: { idSpecialCommissionMember: memberId },
+        where: { idSpecialCommissionMember: params.memberId },
         data: {
-          acceptanceStatus: response,
-          acceptedAt: response === AcceptanceStatus.ACCEPTED ? new Date() : null
+          acceptanceStatus: params.response,
+          acceptedAt: params.response === AcceptanceStatus.ACCEPTED ? new Date() : null,
+          conflictDeclarationAt:
+            params.response === AcceptanceStatus.ACCEPTED && params.absenceOfConflictDeclared
+              ? new Date()
+              : null,
+          responseReason: params.reason
         }
       })
 
-      if (response === AcceptanceStatus.ACCEPTED) {
+      if (params.response === AcceptanceStatus.ACCEPTED) {
         const pendingCount = await tx.specialCommissionMember.count({
           where: {
             specialCommissionId: member.specialCommissionId,
@@ -252,7 +286,7 @@ export class SpecialCommissionRepository {
                 processId: commission.processId,
                 fromStatus: commission.process.status,
                 toStatus: nextStatus,
-                changedById: userId,
+                changedById: params.userId,
                 note: "All special commission members accepted the invitation"
               }
             })
@@ -269,12 +303,18 @@ export class SpecialCommissionRepository {
     processId: number
     status: CommissionStatus
     changedById: number
+    evaluationDeadlineAt?: Date | null
   }) {
     return prisma.$transaction(async tx => {
       const process = await tx.careerProcess.findUnique({ where: { idProcess: params.processId } })
       const commission = await tx.specialCommission.update({
         where: { idSpecialCommission: params.commissionId },
-        data: { status: params.status },
+        data: {
+          status: params.status,
+          ...(params.status === CommissionStatus.ACTIVE
+            ? { evaluationDeadlineAt: params.evaluationDeadlineAt ?? null }
+            : {})
+        },
         include: commissionInclude
       })
 
@@ -332,15 +372,13 @@ export class SpecialCommissionRepository {
     return prisma.$transaction(async tx => {
       const process = await tx.careerProcess.findUnique({
         where: { idProcess: params.processId },
-        include: { processTypeConfig: true, rscDetail: true }
+        include: { processTypeConfig: true, rscDetail: true, fullProfessorDetail: true }
       })
       if (!process) return null
 
       const nextStatus =
         params.decision === "APPROVED"
-          ? process.processTypeConfig?.requiresGecc
-            ? ProcessStatus.AWAITING_GECC
-            : ProcessStatus.APPROVED
+          ? ProcessStatus.APPROVED
           : ProcessStatus.REJECTED
 
       const updated = await tx.careerProcess.update({
@@ -359,18 +397,14 @@ export class SpecialCommissionRepository {
         })
       }
 
-      if (nextStatus === ProcessStatus.AWAITING_GECC) {
-        const existingGecc = await tx.processGecc.findFirst({
-          where: { processOriginId: params.processId, deletedDate: null }
+      if (process.fullProfessorDetail && params.decision === "APPROVED") {
+        await tx.docenteProfile.update({
+          where: { userId: process.userId },
+          data: {
+            classLevel: ClassLevel.D1,
+            start_interstice: process.fullProfessorDetail.finalReferenceDate ?? new Date()
+          }
         })
-        if (!existingGecc) {
-          await tx.processGecc.create({
-            data: {
-              processOriginId: params.processId,
-              externalNumber: process.externalNumber
-            }
-          })
-        }
       }
 
       await tx.processStatusHistory.create({

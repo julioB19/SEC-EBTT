@@ -3,7 +3,13 @@ services:
     image: mysql:8.0
     container_name: database
     environment:
-      allowPublicKeyRetrieval: true
+      MYSQL_DATABASE: TCC
       MYSQL_ROOT_PASSWORD: root123
     ports:
       - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot123"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s

@@ -2,7 +2,7 @@ import { IndividualEvaluationResult } from "@prisma/client"
 
 export interface IndividualEvaluationScoreDto {
   itemId: number
-  awardedPoints: number
+  recognizedQuantity: number
   evaluatorComment?: string | null
 }
 

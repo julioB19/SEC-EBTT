@@ -46,7 +46,11 @@ export interface AberturaProcessoDto {
 
   rscDetails?: {
     targetLevel?: string
-    simecReference?: string | null
+    careerEntryDateISO?: string
+    previousRscGrantedAtISO?: string | null
+    activityPeriodStartISO?: string
+    activityPeriodEndISO?: string
+    truthDeclarationAccepted?: boolean
   }
 
   fullProfessorDetails?: {
@@ -68,7 +72,11 @@ export interface UpdateProcessoDto {
   externalNumber?: string | null
   rscDetails?: {
     targetLevel?: string
-    simecReference?: string | null
+    careerEntryDateISO?: string
+    previousRscGrantedAtISO?: string | null
+    activityPeriodStartISO?: string
+    activityPeriodEndISO?: string
+    truthDeclarationAccepted?: boolean
   }
   fullProfessorDetails?: {
     evaluationMode?: FullProfessorEvaluationMode | string

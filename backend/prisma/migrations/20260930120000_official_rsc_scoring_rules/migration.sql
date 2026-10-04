@@ -1,0 +1,7 @@
+ALTER TABLE `scoring_node`
+  MODIFY COLUMN `name` VARCHAR(500) NOT NULL,
+  ADD COLUMN `maxPoints` DECIMAL(10, 2) NULL;
+
+ALTER TABLE `scoring_item`
+  MODIFY COLUMN `description` VARCHAR(1000) NOT NULL,
+  ADD COLUMN `maxQuantity` INTEGER NULL;

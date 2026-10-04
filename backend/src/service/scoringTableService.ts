@@ -257,7 +257,10 @@ export class ScoringTableService {
       sortOrder: dto.sortOrder ?? 0,
       parentId,
       hasFormula: dto.hasFormula ?? false,
-      formulaExpression: dto.formulaExpression ?? null
+      formulaExpression: dto.formulaExpression ?? null,
+      maxPoints: dto.maxPoints === null || dto.maxPoints === undefined || dto.maxPoints === ""
+        ? null
+        : String(dto.maxPoints)
     })
   }
 
@@ -311,7 +314,14 @@ export class ScoringTableService {
       points,
       hasMaxPoints: dto.hasMaxPoints ?? false,
       maxPoints,
-      formulaKey: dto.formulaKey ?? null
+      formulaKey: dto.formulaKey ?? null,
+      factor: dto.factor === null || dto.factor === undefined || dto.factor === ""
+        ? null
+        : String(dto.factor),
+      weight: dto.weight === null || dto.weight === undefined || dto.weight === ""
+        ? null
+        : String(dto.weight),
+      maxQuantity: dto.maxQuantity ?? null
     })
   }
 
@@ -397,6 +407,9 @@ export class ScoringTableService {
       formulaExpression: (n.hasFormula ?? false)
         ? String(n.formulaExpression ?? "").trim()
         : null,
+      maxPoints: n.maxPoints === null || n.maxPoints === undefined || n.maxPoints === ""
+        ? null
+        : String(n.maxPoints),
       items: (n.items ?? []).map(i => ({
         description: i.description.trim(),
         unit: String(i.unit ?? "").trim() ? String(i.unit ?? "").trim() : null,
@@ -407,7 +420,14 @@ export class ScoringTableService {
           : null,
         formulaKey: String(i.formulaKey ?? "").trim()
           ? String(i.formulaKey ?? "").trim().toUpperCase()
-          : null
+          : null,
+        factor: i.factor === null || i.factor === undefined || i.factor === ""
+          ? null
+          : String(i.factor),
+        weight: i.weight === null || i.weight === undefined || i.weight === ""
+          ? null
+          : String(i.weight),
+        maxQuantity: i.maxQuantity ?? null
       }))
     }))
 
@@ -455,7 +475,12 @@ export class ScoringTableService {
       sortOrder: dto.sortOrder,
       parentId,
       hasFormula,
-      formulaExpression
+      formulaExpression,
+      maxPoints: dto.maxPoints === undefined
+        ? undefined
+        : dto.maxPoints === null || dto.maxPoints === ""
+          ? null
+          : String(dto.maxPoints)
     })
   }
 
@@ -483,6 +508,18 @@ export class ScoringTableService {
           ? (maxPoints != null ? String(maxPoints) : null)
           : undefined,
       formulaKey: dto.formulaKey ?? undefined
+      ,
+      factor: dto.factor === undefined
+        ? undefined
+        : dto.factor === null || dto.factor === ""
+          ? null
+          : String(dto.factor),
+      weight: dto.weight === undefined
+        ? undefined
+        : dto.weight === null || dto.weight === ""
+          ? null
+          : String(dto.weight),
+      maxQuantity: dto.maxQuantity === undefined ? undefined : dto.maxQuantity
     })
   }
 }

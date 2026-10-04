@@ -24,14 +24,25 @@ Crie um arquivo `.env` e copie o conteúdo do arquivo `.env.example` (frontend e
 
 > Caso queira usar o MySQL instalado na máquina, altere o usuário e a senha na URL de conexão.
 
-Inicie o container do docker:
+Inicie o banco e aguarde o healthcheck:
 ```
-docker compose up
+cd backend
+npm run db:up
 ```
 
-Em seguida, execute as migrações do Prisma:
+Em desenvolvimento, crie/aplique as migrações do Prisma:
 ```bash
 npm run migrate
+```
+
+Para aplicar migrations já versionadas, inclusive em homologação ou produção, use o comando não interativo:
+```bash
+npm run migrate:deploy
+```
+
+O estado da cadeia pode ser consultado sem alterar o banco:
+```bash
+npm run migrate:status
 ```
 
 Defina `CPF_ENCRYPTION_KEY` no `.env` do backend com uma chave aleatória de pelo menos 32 caracteres. Essa chave deve ser preservada entre implantações; sua perda impede a leitura dos CPFs criptografados.

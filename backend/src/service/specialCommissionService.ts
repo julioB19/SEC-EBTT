@@ -3,11 +3,15 @@ import {
   CommissionStatus,
   ProcessStatus,
   ProcessTypeCategory,
+  RoleName,
+  SpecialCommissionMemberOrigin,
   SpecialCommissionMemberRole,
   SpecialCommissionType
 } from "@prisma/client"
 import { SpecialCommissionRepository } from "../repository/specialCommissionRepository"
 import { BusinessRuleError, NotFoundError } from "./processoService"
+import { FullProfessorProcedureService } from "./fullProfessorProcedureService"
+import { addCalendarDaysDeadline } from "../util/proceduralDeadline"
 import {
   AddSpecialCommissionMemberDto,
   FinalizeSpecialCommissionDecisionDto,
@@ -25,7 +29,10 @@ const manageableProcessStatuses: ProcessStatus[] = [
 ]
 
 export class SpecialCommissionService {
-  constructor(private readonly repository = new SpecialCommissionRepository()) {}
+  constructor(
+    private readonly repository = new SpecialCommissionRepository(),
+    private readonly fullProfessorProcedure = new FullProfessorProcedureService()
+  ) {}
 
   async getForProcess(processId: number) {
     const process = await this.getEligibleProcess(processId)
@@ -65,23 +72,59 @@ export class SpecialCommissionService {
     }
 
     const email = dto.email.trim().toLowerCase()
-    const evaluator = await this.repository.findExternalEvaluatorByEmail(email)
+    const origin = dto.origin ?? SpecialCommissionMemberOrigin.EXTERNAL
+    const evaluator = origin === SpecialCommissionMemberOrigin.INTERNAL
+      ? await this.repository.findInternalEvaluatorByEmail(email)
+      : await this.repository.findExternalEvaluatorByEmail(email)
     if (!evaluator?.personId || !evaluator.person) {
-      throw new NotFoundError("Avaliador externo não encontrado para o e-mail informado")
+      throw new NotFoundError(
+        origin === SpecialCommissionMemberOrigin.INTERNAL
+          ? "Avaliador interno não encontrado para o e-mail informado"
+          : "Avaliador externo não encontrado para o e-mail informado"
+      )
+    }
+
+    if (
+      process.processTypeConfig?.category === ProcessTypeCategory.RSC ||
+      process.processTypeConfig?.category === ProcessTypeCategory.FULL_PROFESSOR
+    ) {
+      if (evaluator.personId === process.user.personId) {
+        throw new BusinessRuleError("O docente interessado não pode integrar a própria comissão")
+      }
+      if (commission.members.length >= 4) {
+        throw new BusinessRuleError("A comissão especial possui exatamente quatro membros")
+      }
+    }
+
+    if (process.processTypeConfig?.category === ProcessTypeCategory.FULL_PROFESSOR) {
+      if (origin === SpecialCommissionMemberOrigin.INTERNAL && dto.role !== SpecialCommissionMemberRole.PRESIDENT) {
+        throw new BusinessRuleError("O membro interno deve ser indicado como presidente da comissão")
+      }
+      if (origin === SpecialCommissionMemberOrigin.EXTERNAL && dto.role === SpecialCommissionMemberRole.PRESIDENT) {
+        throw new BusinessRuleError("A presidência da comissão deve ser exercida pelo membro interno")
+      }
     }
 
     const existing = await this.repository.findActiveMember(commission.idSpecialCommission, evaluator.personId)
     if (existing) throw new BusinessRuleError("Este avaliador já pertence à comissão")
 
-    await this.repository.addExternalMember({
-      processId,
-      specialCommissionId: commission.idSpecialCommission,
-      commissionType: commission.type,
-      personId: evaluator.personId,
-      role: dto.role ?? SpecialCommissionMemberRole.MEMBER,
-      sortOrder: commission.members.length,
-      changedById: currentUserId
-    })
+    try {
+      await this.repository.addExternalMember({
+        processId,
+        specialCommissionId: commission.idSpecialCommission,
+        commissionType: commission.type,
+        personId: evaluator.personId,
+        origin,
+        role: dto.role ?? SpecialCommissionMemberRole.MEMBER,
+        sortOrder: commission.members.length,
+        changedById: currentUserId
+      })
+    } catch (error: any) {
+      if (error?.code === "P2002") {
+        throw new BusinessRuleError("Este avaliador já pertence à comissão")
+      }
+      throw error
+    }
 
     return this.getForProcess(processId)
   }
@@ -101,7 +144,7 @@ export class SpecialCommissionService {
   }
 
   async updateStatus(processId: number, currentUserId: number, dto: UpdateSpecialCommissionStatusDto) {
-    await this.getManageableProcess(processId)
+    const process = await this.getManageableProcess(processId)
     const commission = await this.repository.findCurrentByProcess(processId)
     if (!commission) throw new NotFoundError("Comissão especial não encontrada")
 
@@ -114,6 +157,12 @@ export class SpecialCommissionService {
       }
       if (commission.members.length === 0) {
         throw new BusinessRuleError("Adicione ao menos um membro antes de ativar a comissão")
+      }
+      if (commission.type === SpecialCommissionType.RSC) {
+        this.assertRscComposition(commission)
+      }
+      if (commission.type === SpecialCommissionType.FULL_PROFESSOR) {
+        this.assertFullProfessorComposition(commission)
       }
       const notAccepted = commission.members.filter(member => member.acceptanceStatus !== AcceptanceStatus.ACCEPTED)
       if (notAccepted.length > 0) {
@@ -135,14 +184,33 @@ export class SpecialCommissionService {
       if (pendingEvaluations.length > 0) {
         throw new BusinessRuleError("Todos os membros precisam enviar a avaliação individual antes da conclusão")
       }
+      if (process.processTypeConfig?.category === ProcessTypeCategory.FULL_PROFESSOR) {
+        const procedure = await this.fullProfessorProcedure.get(processId, {
+          userId: currentUserId,
+          role: RoleName.CPPD_MEMBER
+        })
+        if (procedure.evaluationMode === "THESIS" && procedure.stage !== "THESIS_DEFENSE_RECORDED") {
+          throw new BusinessRuleError("Registre a sessão e a gravação da defesa da tese antes de concluir a comissão")
+        }
+      }
     }
 
     await this.repository.updateStatus({
       commissionId: commission.idSpecialCommission,
       processId,
       status: dto.status,
-      changedById: currentUserId
+      changedById: currentUserId,
+      evaluationDeadlineAt:
+        dto.status === CommissionStatus.ACTIVE && commission.ordinanceDate
+          ? addCalendarDaysDeadline(commission.ordinanceDate, 45)
+          : undefined
     })
+    if (
+      dto.status === CommissionStatus.COMPLETED &&
+      process.processTypeConfig?.category === ProcessTypeCategory.FULL_PROFESSOR
+    ) {
+      await this.fullProfessorProcedure.initializeAfterCommission(processId, currentUserId)
+    }
     return this.getForProcess(processId)
   }
 
@@ -157,6 +225,8 @@ export class SpecialCommissionService {
         memberId: member.idSpecialCommissionMember,
         acceptanceStatus: member.acceptanceStatus,
         acceptedAt: member.acceptedAt,
+        conflictDeclarationAt: member.conflictDeclarationAt,
+        responseReason: member.responseReason,
         role: member.role,
         origin: member.origin,
         commission: {
@@ -205,8 +275,21 @@ export class SpecialCommissionService {
     if (member.acceptanceStatus !== AcceptanceStatus.PENDING) {
       throw new BusinessRuleError("Este convite já foi respondido")
     }
+    if (dto.response === AcceptanceStatus.ACCEPTED && dto.absenceOfConflictDeclared !== true) {
+      throw new BusinessRuleError("Declare a ausência de conflito de interesses para aceitar o convite")
+    }
+    const responseReason = dto.reason?.trim() || null
+    if (dto.response === AcceptanceStatus.DECLINED && !responseReason) {
+      throw new BusinessRuleError("Informe o motivo da recusa")
+    }
 
-    await this.repository.respondToInvitation(memberId, userId, dto.response)
+    await this.repository.respondToInvitation({
+      memberId,
+      userId,
+      response: dto.response,
+      absenceOfConflictDeclared: dto.absenceOfConflictDeclared === true,
+      reason: responseReason
+    })
     return this.listAssignments(userId)
   }
 
@@ -230,6 +313,34 @@ export class SpecialCommissionService {
       .filter(evaluation => evaluation?.status === "SUBMITTED")
     if (submittedEvaluations.length !== commission.members.length || commission.members.length === 0) {
       throw new BusinessRuleError("Todas as avaliações individuais precisam estar enviadas")
+    }
+
+    if (process.processTypeConfig?.category === ProcessTypeCategory.FULL_PROFESSOR) {
+      const procedure = await this.fullProfessorProcedure.get(processId, {
+        userId: currentUserId,
+        role: RoleName.CPPD_MEMBER
+      })
+      if (procedure.stage !== "COMPLETED" || !procedure.currentOutcome) {
+        throw new BusinessRuleError("Conclua o rito de reavaliação e recurso antes da decisão final")
+      }
+      const expectedDecision = procedure.currentOutcome === "APPROVED" ? "APPROVED" : "REJECTED"
+      if (dto.decision !== expectedDecision) {
+        throw new BusinessRuleError("A decisão da CPPD deve corresponder ao resultado final do rito")
+      }
+      if (dto.decision === "APPROVED") {
+        const profile = process.user.docente
+        if (!profile || profile.classLevel !== "C4" || !profile.start_interstice) {
+          throw new BusinessRuleError("A concessão da Classe Titular exige vínculo ativo em C4")
+        }
+        const eligibleAt = new Date(profile.start_interstice)
+        eligibleAt.setUTCMonth(eligibleAt.getUTCMonth() + 24)
+        if (eligibleAt.getTime() > Date.now()) {
+          throw new BusinessRuleError(
+            "A concessão da Classe Titular exige 24 meses completos em C4",
+            { eligibleAt: eligibleAt.toISOString(), requiredMonths: 24 }
+          )
+        }
+      }
     }
 
     const pointValues = submittedEvaluations
@@ -277,6 +388,51 @@ export class SpecialCommissionService {
       : SpecialCommissionType.FULL_PROFESSOR
   }
 
+  private assertFullProfessorComposition(commission: any) {
+    if (commission.members.length !== 4) {
+      throw new BusinessRuleError("A comissão da Classe Titular deve ter um membro interno e três externos")
+    }
+    const internalMembers = commission.members.filter(
+      (member: any) => member.origin === SpecialCommissionMemberOrigin.INTERNAL
+    )
+    const externalMembers = commission.members.filter(
+      (member: any) => member.origin === SpecialCommissionMemberOrigin.EXTERNAL
+    )
+    if (
+      internalMembers.length !== 1 ||
+      internalMembers[0].role !== SpecialCommissionMemberRole.PRESIDENT ||
+      externalMembers.length !== 3 ||
+      externalMembers.some((member: any) => member.role === SpecialCommissionMemberRole.SUBSTITUTE)
+    ) {
+      throw new BusinessRuleError(
+        "A comissão da Classe Titular deve ter um presidente interno e três membros externos titulares"
+      )
+    }
+  }
+
+  private assertRscComposition(commission: any) {
+    if (commission.members.length !== 4) {
+      throw new BusinessRuleError("A comissão do RSC deve ter um membro interno e três externos")
+    }
+    const internalMembers = commission.members.filter(
+      (member: any) => member.origin === SpecialCommissionMemberOrigin.INTERNAL
+    )
+    const externalMembers = commission.members.filter(
+      (member: any) => member.origin === SpecialCommissionMemberOrigin.EXTERNAL
+    )
+    if (
+      internalMembers.length !== 1 ||
+      externalMembers.length !== 3 ||
+      commission.members.some(
+        (member: any) => member.role === SpecialCommissionMemberRole.SUBSTITUTE
+      )
+    ) {
+      throw new BusinessRuleError(
+        "A comissão do RSC deve ter um membro interno e três membros externos titulares"
+      )
+    }
+  }
+
   private mapProcessResult(process: any, commission: any) {
     const submittedEvaluations = commission
       ? commission.members
@@ -308,7 +464,6 @@ export class SpecialCommissionService {
         teacherSiape: process.user.docente?.siape ?? null,
         campus: process.campus,
         cityState: process.cidadeUF,
-        requiresGecc: process.processTypeConfig?.requiresGecc ?? false,
         finalPoints: process.finalPoints === null ? null : Number(process.finalPoints),
         evaluationOpinion: process.evaluationOpinion
       },
@@ -319,6 +474,11 @@ export class SpecialCommissionService {
             status: commission.status,
             ordinance: commission.ordinance,
             ordinanceDate: commission.ordinanceDate,
+            evaluationDeadlineAt: commission.evaluationDeadlineAt,
+            evaluationOverdue: Boolean(
+              commission.evaluationDeadlineAt &&
+              new Date().getTime() > commission.evaluationDeadlineAt.getTime()
+            ),
             members: commission.members.map((member: any) => ({
               idSpecialCommissionMember: member.idSpecialCommissionMember,
               name: member.person.name,
@@ -328,6 +488,8 @@ export class SpecialCommissionService {
               sortOrder: member.sortOrder,
               acceptanceStatus: member.acceptanceStatus,
               acceptedAt: member.acceptedAt,
+              conflictDeclarationAt: member.conflictDeclarationAt,
+              responseReason: member.responseReason,
               evaluation: member.individualEvaluations[0]
                 ? {
                     idIndividualEvaluation: member.individualEvaluations[0].idIndividualEvaluation,

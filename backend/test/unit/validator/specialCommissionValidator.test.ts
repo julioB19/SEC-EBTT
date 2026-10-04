@@ -13,7 +13,7 @@ describe("specialCommissionValidator", () => {
       email: " Avaliador@Exemplo.COM "
     })
     expect(error).toBeUndefined()
-    expect(value).toEqual({ email: "avaliador@exemplo.com", role: "MEMBER" })
+    expect(value).toEqual({ email: "avaliador@exemplo.com", origin: "EXTERNAL", role: "MEMBER" })
   })
 
   test("rejeita e-mail e função inválidos", () => {
@@ -27,8 +27,21 @@ describe("specialCommissionValidator", () => {
     expect(updateSpecialCommissionStatusSchema.validate({ status: "DRAFT" }).error).toBeDefined()
   })
 
-  test("aceita apenas resposta definitiva ao convite", () => {
-    expect(respondSpecialCommissionInvitationSchema.validate({ response: "ACCEPTED" }).error).toBeUndefined()
+  test("exige declaração de ausência de conflito ao aceitar e motivo ao recusar", () => {
+    expect(respondSpecialCommissionInvitationSchema.validate({ response: "ACCEPTED" }).error).toBeDefined()
+    expect(
+      respondSpecialCommissionInvitationSchema.validate({
+        response: "ACCEPTED",
+        absenceOfConflictDeclared: true
+      }).error
+    ).toBeUndefined()
+    expect(respondSpecialCommissionInvitationSchema.validate({ response: "DECLINED" }).error).toBeDefined()
+    expect(
+      respondSpecialCommissionInvitationSchema.validate({
+        response: "DECLINED",
+        reason: "Impedimento declarado"
+      }).error
+    ).toBeUndefined()
     expect(respondSpecialCommissionInvitationSchema.validate({ response: "PENDING" }).error).toBeDefined()
   })
 

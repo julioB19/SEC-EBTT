@@ -12,7 +12,6 @@ export type ProcessEvidenceFile = {
 
 export type RscProcessDetails = {
   targetLevel: string | null
-  simecReference: string | null
   reportFile: ProcessEvidenceFile | null
 }
 
@@ -104,7 +103,7 @@ export default function SpecificProcessDocuments<TProcess>({
     if (!file) {
       notify({
         title: "Selecione um arquivo",
-        message: "Escolha um arquivo PDF, JPG ou PNG antes de anexar.",
+        message: "Escolha um arquivo PDF antes de anexar.",
         variant: "error"
       })
       return
@@ -181,7 +180,7 @@ export default function SpecificProcessDocuments<TProcess>({
           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
             <input
               type="file"
-              accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+              accept=".pdf,application/pdf"
               onChange={event => {
                 const selected = event.target.files?.[0]
                 setFiles(current => ({ ...current, [kind]: selected }))
@@ -209,7 +208,7 @@ export default function SpecificProcessDocuments<TProcess>({
           Documentação específica
         </h2>
         <p className="text-xs text-[var(--text-muted)]">
-          Arquivos permitidos: PDF, JPG ou PNG, com até 5 MB.
+          Arquivos permitidos: PDF, com até 5 MB.
         </p>
       </div>
 

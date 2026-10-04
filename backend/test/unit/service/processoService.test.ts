@@ -9,11 +9,9 @@ import { ProcessRepository } from "../../../src/repository/processoRepository";
 import { ScoringTableRepository } from "../../../src/repository/scoringTableRepository";
 import { UserRepository } from "../../../src/repository/userRepository";
 import { ProcessScoreRepository } from "../../../src/repository/processScoreRepository";
-import {
-  BusinessRuleError,
-  ProcessoService,
-} from "../../../src/service/processoService";
+import { ProcessoService } from "../../../src/service/processoService";
 import { AberturaProcessoDto } from "../../../src/type/dto/processoDto";
+import dayjs from "dayjs";
 
 describe("ProcessoService", () => {
   let processRepo: jest.Mocked<ProcessRepository>;
@@ -29,7 +27,6 @@ describe("ProcessoService", () => {
     category: ProcessTypeCategory.CAREER,
     requiresScoring: true,
     requiresCommittee: false,
-    requiresGecc: false,
     opinionTemplateId: null,
     defaultDestination: "CPPD",
     version: 1,
@@ -65,9 +62,10 @@ describe("ProcessoService", () => {
       findApprovedByProcessTypeId: jest.fn(),
       findApprovedByInterstice: jest.fn(),
       findApprovedByMovement: jest.fn(),
+      findById: jest.fn(),
+      updateStatus: jest.fn(),
       create: jest.fn(),
       obterParaCppdPorId: jest.fn(),
-      finalizeDocumentReview: jest.fn(),
     } as any;
 
     tableRepo = {
@@ -75,10 +73,13 @@ describe("ProcessoService", () => {
     } as any;
 
     userRepo = {
+      findById: jest.fn(),
       updateWithRolesAndDocente: jest.fn(),
     } as any;
 
-    scoreRepo = {} as any;
+    scoreRepo = {
+      findBlocksWithScoresByProcess: jest.fn(),
+    } as any;
 
     service = new ProcessoService(processRepo, tableRepo, userRepo, scoreRepo);
   });
@@ -96,7 +97,6 @@ describe("ProcessoService", () => {
         category: ProcessTypeCategory.CAREER,
         requiresScoring: true,
         requiresCommittee: false,
-        requiresGecc: false,
         defaultDestination: "CPPD",
         version: 1,
         validFrom: new Date("2026-01-01"),
@@ -117,6 +117,9 @@ describe("ProcessoService", () => {
     processRepo.findLastApprovedProcessForUser.mockResolvedValue(null);
     processRepo.findApprovedByInterstice.mockResolvedValue(null);
     processRepo.findApprovedByMovement.mockResolvedValue(null);
+    userRepo.findById.mockResolvedValue({
+      docente: { classLevel: "B1" },
+    } as any);
     processRepo.create.mockResolvedValue({
       idProcess: 99,
       userId: 7,
@@ -175,8 +178,17 @@ describe("ProcessoService", () => {
       campus: "Campus Teste",
       cidadeUF: "Santa Maria/RS",
       processTypeCode: "RSC",
-      rscDetails: { targetLevel: "RSC_II", simecReference: "SIMEC-123" },
+      rscDetails: {
+        targetLevel: "RSC_II",
+        careerEntryDateISO: "2018-01-01",
+        activityPeriodStartISO: "2018-01-01",
+        activityPeriodEndISO: "2025-12-31",
+        truthDeclarationAccepted: true,
+      },
     };
+    userRepo.findById.mockResolvedValue({
+      docente: { educationLevel: "Especialização", specialization: "Gestão" },
+    } as any);
     processRepo.findActiveProcessTypeConfigByCode.mockResolvedValue(
       rscConfig as any,
     );
@@ -211,108 +223,178 @@ describe("ProcessoService", () => {
     );
   });
 
-  test("abre processo simples configurado sem tipo legado", async () => {
-    const simpleConfig = {
+  test("rejeita RSC III sem mestrado concluído", async () => {
+    const rscConfig = {
       ...processTypeConfig,
-      idProcessType: 5,
-      code: "TRAINING_LEAVE",
-      name: "Afastamento para capacitação",
-      category: ProcessTypeCategory.SIMPLE,
-      requiresScoring: false,
-    };
-    const dto: AberturaProcessoDto = {
-      campus: "Campus Teste",
-      cidadeUF: "Santa Maria/RS",
-      processTypeCode: "TRAINING_LEAVE",
+      idProcessType: 3,
+      code: "RSC",
+      name: "Reconhecimento de Saberes e Competências",
+      category: ProcessTypeCategory.RSC,
     };
     processRepo.findActiveProcessTypeConfigByCode.mockResolvedValue(
-      simpleConfig as any,
+      rscConfig as any,
     );
+    tableRepo.findVigente.mockResolvedValue({ idScoringTable: 20 } as any);
     processRepo.findAnyActiveProcessForUser.mockResolvedValue(null);
-    processRepo.create.mockResolvedValue({
-      idProcess: 102,
-      userId: 7,
-      processTypeId: 5,
-      scoringTableId: null,
-      type: null,
-      status: ProcessStatus.DRAFT,
-      createdAt: new Date("2026-01-10"),
-      campus: dto.campus,
-      cidadeUF: dto.cidadeUF,
-      processTypeConfig: simpleConfig,
-    } as any);
-
-    const result = await service.abrirComAtualizacao(7, null, dto);
-
-    expect(tableRepo.findVigente).not.toHaveBeenCalled();
-    expect(processRepo.create).toHaveBeenCalledWith(
-      7,
-      null,
-      null,
-      dto,
-      5,
-      "TRAINING_LEAVE",
-    );
-    expect(result).toEqual(
-      expect.objectContaining({
-        processId: 102,
-        processTypeCode: "TRAINING_LEAVE",
-      }),
-    );
-  });
-  test("finaliza análise documental de processo simples", async () => {
-    const simpleConfig = {
-      ...processTypeConfig,
-      idProcessType: 5,
-      code: "TRAINING_LEAVE",
-      category: ProcessTypeCategory.SIMPLE,
-      requiresScoring: false,
-      requiresCommittee: false,
-    };
-    processRepo.obterParaCppdPorId.mockResolvedValue({
-      idProcess: 102,
-      status: ProcessStatus.SUBMITTED,
-      processTypeConfig: simpleConfig,
-    } as any);
-    processRepo.finalizeDocumentReview.mockResolvedValue({
-      idProcess: 102,
-      status: ProcessStatus.APPROVED,
-      evaluationOpinion: "Documentação conferida e aprovada.",
-    } as any);
-
-    const result = await service.finalizarAnaliseDocumentalCppd(102, 8, {
-      decision: "APPROVED",
-      opinionText: "  Documentação conferida e aprovada.  ",
-    });
-
-    expect(processRepo.finalizeDocumentReview).toHaveBeenCalledWith({
-      processId: 102,
-      fromStatus: ProcessStatus.SUBMITTED,
-      toStatus: ProcessStatus.APPROVED,
-      evaluationOpinion: "Documentação conferida e aprovada.",
-      changedById: 8,
-    });
-    expect(result).toEqual({
-      idProcess: 102,
-      status: ProcessStatus.APPROVED,
-      evaluationOpinion: "Documentação conferida e aprovada.",
-    });
-  });
-
-  test("impede análise documental em fluxo que exige pontuação", async () => {
-    processRepo.obterParaCppdPorId.mockResolvedValue({
-      idProcess: 99,
-      status: ProcessStatus.SUBMITTED,
-      processTypeConfig,
+    userRepo.findById.mockResolvedValue({
+      docente: { educationLevel: "Especialização", specialization: "Gestão" },
     } as any);
 
     await expect(
-      service.finalizarAnaliseDocumentalCppd(99, 8, {
-        decision: "APPROVED",
-        opinionText: "Parecer.",
+      service.abrirComAtualizacao(7, null, {
+        campus: "Campus Teste",
+        cidadeUF: "Santa Maria/RS",
+        processTypeCode: "RSC",
+        rscDetails: {
+          targetLevel: "RSC_III",
+          careerEntryDateISO: "2018-01-01",
+          activityPeriodStartISO: "2018-01-01",
+          activityPeriodEndISO: "2025-12-31",
+          truthDeclarationAccepted: true,
+        },
       }),
-    ).rejects.toThrow("fluxo específico de pontuação ou comissão");
-    expect(processRepo.finalizeDocumentReview).not.toHaveBeenCalled();
+    ).rejects.toThrow("exige mestrado concluída");
+  });
+
+  test("rejeita atividades RSC anteriores à janela de cinco anos", async () => {
+    const rscConfig = {
+      ...processTypeConfig,
+      idProcessType: 3,
+      code: "RSC",
+      name: "Reconhecimento de Saberes e Competências",
+      category: ProcessTypeCategory.RSC,
+    };
+    processRepo.findActiveProcessTypeConfigByCode.mockResolvedValue(
+      rscConfig as any,
+    );
+    tableRepo.findVigente.mockResolvedValue({ idScoringTable: 20 } as any);
+    processRepo.findAnyActiveProcessForUser.mockResolvedValue(null);
+    userRepo.findById.mockResolvedValue({
+      docente: { educationLevel: "Mestrado", mastersDegree: "Educação" },
+    } as any);
+
+    await expect(
+      service.abrirComAtualizacao(7, null, {
+        campus: "Campus Teste",
+        cidadeUF: "Santa Maria/RS",
+        processTypeCode: "RSC",
+        rscDetails: {
+          targetLevel: "RSC_III",
+          careerEntryDateISO: "2020-01-01",
+          activityPeriodStartISO: "2014-12-31",
+          activityPeriodEndISO: "2025-12-31",
+          truthDeclarationAccepted: true,
+        },
+      }),
+    ).rejects.toThrow("cinco anos regulamentares");
+  });
+
+  test("rejeita novo nível RSC sem três anos após a concessão anterior", async () => {
+    const rscConfig = {
+      ...processTypeConfig,
+      idProcessType: 3,
+      code: "RSC",
+      name: "Reconhecimento de Saberes e Competências",
+      category: ProcessTypeCategory.RSC,
+    };
+    processRepo.findActiveProcessTypeConfigByCode.mockResolvedValue(
+      rscConfig as any,
+    );
+    tableRepo.findVigente.mockResolvedValue({ idScoringTable: 20 } as any);
+    processRepo.findAnyActiveProcessForUser.mockResolvedValue(null);
+    userRepo.findById.mockResolvedValue({
+      docente: { educationLevel: "Mestrado", mastersDegree: "Educação" },
+    } as any);
+
+    await expect(
+      service.abrirComAtualizacao(7, null, {
+        campus: "Campus Teste",
+        cidadeUF: "Santa Maria/RS",
+        processTypeCode: "RSC",
+        rscDetails: {
+          targetLevel: "RSC_III",
+          careerEntryDateISO: "2010-01-01",
+          previousRscGrantedAtISO: "2024-01-01",
+          activityPeriodStartISO: "2024-01-01",
+          activityPeriodEndISO: "2026-01-01",
+          truthDeclarationAccepted: true,
+        },
+      }),
+    ).rejects.toThrow("ao menos três anos");
+  });
+
+  test("exige 36 pontos no nível pretendido para enviar RSC", async () => {
+    const rscConfig = {
+      ...processTypeConfig,
+      code: "RSC",
+      category: ProcessTypeCategory.RSC,
+    };
+    processRepo.findById.mockResolvedValue({
+      idProcess: 100,
+      userId: 7,
+      status: ProcessStatus.DRAFT,
+      scoringTableId: 20,
+      processTypeConfig: rscConfig,
+      table: { minRequiredPoints: 60 },
+      rscDetail: {
+        targetLevel: "RSC_II",
+        reportFileId: 9,
+        careerEntryDate: new Date("2018-01-01"),
+        previousRscGrantedAt: null,
+        activityPeriodStart: new Date("2018-01-01"),
+        activityPeriodEnd: new Date("2025-12-31"),
+        truthDeclarationAcceptedAt: new Date("2026-01-01"),
+      },
+      documents: [],
+    } as any);
+    userRepo.findById.mockResolvedValue({
+      docente: { educationLevel: "Especialização", specialization: "Gestão" },
+    } as any);
+    scoreRepo.findBlocksWithScoresByProcess.mockResolvedValue([
+      {
+        nodeId: 1,
+        code: "RSC_II",
+        name: "RSC II",
+        parentId: null,
+        sortOrder: 1,
+        hasFormula: false,
+        formulaExpression: null,
+        items: [
+          {
+            itemId: 1,
+            points: 1,
+            hasMaxPoints: false,
+            maxPoints: null,
+            formulaKey: null,
+            currentScore: { quantity: 1, awardedPoints: 35 },
+          },
+        ],
+      },
+      {
+        nodeId: 2,
+        code: "RSC_I",
+        name: "RSC I",
+        parentId: null,
+        sortOrder: 2,
+        hasFormula: false,
+        formulaExpression: null,
+        items: [
+          {
+            itemId: 2,
+            points: 1,
+            hasMaxPoints: false,
+            maxPoints: null,
+            formulaKey: null,
+            currentScore: { quantity: 1, awardedPoints: 30 },
+          },
+        ],
+      },
+    ] as any);
+
+    await expect(service.enviarParaAvaliacao(100, 7)).rejects.toThrow(
+      "36 pontos no nível pretendido",
+    );
+    expect(processRepo.updateStatus).not.toHaveBeenCalled();
   });
 
   test("abre Classe Titular sem exigir tabela de pontuação", async () => {
@@ -336,6 +418,12 @@ describe("ProcessoService", () => {
     );
     processRepo.findAnyActiveProcessForUser.mockResolvedValue(null);
     processRepo.findApprovedByProcessTypeId.mockResolvedValue(null);
+    userRepo.findById.mockResolvedValue({
+      docente: {
+        classLevel: "C4",
+        start_interstice: new Date("2024-01-01"),
+      },
+    } as any);
     processRepo.create.mockResolvedValue({
       idProcess: 101,
       userId: 7,
@@ -367,5 +455,67 @@ describe("ProcessoService", () => {
         processTypeCode: "FULL_PROFESSOR",
       }),
     );
+  });
+
+  test("rejeita abertura da Classe Titular fora de C4", async () => {
+    const fullProfessorConfig = {
+      ...processTypeConfig,
+      idProcessType: 4,
+      code: "FULL_PROFESSOR",
+      name: "Acesso à Classe Titular",
+      category: ProcessTypeCategory.FULL_PROFESSOR,
+      requiresScoring: false,
+      requiresCommittee: true,
+    };
+    processRepo.findActiveProcessTypeConfigByCode.mockResolvedValue(
+      fullProfessorConfig as any,
+    );
+    processRepo.findAnyActiveProcessForUser.mockResolvedValue(null);
+    userRepo.findById.mockResolvedValue({
+      docente: {
+        classLevel: "C3",
+        start_interstice: new Date("2020-01-01"),
+      },
+    } as any);
+
+    await expect(
+      service.abrirComAtualizacao(7, null, {
+        campus: "Campus Teste",
+        cidadeUF: "Santa Maria/RS",
+        processTypeCode: "FULL_PROFESSOR",
+        fullProfessorDetails: { evaluationMode: "MEMORIAL" },
+      }),
+    ).rejects.toThrow("esteja em C4");
+  });
+
+  test("rejeita abertura da Classe Titular antes de 12 meses em C4", async () => {
+    const fullProfessorConfig = {
+      ...processTypeConfig,
+      idProcessType: 4,
+      code: "FULL_PROFESSOR",
+      name: "Acesso à Classe Titular",
+      category: ProcessTypeCategory.FULL_PROFESSOR,
+      requiresScoring: false,
+      requiresCommittee: true,
+    };
+    processRepo.findActiveProcessTypeConfigByCode.mockResolvedValue(
+      fullProfessorConfig as any,
+    );
+    processRepo.findAnyActiveProcessForUser.mockResolvedValue(null);
+    userRepo.findById.mockResolvedValue({
+      docente: {
+        classLevel: "C4",
+        start_interstice: dayjs().subtract(11, "month").toDate(),
+      },
+    } as any);
+
+    await expect(
+      service.abrirComAtualizacao(7, null, {
+        campus: "Campus Teste",
+        cidadeUF: "Santa Maria/RS",
+        processTypeCode: "FULL_PROFESSOR",
+        fullProfessorDetails: { evaluationMode: "MEMORIAL" },
+      }),
+    ).rejects.toThrow("após 12 meses completos");
   });
 });

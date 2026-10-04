@@ -1,0 +1,2045 @@
+{
+  "generatedAt": "2026-10-01T11:26:33.051Z",
+  "pages": [
+    {
+      "name": "01-login",
+      "url": "http://127.0.0.1:3000/login",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nEntrar\nCPF\nSenha\nEntrar\nEsqueci minha senha\nNão tem conta? Cadastre-se",
+      "fields": [
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": null,
+          "placeholder": "000.000.000-00",
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "password",
+          "name": null,
+          "placeholder": "••••••••",
+          "label": null
+        }
+      ],
+      "buttons": [
+        "Entrar"
+      ],
+      "links": [
+        {
+          "text": "Esqueci minha senha",
+          "href": "/forgot-password"
+        },
+        {
+          "text": "Cadastre-se",
+          "href": "/register-professor"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "02-docente-inicio",
+      "url": "http://127.0.0.1:3000/docente",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nMódulo Docente\nINÍCIO\nCONSULTAR PROCESSOS\nABRIR PROCESSO\nPF\nMódulo do Docente\n\nGerencie seus processos de carreira, RSC e Classe Titular.\n\nBem-vindo ao módulo do Docente! Aqui você pode abrir novos processos e acompanhar cada etapa das solicitações em andamento.\n\nMeus processos\n\nAcompanhe o andamento, visualize detalhes e edite processos em rascunho.\n\nAbrir novo processo\n\nInicie uma nova solicitação usando o tipo adequado.",
+      "fields": [],
+      "buttons": [
+        "PF"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/docente"
+        },
+        {
+          "text": "CONSULTAR PROCESSOS",
+          "href": "/docente/processos"
+        },
+        {
+          "text": "ABRIR PROCESSO",
+          "href": "/docente/processos/abrir"
+        },
+        {
+          "text": "Meus processos\n\nAcompanhe o andamento, visualize detalhes e edite processos em rascunho.",
+          "href": "/docente/processos"
+        },
+        {
+          "text": "Abrir novo processo\n\nInicie uma nova solicitação usando o tipo adequado.",
+          "href": "/docente/processos/abrir"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "03-docente-processos",
+      "url": "http://127.0.0.1:3000/docente/processos",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nMódulo Docente\nINÍCIO\nCONSULTAR PROCESSOS\nABRIR PROCESSO\nPF\nMeus Processos\n\nAcompanhe aqui todas as suas solicitações de carreira.\n\nNº\tTIPO\tSITUAÇÃO\tDETALHAMENTO\tAÇÕES\n15\tRSC\tRascunho\tRSC I\tDetalhes\n14\tRSC\tAprovado\tRSC III\tDetalhes\n13\tRSC\tAprovado\tRSC II\tDetalhes",
+      "fields": [],
+      "buttons": [
+        "PF"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/docente"
+        },
+        {
+          "text": "CONSULTAR PROCESSOS",
+          "href": "/docente/processos"
+        },
+        {
+          "text": "ABRIR PROCESSO",
+          "href": "/docente/processos/abrir"
+        },
+        {
+          "text": "Detalhes",
+          "href": "/docente/processos/15"
+        },
+        {
+          "text": "Detalhes",
+          "href": "/docente/processos/14"
+        },
+        {
+          "text": "Detalhes",
+          "href": "/docente/processos/13"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "04-docente-abrir-processo",
+      "url": "http://127.0.0.1:3000/docente/processos/abrir",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nMódulo Docente\nINÍCIO\nCONSULTAR PROCESSOS\nABRIR PROCESSO\nPF\nAbrir novo processo\n\nRevise seus dados e informe os detalhes necessários para iniciar o processo.\n\nDados do docente\nNome\nE-mail\nTelefone / Celular\nSIAPE\nTipo de processo\nProgressão\nPromoção\nRSC\nPromoção à Classe Titular\nCampus\nCidade\nUF\nNúmero do processo externo (opcional)\nInício do interstício\nFim do interstício\nMovimentação na carreira\nClasse / nível de origem\nSelecione a origem...\nB1\nB2\nB3\nC1\nC2\nC3\nClasse / nível de destino\nSelecione o destino...\nAbrir processo",
+      "fields": [
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "email",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "name": null,
+          "placeholder": null,
+          "label": null,
+          "options": [
+            "Progressão",
+            "Promoção",
+            "RSC",
+            "Promoção à Classe Titular"
+          ]
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "date",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "date",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "name": null,
+          "placeholder": null,
+          "label": null,
+          "options": [
+            "Selecione a origem...",
+            "B1",
+            "B2",
+            "B3",
+            "C1",
+            "C2",
+            "C3"
+          ]
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "name": null,
+          "placeholder": null,
+          "label": null,
+          "options": [
+            "Selecione o destino..."
+          ]
+        }
+      ],
+      "buttons": [
+        "PF",
+        "Abrir processo"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/docente"
+        },
+        {
+          "text": "CONSULTAR PROCESSOS",
+          "href": "/docente/processos"
+        },
+        {
+          "text": "ABRIR PROCESSO",
+          "href": "/docente/processos/abrir"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "05-docente-processo-15",
+      "url": "http://127.0.0.1:3000/docente/processos/15",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nMódulo Docente\nINÍCIO\nCONSULTAR PROCESSOS\nABRIR PROCESSO\nPF\nDetalhes do Processo #15\n\nVisualize as informações, edite os dados permitidos e acompanhe a documentação e o andamento do processo.\n\nVoltar para lista\nInformações gerais\nRascunho\nEditar dados\nNúmero: 15\nTipo: RSC\nSituação: Rascunho\nCampus: Campus Santa Maria\nCidade/UF: Santa Maria/RS\nNúmero externo: TESTE-RSC-ELEGIBILIDADE-2026-09-30\nNível pretendido: RSC I\nDocumentação específica\n\nArquivos permitidos: PDF, com até 5 MB.\n\nRelatório descritivo ou memorial do RSC\nNenhum arquivo anexado.\nAnexar\nResumo de pontuação\nPontuação total do processo: 0,00 pontos\nÉ necessário atingir pelo menos 60,00 pontos para enviar o processo para avaliação da CPPD.\nPontuação mínima ainda não alcançada. Continue preenchendo a planilha para atingir os 60,00 pontos necessários.\nPreencher pontuação\nExcluir processo\n\nAntes de enviar, revise cuidadosamente as informações preenchidas e os documentos anexados. Após o envio, você não poderá mais alterá-los.\n\nAnexe todos os documentos obrigatórios para liberar o envio.\n\nA exclusão só é permitida para processos no status RASCUNHO.",
+      "fields": [
+        {
+          "tag": "INPUT",
+          "type": "file",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        }
+      ],
+      "buttons": [
+        "PF",
+        "Editar dados",
+        "Anexar",
+        "Excluir processo"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/docente"
+        },
+        {
+          "text": "CONSULTAR PROCESSOS",
+          "href": "/docente/processos"
+        },
+        {
+          "text": "ABRIR PROCESSO",
+          "href": "/docente/processos/abrir"
+        },
+        {
+          "text": "Voltar para lista",
+          "href": "/docente/processos"
+        },
+        {
+          "text": "Preencher pontuação",
+          "href": "/docente/processos/15/pontuacao"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "06-docente-pontuacao-15",
+      "url": "http://127.0.0.1:3000/docente/processos/15/pontuacao",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nMódulo Docente\nINÍCIO\nCONSULTAR PROCESSOS\nABRIR PROCESSO\nPF\nPontuação do Processo #15\n\nPara cada atividade, informe a quantidade (quando não houver limite) ou os pontos finais (quando houver pontuação máxima) e anexe os comprovantes.\n\nVoltar aos detalhes do processo\nTipo: RSC\nSituação:\nRascunho\nResumo\nPontuação total do processo: 0,00 pontos\nÉ necessário atingir pelo menos 60,00 pontos para enviar o processo para avaliação da CPPD.\nPontuação mínima ainda não alcançada. Continue preenchendo a planilha para atingir os 60,00 pontos necessários.\n\nAntes de enviar, revise cuidadosamente as informações preenchidas e os comprovantes anexados.\n\nO envio do processo para a CPPD é realizado na tela de detalhes do processo.\n\nRSC_I - RSC I\nRSC_I_D1 - Experiência na área de formação e/ou atuação do docente, anterior ao ingresso na Instituição, contemplando o impacto de suas ações nas demais diretrizes dispostas para todos os níveis do RSC\nGestão Escolar (Direção, Assistente de Direção, Gerente)\nFator 0,10 · peso 1,00 · máximo 100 Mês\nQuantidade\nPontos calculados: 0,00\nGestão Escolar (Supervisão, coordenação, Orientação Educacional)\nFator 0,05 · peso 1,00 · máximo 200 Mês\nQuantidade\nPontos calculados: 0,00\nExercício de Magistério (Educação Infantil, Básica e Superior)\nFator 0,05 · peso 1,00 · máximo 200 Mês\nQuantidade\nPontos calculados: 0,00\nGestão Iniciativa Privada na Área de Atuação (Presidência, Superintendência, Direção, Gerência, Chefia, Supervisão e coordenação em Empresas ou Entidades)\nFator 0,10 · peso 1,00 · máximo 100 Mês\nQuantidade\nPontos calculados: 0,00\nExperiência na área de atuação ou formação em nível técnico, administrativo, operacional, comercial ou profissional liberal\nFator 0,05 · peso 1,00 · máximo 200 Mês\nQuantidade\nPontos calculados: 0,00\nParticipação em Colegiados ou Conselhos de Empresas, Entidades ou Instituições de ensino\nFator 0,10 · peso 1,00 · máximo 100 Mês\nQuantidade\nPontos calculados: 0,00\nAtividade em Organizações Sociais e Assistenciais reconhecidas como de utilidade pública ou organização da sociedade civil de interesse público\nFator 0,10 · peso 1,00 · máximo 100 Mês\nQuantidade\nPontos calculados: 0,00\nAtividades na função de Instrutor em capacitação ou treinamento em empresas, instituições de ensino ou entidades\nFator 0,05 · peso 1,00 · máximo 200 mês\nQuantidade\nPontos calculados: 0,00\nAtuação como conferencista ou palestrante\nFator 0,20 · peso 1,00 · máximo 50 Evento\nQuantidade\nPontos calculados: 0,00\nParticipação em conferência, palestra, seminário, simpósio, colóquio, congresso ou similares\nFator 0,10 · peso 1,00 · máximo 100 Evento\nQuantidade\nPontos calculados: 0,00\nAvaliação de projetos, protótipos e invenções\nFator 0,50 · peso 1,00 · máximo 20 Evento\nQuantidade\nPontos calculados: 0,00\nProdução de material didático e/ou implantação de ambientes de aprendizagem, nas atividades de ensino, pesquisa, extensão e/ou inovação, artigo completo publicado em periódico científico ou apresentação artística em mostras ou similares, na área/subárea do curso\nFator 0,50 · peso 1,00 · máximo 20 Material\nQuantidade\nPontos calculados: 0,00\nRevisão técnica, tradução ou organização de material didático, paradidático em atividades de ensino, pesquisa, extensão e/ou inovação\nFator 0,25 · peso 1,00 · máximo 40 Material\nQuantidade\nPontos calculados: 0,00\nParticipação em processos seletivos, em bancas de avaliação acadêmica e/ou de concursos, grupos de trabalho, oficinas institucionais, visitas técnicas com alunos, projetos de interesse institucional de ensino, pesquisa, extensão e/ou inovação, projetos e/ou práticas pedagógicas de reconhecida relevância\nFator 0,05 · peso 1,00 · máximo 200 atividade concluída\nQuantidade\nPontos calculados: 0,00\nParticipação no desenvolvimento de protótipos, depósitos e/ou registros de propriedade intelectual\nFator 2,50 · peso 1,00 · máximo 4 atividade concluída\nQuantidade\nPontos calculados: 0,00\nPrêmios por atividades científicas, artísticas, esportivas e culturais\nFator 2,50 · peso 1,00 · máximo 4 Prêmio\nQuantidade\nPontos calculados: 0,00\nOrganização de eventos científicos, tecnológicos, esportivos, sociais, filantrópicos ou culturais\nFator 1,00 · peso 1,00 · máximo 10 Evento\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_I_D2 - Cursos de capacitação na área de interesse institucional\nCursos de aperfeiçoamento (carga horária mínima de 120 horas ou a soma de até 5 certificados)\nFator 10,00 · peso 1,00 · máximo 1 curso concluído\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_I_D3 - Atuação nos diversos níveis e modalidades de educação\nProgramas e/ou cursos de formação inicial e continuada, qualificação e/ou capacitação\nFator 0,05 · peso 2,00 · máximo 200 Mês\nQuantidade\nPontos calculados: 0,00\nProeja/Proeja-FIC\nFator 0,05 · peso 2,00 · máximo 200 Mês\nQuantidade\nPontos calculados: 0,00\nTécnico (Integrado, Concomitante e Subsequente)\nFator 0,05 · peso 2,00 · máximo 200 Mês\nQuantidade\nPontos calculados: 0,00\nSuperior (Bacharelado, Licenciatura e Tecnológico)\nFator 0,05 · peso 2,00 · máximo 200 Mês\nQuantidade\nPontos calculados: 0,00\nPós-graduação Lato Sensu\nFator 0,08 · peso 2,00 · máximo 125 Mês\nQuantidade\nPontos calculados: 0,00\nPós-graduação Stricto Sensu (Mestrado)\nFator 0,10 · peso 2,00 · máximo 100 Mês\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_I_D4 - Implantação de ambientes de aprendizagem, nas atividades de ensino, pesquisa, extensão e/ou inovação\nProjeto de implantação de ambientes de ensino/aprendizagem, laboratórios, oficinas, estúdios, salas ou áreas para práticas esportivas\nFator 0,50 · peso 2,00 · máximo 20 projeto aprovado\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_I_D5 - Atuação na gestão acadêmica e institucional, contemplando o impacto de suas ações nas demais diretrizes dispostas para todos os níveis da RSC\nCargo de Direção 1\nFator 0,20 · peso 2,00 · máximo 50 Mês\nQuantidade\nPontos calculados: 0,00\nCargo de Direção 2\nFator 0,20 · peso 2,00 · máximo 50 Mês\nQuantidade\nPontos calculados: 0,00\nCargo de Direção 3\nFator 0,10 · peso 2,00 · máximo 100 Mês\nQuantidade\nPontos calculados: 0,00\nCargo de Direção 4\nFator 0,10 · peso 2,00 · máximo 100 Mês\nQuantidade\nPontos calculados: 0,00\nFunção gratificada ou não gratificada de Coordenação de Área, chefia de Setor, Curso ou de atividades administrativas nomeadas pelo Reitor ou Diretor de campus\nFator 0,08 · peso 2,00 · máximo 125 Mês\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_I_D6 - Participação em processos seletivos, em bancas de avaliação acadêmica e/ou de concursos\nElaboração e/ou correção de provas\nFator 1,00 · peso 1,00 · máximo 10 concurso/ processo seletivo\nQuantidade\nPontos calculados: 0,00\nBanca de Concurso Público e/ou seleção de professor\nFator 1,00 · peso 1,00 · máximo 10 concurso/ processo seletivo\nQuantidade\nPontos calculados: 0,00\nBancas de avaliação do programa CERTIFIC e equivalentes\nFator 0,08 · peso 1,00 · máximo 125 Prova\nQuantidade\nPontos calculados: 0,00\nBanca de Estágio\nFator 0,10 · peso 1,00 · máximo 100 Banca\nQuantidade\nPontos calculados: 0,00\nTCC de Cursos Técnicos e de Graduação\nFator 0,20 · peso 1,00 · máximo 50 Banca\nQuantidade\nPontos calculados: 0,00\nTCC ou Monografia de Curso de Especialização\nFator 0,25 · peso 1,00 · máximo 40 Banca\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_I_D7 - Outras graduações, na área de interesse, além daquela que o habilita e define o nível de RSC pretendido, no âmbito do plano de qualificação institucional.\nCurso adicional de graduação\nFator 10,00 · peso 1,00 · máximo 1 curso concluído\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_II - RSC II\nRSC_II_D1 - Orientação do corpo discente em atividades de ensino, extensão, pesquisa e/ou inovação\nOrientação ou coorientação de TCC de cursos técnicos\nFator 0,20 · peso 3,00 · máximo 50 orientação concluída\nQuantidade\nPontos calculados: 0,00\nOrientação ou coorientação de TCC de cursos de graduação\nFator 0,25 · peso 3,00 · máximo 40 orientação concluída\nQuantidade\nPontos calculados: 0,00\nOrientação ou coorientação de TCC ou Monografia de especialização\nFator 0,34 · peso 3,00 · máximo 30 orientação concluída\nQuantidade\nPontos calculados: 0,00\nOrientação de estudantes em atividades de ensino, pesquisa e extensão\nFator 0,20 · peso 3,00 · máximo 50 orientação concluída\nQuantidade\nPontos calculados: 0,00\nOrientação ou supervisão de estágios curriculares, obrigatório ou não\nFator 0,10 · peso 3,00 · máximo 100 Mês\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_II_D2 - Participação no desenvolvimento de protótipos, depósitos e/ou registros de propriedade intelectual\nPropriedade intelectual (patente, registro)\nFator 10,00 · peso 1,00 · máximo 1 patente ou registro\nQuantidade\nPontos calculados: 0,00\nProduto ou processo não patenteado, protótipo, software não registrado e similares\nFator 2,00 · peso 1,00 · máximo 5 desenv. concluído\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_II_D3 - Participação como palestrante ou painelista em eventos científicos, tecnológicos, esportivos, sociais e/ou culturais correlatos à sua área de atuação na Instituição.\nParticipação como palestrante ou painelista, ministrante de oficina, minicurso estabelecidos institucionalmente.\nFator 0,50 · peso 1,00 · máximo 20 Evento\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_II_D4 - Participação no desenvolvimento de projetos, de interesse institucional, de ensino, pesquisa, extensão e/ou inovação\nCoordenação de projetos de ensino, pesquisa, inovação tecnológica ou extensão na própria instituição\nFator 2,50 · peso 2,00 · máximo 4 Projeto\nQuantidade\nPontos calculados: 0,00\nParticipação em projetos de ensino, pesquisa, inovação tecnológica ou extensão na própria instituição\nFator 1,25 · peso 2,00 · máximo 8 projeto\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_II_D5 - Participação no desenvolvimento de projetos e/ou práticas pedagógicas de reconhecida relevância\nCoordenação de Projetos Integradores\nFator 2,50 · peso 1,00 · máximo 4 Projeto\nQuantidade\nPontos calculados: 0,00\nParticipação em Projetos Integradores\nFator 1,25 · peso 1,00 · máximo 8 Projeto\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_II_D6 - Participação na organização de eventos científicos, tecnológicos, esportivos, sociais e/ou culturais\nParticipação na organização de conferência, congresso, simpósio, workshop, seminário, mostra, jornada, fórum e semana tecnológica\nFator 0,50 · peso 1,00 · máximo 20 Evento\nQuantidade\nPontos calculados: 0,00\nParticipação na organização de eventos esportivos, sociais, culturais e filantrópicos\nFator 0,50 · peso 1,00 · máximo 20 Evento\nQuantidade\nPontos calculados: 0,00\nParticipação na organização de palestra\nFator 0,20 · peso 1,00 · máximo 50 Evento\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_II_D7 - Outras pós-graduações lato sensu, na área de interesse, além daquela que o habilita e define o nível de RSC pretendido, no âmbito do plano de qualificação institucional\nCurso adicional de especialização\nFator 10,00 · peso 1,00 · máximo 1 curso concluído\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_III - RSC III\nRSC_III_D1 - Desenvolvimento, produção e transferência de tecnologias\nContratos de transferência de tecnologia e licenciamento\nFator 10,00 · peso 1,00 · máximo 1 contrato ou licenciamento\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_III_D2 - Desenvolvimento de pesquisas e aplicação de métodos e tecnologias educacionais que proporcionem a interdisciplinaridade e a integração de conteúdos acadêmicos na educação profissional e tecnológica ou na educação básica\nCoordenação de elaboração ou reformulação de Projeto Pedagógico de Curso (PPC) e afins\nFator 2,50 · peso 1,00 · máximo 4 atividade concluída\nQuantidade\nPontos calculados: 0,00\nParticipação na elaboração ou reformulação de PPC e afins\nFator 2,00 · peso 1,00 · máximo 5 atividade concluída\nQuantidade\nPontos calculados: 0,00\nAtividades de docência em qualquer nível e modalidade de ensino que proporcionem a interdisciplinaridade (PPI, projetos interdisciplinares e afins)\nFator 2,00 · peso 1,00 · máximo 5 atividade concluída\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_III_D3 - Desenvolvimento de pesquisas e atividades de extensão que proporcionem a articulação institucional com os arranjos sociais, culturais e produtivos\nCaptação de recursos em projetos de pesquisa, inovação tecnológica e extensão na própria instituição\nFator 2,50 · peso 2,00 · máximo 4 Projeto\nQuantidade\nPontos calculados: 0,00\nCoordenação de núcleo de inovação tecnológica na instituição\nFator 2,50 · peso 2,00 · máximo 4 Atividade\nQuantidade\nPontos calculados: 0,00\nCoordenação de programas e cursos de extensão na instituição\nFator 1,25 · peso 2,00 · máximo 8 Evento\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_III_D4 - Atuação em projetos e/ou atividades em parceria com outras instituições\nCaptação de recursos em projetos de pesquisa, inovação tecnológica e extensão em parceria com outras instituições\nFator 5,00 · peso 1,00 · máximo 2 Projeto\nQuantidade\nPontos calculados: 0,00\nCoordenação de projetos de pesquisa e inovação tecnológica em parceria com outras instituições\nFator 5,00 · peso 1,00 · máximo 2 Projeto\nQuantidade\nPontos calculados: 0,00\nCoordenação ou participação em equipe visando a implantação de unidades de ensino\nFator 2,00 · peso 1,00 · máximo 5 Projeto\nQuantidade\nPontos calculados: 0,00\nParticipação em projetos de pesquisa e inovação tecnológica em parceria com outras instituições\nFator 2,50 · peso 1,00 · máximo 4 Projeto\nQuantidade\nPontos calculados: 0,00\nLiderança de grupo de pesquisa\nFator 0,10 · peso 1,00 · máximo 100 Mês\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_III_D5 - Atuação em atividades de assistência técnica nacional e/ou internacional\nAvaliação de cursos pelo Instituto nacional de Estudos e Pesquisas Educacionais Anísio Teixeira (INEP) ou pela SETEC/MEC\nFator 5,00 · peso 2,00 · máximo 2 atividade concluída\nQuantidade\nPontos calculados: 0,00\nConsultorias a órgãos Internacionais e/ou Nacionais especializados de gestão científica, tecnológica ou cultural ou consultorias técnicas prestadas a órgãos públicos e privados\nFator 5,00 · peso 2,00 · máximo 2 consultoria realizada\nQuantidade\nPontos calculados: 0,00\nResumo deste bloco\nTotal de pontos do bloco\n0,00 pontos\nRSC_III_D6 - Produção acadêmica e/ou tecnológica, nas atividades de ensino, pesquisa, extensão e/ou inovação correlatos à sua área de atuação na Instituição.\nPrêmios outorgados por instituições públicas ou privadas por atividades científicas, artísticas, esportivas ou culturais\nFator 2,00 · peso 2,00 · máximo 5 Prêmio\nQuantidade\nPontos calculados: 0,00\nAutoria e coautoria de livro especializado\nFator 2,00 · peso 2,00 · máximo 5 Livro\nQuantidade\nPontos calculados: 0,00\nAutoria e coautoria de capítulo de livro especializado\nFator 1,00 · peso 2,00 · máximo 10 Livro\nQuantidade\nPontos calculados: 0,00\nTradutor de livro especializado\nFator 1,00 · peso 2,00 · máximo 10 Livro\nQuantidade\nPontos calculados: 0,00\nRevisor técnico de livro especializado\nFator 1,00 · peso 2,00 · máximo 10 Livro\nQuantidade\nPontos calculados: 0,00\nPublicação de artigo em revista indexada",
+      "fields": [
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": null
+        }
+      ],
+      "buttons": [
+        "PF"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/docente"
+        },
+        {
+          "text": "CONSULTAR PROCESSOS",
+          "href": "/docente/processos"
+        },
+        {
+          "text": "ABRIR PROCESSO",
+          "href": "/docente/processos/abrir"
+        },
+        {
+          "text": "Voltar aos detalhes do processo",
+          "href": "/docente/processos/15"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1425,
+        "height": 14623
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "07-docente-processo-14",
+      "url": "http://127.0.0.1:3000/docente/processos/14",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nMódulo Docente\nINÍCIO\nCONSULTAR PROCESSOS\nABRIR PROCESSO\nPF\nDetalhes do Processo #14\n\nVisualize as informações, edite os dados permitidos e acompanhe a documentação e o andamento do processo.\n\nVoltar para lista\nInformações gerais\nAprovado\nNúmero: 14\nTipo: RSC\nSituação: Aprovado\nCampus: Campus Santa Maria\nCidade/UF: Santa Maria/RS\nNúmero externo: TESTE-MANUAL-RSC-2026-09-30\nNível pretendido: RSC III\nDocumentação específica\n\nArquivos permitidos: PDF, com até 5 MB.\n\nRelatório descritivo ou memorial do RSC\nregulamento-rsc-iffar-2025.pdf (1,2 MB)\nResumo de pontuação\nPontuação total do processo: 60,00 pontos\nÉ necessário atingir pelo menos 60,00 pontos para enviar o processo para avaliação da CPPD.\nO processo só pode ser enviado enquanto estiver nos status Rascunho ou Devolvido.\n\nA exclusão só é permitida para processos no status RASCUNHO.\n\nO preenchimento da pontuação só é permitido para processos nos status RASCUNHO ou DEVOLVIDO.",
+      "fields": [],
+      "buttons": [
+        "PF"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/docente"
+        },
+        {
+          "text": "CONSULTAR PROCESSOS",
+          "href": "/docente/processos"
+        },
+        {
+          "text": "ABRIR PROCESSO",
+          "href": "/docente/processos/abrir"
+        },
+        {
+          "text": "Voltar para lista",
+          "href": "/docente/processos"
+        },
+        {
+          "text": "regulamento-rsc-iffar-2025.pdf (1,2 MB)",
+          "href": "/api/evidencias/11/conteudo"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "08-cppd-inicio",
+      "url": "http://127.0.0.1:3000/cppd",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nMódulo CPPD\nINÍCIO\nPROCESSOS\nTABELA DE PONTUAÇÃO\nDOCENTES\nCAMPI E COMISSÕES\nPF\nMódulo CPPD\n\nAcompanhe, analise e registre pareceres sobre os processos dos docentes.\n\nBem-vindo ao módulo da CPPD! Aqui você pode consultar os processos submetidos, acompanhar o fluxo de análise e registrar decisões sobre Progressão, Promoção, RSC e Promoção à Classe Titular na carreira docente EBTT.\n\nProcessos\n\nVisualize processos em rascunho, submetidos, em análise, aprovados, devolvidos ou indeferidos.\n\nTabela de pontuação vigente\n\nConsulte a tabela vigente (blocos e itens) utilizada na avaliação dos processos.\n\nDocentes\n\nConsulte os docentes cadastrados, visualize seus dados, edite o email e envie link para redefinição de senha.",
+      "fields": [],
+      "buttons": [
+        "PF"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/cppd"
+        },
+        {
+          "text": "PROCESSOS",
+          "href": "/cppd/processos"
+        },
+        {
+          "text": "TABELA DE PONTUAÇÃO",
+          "href": "/cppd/tabelas"
+        },
+        {
+          "text": "DOCENTES",
+          "href": "/cppd/usuarios"
+        },
+        {
+          "text": "CAMPI E COMISSÕES",
+          "href": "/cppd/comissoes"
+        },
+        {
+          "text": "Processos\n\nVisualize processos em rascunho, submetidos, em análise, aprovados, devolvidos ou indeferidos.",
+          "href": "/cppd/processos"
+        },
+        {
+          "text": "Tabela de pontuação vigente\n\nConsulte a tabela vigente (blocos e itens) utilizada na avaliação dos processos.",
+          "href": "/cppd/tabelas"
+        },
+        {
+          "text": "Docentes\n\nConsulte os docentes cadastrados, visualize seus dados, edite o email e envie link para redefinição de senha.",
+          "href": "/cppd/usuarios"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "09-cppd-processos-pendentes",
+      "url": "http://127.0.0.1:3000/cppd/processos",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nMódulo CPPD\nINÍCIO\nPROCESSOS\nTABELA DE PONTUAÇÃO\nDOCENTES\nCAMPI E COMISSÕES\nPF\nProcessos\n\nPendentes de avaliação • 0\n\nPendentes\nAvaliados\n\nNenhum processo pendente.",
+      "fields": [],
+      "buttons": [
+        "PF",
+        "Pendentes",
+        "Avaliados"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/cppd"
+        },
+        {
+          "text": "PROCESSOS",
+          "href": "/cppd/processos"
+        },
+        {
+          "text": "TABELA DE PONTUAÇÃO",
+          "href": "/cppd/tabelas"
+        },
+        {
+          "text": "DOCENTES",
+          "href": "/cppd/usuarios"
+        },
+        {
+          "text": "CAMPI E COMISSÕES",
+          "href": "/cppd/comissoes"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "10-cppd-processos-avaliados",
+      "url": "http://127.0.0.1:3000/cppd/processos?view=evaluated",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nMódulo CPPD\nINÍCIO\nPROCESSOS\nTABELA DE PONTUAÇÃO\nDOCENTES\nCAMPI E COMISSÕES\nPF\nProcessos\n\nAvaliados (com parecer) • 2\n\nPendentes\nAvaliados\nProcesso\tDocente\tTipo\tStatus\tTabela\tData da avaliação\tAção\n#14\tDocente Teste • SIAPE 7654321\tRSC\tDeferido\tTabela oficial RSC IFFar 2025\t30/09/2026\tVer comissão\n#13\tDocente Teste • SIAPE 7654321\tRSC\tDeferido\tTabela RSC temporária para testes\t14/09/2026\tVer comissão",
+      "fields": [],
+      "buttons": [
+        "PF",
+        "Pendentes",
+        "Avaliados"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/cppd"
+        },
+        {
+          "text": "PROCESSOS",
+          "href": "/cppd/processos"
+        },
+        {
+          "text": "TABELA DE PONTUAÇÃO",
+          "href": "/cppd/tabelas"
+        },
+        {
+          "text": "DOCENTES",
+          "href": "/cppd/usuarios"
+        },
+        {
+          "text": "CAMPI E COMISSÕES",
+          "href": "/cppd/comissoes"
+        },
+        {
+          "text": "Ver comissão",
+          "href": "/cppd/processos/14/comissao"
+        },
+        {
+          "text": "Ver comissão",
+          "href": "/cppd/processos/13/comissao"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "11-cppd-comissao-avaliada-14",
+      "url": "http://127.0.0.1:3000/cppd/processos/14/comissao",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nMódulo CPPD\nINÍCIO\nPROCESSOS\nTABELA DE PONTUAÇÃO\nDOCENTES\nCAMPI E COMISSÕES\nPF\nProcessos\nComissão especial\n\nProcesso #14 · RSC · Docente Teste\n\nConcluída\nCampus\nCampus Santa Maria\nCidade/UF\nSanta Maria/RS\nEtapa\nAPPROVED\nPortaria\n\nObrigatória para ativar a comissão após todos os aceites.\n\nNúmero da portaria\nData da portaria\nMembros\n\nO e-mail deve pertencer a um avaliador externo ativo.\n\nAvaliador Externo Teste\n\nseed.evaluator.52998224725@if.edu.br · Externo · PRESIDENT\n\nAvaliação enviada · Deferido · 60,00 pontos\n\nConvite aceito\nConsolidação das avaliações\n\n1 de 1 pareceres enviados\n\nMédia reconhecida\n60,00\nAvaliador Externo Teste\nDeferido · 60,00 pontos\n\nParecer de teste manual: documentação conferida e quantidades integralmente reconhecidas conforme a tabela oficial do RSC.\n\nDecisão da CPPD\n\nProcesso deferido. Pontuação consolidada: 60,00.\n\nDecisão final de teste manual: processo RSC aprovado após conferência da comissão especial, com 60 pontos reconhecidos e atendimento ao mínimo do nível RSC III.",
+      "fields": [
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": null,
+          "placeholder": null,
+          "label": "Número da portaria"
+        },
+        {
+          "tag": "INPUT",
+          "type": "date",
+          "name": null,
+          "placeholder": null,
+          "label": "Data da portaria"
+        }
+      ],
+      "buttons": [
+        "PF"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/cppd"
+        },
+        {
+          "text": "PROCESSOS",
+          "href": "/cppd/processos"
+        },
+        {
+          "text": "TABELA DE PONTUAÇÃO",
+          "href": "/cppd/tabelas"
+        },
+        {
+          "text": "DOCENTES",
+          "href": "/cppd/usuarios"
+        },
+        {
+          "text": "CAMPI E COMISSÕES",
+          "href": "/cppd/comissoes"
+        },
+        {
+          "text": "Processos",
+          "href": "/cppd/processos"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "12-cppd-comissao-14",
+      "url": "http://127.0.0.1:3000/cppd/processos/14/comissao",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nMódulo CPPD\nINÍCIO\nPROCESSOS\nTABELA DE PONTUAÇÃO\nDOCENTES\nCAMPI E COMISSÕES\nPF\nProcessos\nComissão especial\n\nProcesso #14 · RSC · Docente Teste\n\nConcluída\nCampus\nCampus Santa Maria\nCidade/UF\nSanta Maria/RS\nEtapa\nAPPROVED\nPortaria\n\nObrigatória para ativar a comissão após todos os aceites.\n\nNúmero da portaria\nData da portaria\nMembros\n\nO e-mail deve pertencer a um avaliador externo ativo.\n\nAvaliador Externo Teste\n\nseed.evaluator.52998224725@if.edu.br · Externo · PRESIDENT\n\nAvaliação enviada · Deferido · 60,00 pontos\n\nConvite aceito\nConsolidação das avaliações\n\n1 de 1 pareceres enviados\n\nMédia reconhecida\n60,00\nAvaliador Externo Teste\nDeferido · 60,00 pontos\n\nParecer de teste manual: documentação conferida e quantidades integralmente reconhecidas conforme a tabela oficial do RSC.\n\nDecisão da CPPD\n\nProcesso deferido. Pontuação consolidada: 60,00.\n\nDecisão final de teste manual: processo RSC aprovado após conferência da comissão especial, com 60 pontos reconhecidos e atendimento ao mínimo do nível RSC III.",
+      "fields": [
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": null,
+          "placeholder": null,
+          "label": "Número da portaria"
+        },
+        {
+          "tag": "INPUT",
+          "type": "date",
+          "name": null,
+          "placeholder": null,
+          "label": "Data da portaria"
+        }
+      ],
+      "buttons": [
+        "PF"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/cppd"
+        },
+        {
+          "text": "PROCESSOS",
+          "href": "/cppd/processos"
+        },
+        {
+          "text": "TABELA DE PONTUAÇÃO",
+          "href": "/cppd/tabelas"
+        },
+        {
+          "text": "DOCENTES",
+          "href": "/cppd/usuarios"
+        },
+        {
+          "text": "CAMPI E COMISSÕES",
+          "href": "/cppd/comissoes"
+        },
+        {
+          "text": "Processos",
+          "href": "/cppd/processos"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "13-cppd-tabelas",
+      "url": "http://127.0.0.1:3000/cppd/tabelas",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nMódulo CPPD\nINÍCIO\nPROCESSOS\nTABELA DE PONTUAÇÃO\nDOCENTES\nCAMPI E COMISSÕES\nPF\nTabela de pontuação vigente\n\nConsulta da tabela utilizada na avaliação dos processos.\n\nVoltar\nTabela EBTT 2025\nVigência: A partir de 31/12/2025\nSituação:\nAtiva\nBlocos: 17 • Itens: 23\nA - Atividades de Ensino\n0 item(ns)\nA1 - Ministração de aulas\n2 item(ns)\nHora-aula ministrada\nPontos:\n1,00\nUnidade: hora\nDisciplina semestral concluída\nPontos:\n20,00\nMáximo:\n—\nUnidade: disciplina\nA2 - Orientações\n2 item(ns)\nOrientação de TCC concluída\nPontos:\n8,00\nMáximo:\n—\nUnidade: orientação\nCo-orientação de TCC concluída\nPontos:\n4,00\nMáximo:\n—\nUnidade: coorientação\nA3 - Supervisão de estágio\n1 item(ns)\nSupervisão de estágio por aluno/semestre\nPontos:\n6,00\nMáximo:\n—\nUnidade: aluno\nB - Atividades de Pesquisa\n0 item(ns)\nB1 - Publicações\n2 item(ns)\nArtigo em periódico Qualis A/B\nPontos:\n30,00\nMáximo:\n—\nUnidade: artigo\nArtigo completo em conferência\nPontos:\n15,00\nMáximo:\n—\nUnidade: artigo\nB2 - Projetos de pesquisa\n2 item(ns)\nCoordenação de projeto de pesquisa\nPontos:\n25,00\nMáximo:\n—\nUnidade: projeto\nParticipação em projeto de pesquisa\nPontos:\n10,00\nMáximo:\n—\nUnidade: projeto\nC - Atividades de Extensão\n0 item(ns)\nC1 - Projetos de extensão\n2 item(ns)\nCoordenação de projeto de extensão\nPontos:\n20,00\nMáximo:\n—\nUnidade: projeto\nParticipação em projeto de extensão\nPontos:\n8,00\nMáximo:\n—\nUnidade: projeto\nC2 - Ações/eventos de extensão\n2 item(ns)\nOrganização de evento de extensão\nPontos:\n12,00\nMáximo:\n—\nUnidade: evento\nMinistração de ação/oficina\nPontos:\n6,00\nMáximo:\n—\nUnidade: ação\nD - Atividades Administrativas\n0 item(ns)\nD1 - Coordenação/Gestão\n2 item(ns)\nCoordenação de curso por semestre\nPontos:\n18,00\nMáximo:\n—\nUnidade: semestre\nChefia/Coordenação de setor\nPontos:\n22,00\nMáximo:\n—\nUnidade: semestre\nD2 - Comissões e colegiados\n2 item(ns)\nParticipação em comissão permanente\nPontos:\n6,00\nMáximo:\n—\nUnidade: semestre\nParticipação em comissão temporária\nPontos:\n4,00\nMáximo:\n—\nUnidade: atividade\nDOC - Docência\n0 item(ns)\nATVR - Atividade regular de docência em diferentes modalidades e níveis de ensino, por semestre\n0 item(ns)\nMDE - Modalidade de Ensino\n2 item(ns)\nTotal de semestres - modalidade PROEJA\nPontos:\n5,00\nUnidade: modalidade de ensino\nTotal de semestres - modalidade PROCampo\nPontos:\n5,00\nUnidade: modalidade de ensino\nNHA - Número de horas aula\nBloco com cálculo automático · (MNP + (MND * 2) + NT) * NSI\n4 item(ns)\nNúmero médio de períodos semanais\nMNP\nPontos:\n1,00\nUnidade: período de aula\nNúmero médio de disciplinas semanais\nMND\nPontos:\n2,00\nUnidade: disciplina\nNúmero médio de turmas semestrais\nNT\nPontos:\n1,00\nUnidade: turma\nSemestres\nNSI\nPontos:\n1,00\nUnidade: semestre",
+      "fields": [],
+      "buttons": [
+        "PF"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/cppd"
+        },
+        {
+          "text": "PROCESSOS",
+          "href": "/cppd/processos"
+        },
+        {
+          "text": "TABELA DE PONTUAÇÃO",
+          "href": "/cppd/tabelas"
+        },
+        {
+          "text": "DOCENTES",
+          "href": "/cppd/usuarios"
+        },
+        {
+          "text": "CAMPI E COMISSÕES",
+          "href": "/cppd/comissoes"
+        },
+        {
+          "text": "Voltar",
+          "href": "/cppd"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1425,
+        "height": 3597
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "14-cppd-docentes",
+      "url": "http://127.0.0.1:3000/cppd/usuarios",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nMódulo CPPD\nINÍCIO\nPROCESSOS\nTABELA DE PONTUAÇÃO\nDOCENTES\nCAMPI E COMISSÕES\nPF\nDocentes\n\nConsulta e gerenciamento básico dos docentes cadastrados.\n\nVoltar\nNome\tEmail\tCPF\tSIAPE\tAções\nDocente Teste\tseed.docente.65033520008@if.edu.br\t65033520008\t7654321\tEDITAR\nDocente Teste\tdocente.teste@if.edu.br\t03676144058\t7654321\tEDITAR\nMarina Lopes\tseed.cppd.51756662070@if.edu.br\t51756662070\t1234567\tEDITAR",
+      "fields": [
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": null,
+          "placeholder": "Buscar por nome, email, CPF ou SIAPE...",
+          "label": null
+        }
+      ],
+      "buttons": [
+        "PF"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/cppd"
+        },
+        {
+          "text": "PROCESSOS",
+          "href": "/cppd/processos"
+        },
+        {
+          "text": "TABELA DE PONTUAÇÃO",
+          "href": "/cppd/tabelas"
+        },
+        {
+          "text": "DOCENTES",
+          "href": "/cppd/usuarios"
+        },
+        {
+          "text": "CAMPI E COMISSÕES",
+          "href": "/cppd/comissoes"
+        },
+        {
+          "text": "Voltar",
+          "href": "/cppd"
+        },
+        {
+          "text": "EDITAR",
+          "href": "/cppd/usuarios/4"
+        },
+        {
+          "text": "EDITAR",
+          "href": "/cppd/usuarios/3"
+        },
+        {
+          "text": "EDITAR",
+          "href": "/cppd/usuarios/2"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "15-cppd-campi-comissoes",
+      "url": "http://127.0.0.1:3000/cppd/comissoes",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nMódulo CPPD\nINÍCIO\nPROCESSOS\nTABELA DE PONTUAÇÃO\nDOCENTES\nCAMPI E COMISSÕES\nPF\nCampi e comissões CPPD\n\nGerencie os vínculos que determinam o acesso local aos processos.\n\nVoltar\nComissões\nCampi\n\n1 comissão(ões) cadastrada(s)\n\nNova comissão\nCampus Santa Maria\nSEED-CPPD-SM\nVigente · 1 membro(s)\nDados da comissão\nEditar\nCampus\nCampus Santa Maria\nPortaria\nSEED-CPPD-SM\nMandato\nNão informado a Não informado\nVigência\n01/01/2020 a 31/12/2099\nMembros\nPessoa\tFunção\tVínculo\tAtivo\tAção\n\nMarina Lopes\nseed.cppd.51756662070@if.edu.br\t\nPresidente\nSecretário(a)\nMembro\n\t\nTitular\nSuplente\n\t\nSim\n\tRemover\nNovo membro\nSelecione\nFunção\nPresidente\nSecretário(a)\nMembro\nVínculo\nTitular\nSuplente\nAdicionar\n\nTodos os usuários locais da CPPD já estão vinculados a esta comissão.",
+      "fields": [
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "name": null,
+          "placeholder": null,
+          "label": null,
+          "options": [
+            "Presidente",
+            "Secretário(a)",
+            "Membro"
+          ]
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "name": null,
+          "placeholder": null,
+          "label": null,
+          "options": [
+            "Titular",
+            "Suplente"
+          ]
+        },
+        {
+          "tag": "INPUT",
+          "type": "checkbox",
+          "name": null,
+          "placeholder": null,
+          "label": "Sim"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "name": null,
+          "placeholder": null,
+          "label": "Novo membro\nSelecione",
+          "options": [
+            "Selecione"
+          ]
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "name": null,
+          "placeholder": null,
+          "label": "Função\nPresidente\nSecretário(a)\nMembro",
+          "options": [
+            "Presidente",
+            "Secretário(a)",
+            "Membro"
+          ]
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "name": null,
+          "placeholder": null,
+          "label": "Vínculo\nTitular\nSuplente",
+          "options": [
+            "Titular",
+            "Suplente"
+          ]
+        }
+      ],
+      "buttons": [
+        "PF",
+        "Comissões",
+        "Campi",
+        "Nova comissão",
+        "Campus Santa Maria\nSEED-CPPD-SM\nVigente · 1 membro(s)",
+        "Editar",
+        "Remover",
+        "Adicionar"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/cppd"
+        },
+        {
+          "text": "PROCESSOS",
+          "href": "/cppd/processos"
+        },
+        {
+          "text": "TABELA DE PONTUAÇÃO",
+          "href": "/cppd/tabelas"
+        },
+        {
+          "text": "DOCENTES",
+          "href": "/cppd/usuarios"
+        },
+        {
+          "text": "CAMPI E COMISSÕES",
+          "href": "/cppd/comissoes"
+        },
+        {
+          "text": "Voltar",
+          "href": "/cppd"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "16-admin-inicio",
+      "url": "http://127.0.0.1:3000/admin",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nÁrea Administrativa\nINÍCIO\nTABELAS DE PONTUAÇÃO\nUSUÁRIOS\nCAMPI E CPPD\nPF\nMódulo Administrador\n\nGerencie usuários, configurações e tabelas do sistema.\n\nBem-vindo ao módulo de administração! Aqui você pode manter cadastros, revisar configurações gerais e gerenciar as tabelas de pontuação.\n\nUsuários\n\nCadastre, edite, ative/inative e gerencie permissões de acesso.\n\nTabelas de Pontuação\n\nCrie e gerencie as tabelas de atividades, pesos e critérios do sistema.",
+      "fields": [],
+      "buttons": [
+        "PF"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/admin"
+        },
+        {
+          "text": "TABELAS DE PONTUAÇÃO",
+          "href": "/admin/tabelas-pontuacao"
+        },
+        {
+          "text": "USUÁRIOS",
+          "href": "/admin/usuarios"
+        },
+        {
+          "text": "CAMPI E CPPD",
+          "href": "/admin/campi-comissoes"
+        },
+        {
+          "text": "Usuários\n\nCadastre, edite, ative/inative e gerencie permissões de acesso.",
+          "href": "/admin/usuarios"
+        },
+        {
+          "text": "Tabelas de Pontuação\n\nCrie e gerencie as tabelas de atividades, pesos e critérios do sistema.",
+          "href": "/admin/tabelas-pontuacao"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "17-admin-usuarios",
+      "url": "http://127.0.0.1:3000/admin/usuarios",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nÁrea Administrativa\nINÍCIO\nTABELAS DE PONTUAÇÃO\nUSUÁRIOS\nCAMPI E CPPD\nPF\nUsuários\nVOLTAR\nNOVO USUÁRIO\nTodos os usuários\nADMIN\nDOCENTE\nMEMBRO DA CPPD\nCPPD CENTRAL\nAVALIADOR EXTERNO\nRecarregar\nNome\tEmail\tCPF\tSIAPE\tTipo\tAções\nCPPD Central Teste\tseed.cppd.central.58315013610@if.edu.br\t58315013610\t—\t\nCPPD CENTRAL\n\tEDITAR\nJulio\tjuliobarrattoo@gmail.com\t03426803070\t—\t\nAVALIADOR EXTERNO\n\tEDITAR\nAvaliador Externo Teste\tseed.evaluator.52998224725@if.edu.br\t52998224725\t—\t\nAVALIADOR EXTERNO\n\tEDITAR\nDocente Teste\tseed.docente.65033520008@if.edu.br\t65033520008\t7654321\t\nDOCENTE\n\tEDITAR\nDocente Teste\tdocente.teste@if.edu.br\t03676144058\t7654321\t\nDOCENTE\n\tEDITAR\nMarina Lopes\tseed.cppd.51756662070@if.edu.br\t51756662070\t1234567\t\nMEMBRO DA CPPD\n\tEDITAR\nAdministrador do Sistema\tseed.admin.81188057006@if.edu.br\t81188057006\t—\t\nADMIN\n\tEDITAR",
+      "fields": [
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": null,
+          "placeholder": "Buscar por nome, email, cpf, siape...",
+          "label": null
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "name": null,
+          "placeholder": null,
+          "label": null,
+          "options": [
+            "Todos os usuários",
+            "ADMIN",
+            "DOCENTE",
+            "MEMBRO DA CPPD",
+            "CPPD CENTRAL",
+            "AVALIADOR EXTERNO"
+          ]
+        }
+      ],
+      "buttons": [
+        "PF",
+        "Recarregar"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/admin"
+        },
+        {
+          "text": "TABELAS DE PONTUAÇÃO",
+          "href": "/admin/tabelas-pontuacao"
+        },
+        {
+          "text": "USUÁRIOS",
+          "href": "/admin/usuarios"
+        },
+        {
+          "text": "CAMPI E CPPD",
+          "href": "/admin/campi-comissoes"
+        },
+        {
+          "text": "VOLTAR",
+          "href": "/admin"
+        },
+        {
+          "text": "NOVO USUÁRIO",
+          "href": "/admin/usuarios/novo"
+        },
+        {
+          "text": "EDITAR",
+          "href": "/admin/usuarios/13"
+        },
+        {
+          "text": "EDITAR",
+          "href": "/admin/usuarios/12"
+        },
+        {
+          "text": "EDITAR",
+          "href": "/admin/usuarios/7"
+        },
+        {
+          "text": "EDITAR",
+          "href": "/admin/usuarios/4"
+        },
+        {
+          "text": "EDITAR",
+          "href": "/admin/usuarios/3"
+        },
+        {
+          "text": "EDITAR",
+          "href": "/admin/usuarios/2"
+        },
+        {
+          "text": "EDITAR",
+          "href": "/admin/usuarios/1"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "18-admin-tabelas",
+      "url": "http://127.0.0.1:3000/admin/tabelas-pontuacao",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nÁrea Administrativa\nINÍCIO\nTABELAS DE PONTUAÇÃO\nUSUÁRIOS\nCAMPI E CPPD\nPF\nTabelas de pontuação\n\nGerencie vigência, status e edição de estrutura.\n\nVOLTAR\nCRIAR NOVA TABELA\nTodos\nAtiva\nRascunho\nInativada\nAplicar\nTabela EBTT 2025\nAtiva\n\nID: 1 · Vigência: a partir de 31/12/2025 (sem data final)\n\nCriada em: 09/08/2026 · Atualizada em: 30/09/2026\n\nCAMPOS DA PLANILHA\nEDITAR ESTRUTURA\nINATIVAR\nEDITAR VIGÊNCIA\nTabela oficial RSC IFFar 2025\nAtiva\n\nID: 6 · Vigência: a partir de 16/07/2025 (sem data final)\n\nCriada em: 30/09/2026 · Atualizada em: 30/09/2026\n\nCAMPOS DA PLANILHA\nEDITAR ESTRUTURA\nINATIVAR\nEDITAR VIGÊNCIA\nTeste\nRascunho\n\nID: 3 · Vigência: a partir de 12/09/2026 (sem data final)\n\nCriada em: 13/09/2026 · Atualizada em: 13/09/2026\n\nCAMPOS DA PLANILHA\nEDITAR ESTRUTURA\nATIVAR\nEDITAR VIGÊNCIA\nEXCLUIR\nTeste\nRascunho\n\nID: 2 · Vigência: a partir de 14/08/2026 (sem data final)\n\nCriada em: 15/08/2026 · Atualizada em: 15/08/2026\n\nCAMPOS DA PLANILHA\nEDITAR ESTRUTURA\nATIVAR\nEDITAR VIGÊNCIA\nEXCLUIR\nTabela RSC temporária para testes\nInativada\n\nID: 5 · Vigência: a partir de 31/12/2025 (sem data final)\n\nCriada em: 14/09/2026 · Atualizada em: 30/09/2026\n\nCAMPOS DA PLANILHA\nEDITAR ESTRUTURA\nINATIVADA\nEDITAR VIGÊNCIA",
+      "fields": [
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": null,
+          "placeholder": "Nome da tabela",
+          "label": null
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "name": null,
+          "placeholder": null,
+          "label": null,
+          "options": [
+            "Todos",
+            "Ativa",
+            "Rascunho",
+            "Inativada"
+          ]
+        }
+      ],
+      "buttons": [
+        "PF",
+        "Aplicar",
+        "INATIVAR",
+        "EDITAR VIGÊNCIA",
+        "INATIVAR",
+        "EDITAR VIGÊNCIA",
+        "ATIVAR",
+        "EDITAR VIGÊNCIA",
+        "EXCLUIR",
+        "ATIVAR",
+        "EDITAR VIGÊNCIA",
+        "EXCLUIR",
+        "INATIVADA",
+        "EDITAR VIGÊNCIA"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/admin"
+        },
+        {
+          "text": "TABELAS DE PONTUAÇÃO",
+          "href": "/admin/tabelas-pontuacao"
+        },
+        {
+          "text": "USUÁRIOS",
+          "href": "/admin/usuarios"
+        },
+        {
+          "text": "CAMPI E CPPD",
+          "href": "/admin/campi-comissoes"
+        },
+        {
+          "text": "VOLTAR",
+          "href": "/admin"
+        },
+        {
+          "text": "CRIAR NOVA TABELA",
+          "href": "/admin/tabelas-pontuacao/nova"
+        },
+        {
+          "text": "CAMPOS DA PLANILHA",
+          "href": "/admin/tabelas-pontuacao/1/mapeamento"
+        },
+        {
+          "text": "EDITAR ESTRUTURA",
+          "href": "#"
+        },
+        {
+          "text": "CAMPOS DA PLANILHA",
+          "href": "/admin/tabelas-pontuacao/6/mapeamento"
+        },
+        {
+          "text": "EDITAR ESTRUTURA",
+          "href": "#"
+        },
+        {
+          "text": "CAMPOS DA PLANILHA",
+          "href": "/admin/tabelas-pontuacao/3/mapeamento"
+        },
+        {
+          "text": "EDITAR ESTRUTURA",
+          "href": "/admin/tabelas-pontuacao/nova/3/builder"
+        },
+        {
+          "text": "CAMPOS DA PLANILHA",
+          "href": "/admin/tabelas-pontuacao/2/mapeamento"
+        },
+        {
+          "text": "EDITAR ESTRUTURA",
+          "href": "/admin/tabelas-pontuacao/nova/2/builder"
+        },
+        {
+          "text": "CAMPOS DA PLANILHA",
+          "href": "/admin/tabelas-pontuacao/5/mapeamento"
+        },
+        {
+          "text": "EDITAR ESTRUTURA",
+          "href": "#"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "19-admin-campi-comissoes",
+      "url": "http://127.0.0.1:3000/admin/campi-comissoes",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nÁrea Administrativa\nINÍCIO\nTABELAS DE PONTUAÇÃO\nUSUÁRIOS\nCAMPI E CPPD\nPF\nCampi e comissões CPPD\n\nGerencie os vínculos que determinam o acesso local aos processos.\n\nVoltar\nComissões\nCampi\n\n1 comissão(ões) cadastrada(s)\n\nNova comissão\nCampus Santa Maria\nSEED-CPPD-SM\nVigente · 1 membro(s)\nDados da comissão\nEditar\nCampus\nCampus Santa Maria\nPortaria\nSEED-CPPD-SM\nMandato\nNão informado a Não informado\nVigência\n01/01/2020 a 31/12/2099\nMembros\nPessoa\tFunção\tVínculo\tAtivo\tAção\n\nMarina Lopes\nseed.cppd.51756662070@if.edu.br\t\nPresidente\nSecretário(a)\nMembro\n\t\nTitular\nSuplente\n\t\nSim\n\tRemover\nNovo membro\nSelecione\nFunção\nPresidente\nSecretário(a)\nMembro\nVínculo\nTitular\nSuplente\nAdicionar\n\nTodos os usuários locais da CPPD já estão vinculados a esta comissão.",
+      "fields": [
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "name": null,
+          "placeholder": null,
+          "label": null,
+          "options": [
+            "Presidente",
+            "Secretário(a)",
+            "Membro"
+          ]
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "name": null,
+          "placeholder": null,
+          "label": null,
+          "options": [
+            "Titular",
+            "Suplente"
+          ]
+        },
+        {
+          "tag": "INPUT",
+          "type": "checkbox",
+          "name": null,
+          "placeholder": null,
+          "label": "Sim"
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "name": null,
+          "placeholder": null,
+          "label": "Novo membro\nSelecione",
+          "options": [
+            "Selecione"
+          ]
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "name": null,
+          "placeholder": null,
+          "label": "Função\nPresidente\nSecretário(a)\nMembro",
+          "options": [
+            "Presidente",
+            "Secretário(a)",
+            "Membro"
+          ]
+        },
+        {
+          "tag": "SELECT",
+          "type": "select-one",
+          "name": null,
+          "placeholder": null,
+          "label": "Vínculo\nTitular\nSuplente",
+          "options": [
+            "Titular",
+            "Suplente"
+          ]
+        }
+      ],
+      "buttons": [
+        "PF",
+        "Comissões",
+        "Campi",
+        "Nova comissão",
+        "Campus Santa Maria\nSEED-CPPD-SM\nVigente · 1 membro(s)",
+        "Editar",
+        "Remover",
+        "Adicionar"
+      ],
+      "links": [
+        {
+          "text": "INÍCIO",
+          "href": "/admin"
+        },
+        {
+          "text": "TABELAS DE PONTUAÇÃO",
+          "href": "/admin/tabelas-pontuacao"
+        },
+        {
+          "text": "USUÁRIOS",
+          "href": "/admin/usuarios"
+        },
+        {
+          "text": "CAMPI E CPPD",
+          "href": "/admin/campi-comissoes"
+        },
+        {
+          "text": "Voltar",
+          "href": "/admin"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "20-avaliador-inicio",
+      "url": "http://127.0.0.1:3000/avaliador",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nMódulo Avaliador Externo\nAvaliações\nPF\nMinhas avaliações\nRSC\nAceito\n\nProcesso #14 · Docente Teste\n\nCampus Santa Maria · Santa Maria/RS · Função: PRESIDENT\n\nComissão concluída. O parecer permanece disponível para consulta.\n\nConsultar\nRSC\nAceito\n\nProcesso #13 · Docente Teste\n\nCampus Santa Maria · Santa Maria/RS · Função: MEMBER\n\nComissão concluída. O parecer permanece disponível para consulta.\n\nConsultar",
+      "fields": [],
+      "buttons": [
+        "PF"
+      ],
+      "links": [
+        {
+          "text": "Avaliações",
+          "href": "/avaliador"
+        },
+        {
+          "text": "Consultar",
+          "href": "/avaliador/avaliacoes/7"
+        },
+        {
+          "text": "Consultar",
+          "href": "/avaliador/avaliacoes/6"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1440,
+        "height": 1000
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    },
+    {
+      "name": "21-avaliador-parecer-7",
+      "url": "http://127.0.0.1:3000/avaliador/avaliacoes/7",
+      "title": "Create Next App",
+      "text": "SEC-EBTT\nMódulo Avaliador Externo\nAvaliações\nPF\nMinhas avaliações\nAvaliação individual\n\nProcesso #14 · RSC\n\nEnviada\nDocente\nDocente Teste\nSIAPE\n7654321\nCampus\nCampus Santa Maria\nPortaria\nPortaria TESTE RSC 14/2026\nDocumentos para análise\n\nAbra os arquivos anexados pelo docente antes de emitir o parecer.\n\nRelatório RSC: regulamento-rsc-iffar-2025.pdf\nPontuação reconhecida\n\nTabela oficial RSC IFFar 2025 · Mínimo para deferimento: 60,00\n\nTotal reconhecido\n60,00\nItem\tDeclarado\tQtd. reconhecida\tObservação\n\nRSC III / Desenvolvimento, produção e transferência de tecnologias\nContratos de transferência de tecnologia e licenciamento\nQuantidade declarada: 1\nFator: 10 · Peso: 1\nEvidência: regulamento-rsc-iffar-2025.pdf\t10,00\t\t\n\nRSC III / Desenvolvimento de pesquisas e aplicação de métodos e tecnologias educacionais que proporcionem a interdisciplinaridade e a integração de conteúdos acadêmicos na educação profissional e tecnológica ou na educação básica\nCoordenação de elaboração ou reformulação de Projeto Pedagógico de Curso (PPC) e afins\nQuantidade declarada: 4\nFator: 2.5 · Peso: 1\nEvidência: regulamento-rsc-iffar-2025.pdf\t10,00\t\t\n\nRSC III / Desenvolvimento de pesquisas e atividades de extensão que proporcionem a articulação institucional com os arranjos sociais, culturais e produtivos\nCaptação de recursos em projetos de pesquisa, inovação tecnológica e extensão na própria instituição\nQuantidade declarada: 4\nFator: 2.5 · Peso: 2\nEvidência: regulamento-rsc-iffar-2025.pdf\t20,00\t\t\n\nRSC III / Atuação em atividades de assistência técnica nacional e/ou internacional\nAvaliação de cursos pelo Instituto nacional de Estudos e Pesquisas Educacionais Anísio Teixeira (INEP) ou pela SETEC/MEC\nQuantidade declarada: 2\nFator: 5 · Peso: 2\nEvidência: regulamento-rsc-iffar-2025.pdf\t20,00\t\t\nResultado calculado\nDeferido\n\nRegra: 60 pontos totais e 36 no nível pretendido.\n\nResultado enviado: Deferido\nParecer individual\nBaixar parecer em PDF",
+      "fields": [
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": "Quantidade reconhecida para Contratos de transferência de tecnologia e licenciamento"
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": null,
+          "placeholder": null,
+          "label": "Observação para Contratos de transferência de tecnologia e licenciamento"
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": "Quantidade reconhecida para Coordenação de elaboração ou reformulação de Projeto Pedagógico de Curso (PPC) e afins"
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": null,
+          "placeholder": null,
+          "label": "Observação para Coordenação de elaboração ou reformulação de Projeto Pedagógico de Curso (PPC) e afins"
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": "Quantidade reconhecida para Captação de recursos em projetos de pesquisa, inovação tecnológica e extensão na própria instituição"
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": null,
+          "placeholder": null,
+          "label": "Observação para Captação de recursos em projetos de pesquisa, inovação tecnológica e extensão na própria instituição"
+        },
+        {
+          "tag": "INPUT",
+          "type": "number",
+          "name": null,
+          "placeholder": null,
+          "label": "Quantidade reconhecida para Avaliação de cursos pelo Instituto nacional de Estudos e Pesquisas Educacionais Anísio Teixeira (INEP) ou pela SETEC/MEC"
+        },
+        {
+          "tag": "INPUT",
+          "type": "text",
+          "name": null,
+          "placeholder": null,
+          "label": "Observação para Avaliação de cursos pelo Instituto nacional de Estudos e Pesquisas Educacionais Anísio Teixeira (INEP) ou pela SETEC/MEC"
+        },
+        {
+          "tag": "TEXTAREA",
+          "type": "textarea",
+          "name": null,
+          "placeholder": "Registre a fundamentação da avaliação.",
+          "label": "Parecer individual"
+        }
+      ],
+      "buttons": [
+        "PF"
+      ],
+      "links": [
+        {
+          "text": "Avaliações",
+          "href": "/avaliador"
+        },
+        {
+          "text": "Minhas avaliações",
+          "href": "/avaliador"
+        },
+        {
+          "text": "Relatório RSC: regulamento-rsc-iffar-2025.pdf",
+          "href": "/api/avaliador/avaliacoes/7/evidencias/11"
+        },
+        {
+          "text": "Evidência: regulamento-rsc-iffar-2025.pdf",
+          "href": "/api/avaliador/avaliacoes/7/evidencias/7"
+        },
+        {
+          "text": "Evidência: regulamento-rsc-iffar-2025.pdf",
+          "href": "/api/avaliador/avaliacoes/7/evidencias/8"
+        },
+        {
+          "text": "Evidência: regulamento-rsc-iffar-2025.pdf",
+          "href": "/api/avaliador/avaliacoes/7/evidencias/9"
+        },
+        {
+          "text": "Evidência: regulamento-rsc-iffar-2025.pdf",
+          "href": "/api/avaliador/avaliacoes/7/evidencias/10"
+        },
+        {
+          "text": "Baixar parecer em PDF",
+          "href": "/api/avaliador/avaliacoes/7/parecer"
+        }
+      ],
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "document": {
+        "width": 1425,
+        "height": 1536
+      },
+      "horizontalOverflow": false,
+      "brokenImages": []
+    }
+  ],
+  "logins": [
+    {
+      "role": "DOCENTE",
+      "url": "http://127.0.0.1:3000/docente",
+      "text": "SEC-EBTT\nMódulo Docente\nINÍCIO\nCONSULTAR PROCESSOS\nABRIR PROCESSO\nPF\nMódulo do Docente\n\nGerencie seus processos de carreira, RSC e Classe Titular.\n\nBem-vindo ao módulo do Docente! Aqui você pode abrir novos processos e acompanhar cada etapa das solicitações em andamento.\n\nMeus processos\n\nAcompanhe o andamento, visualize detalhes e edite processos em rascunho.\n\nAbrir novo processo\n\nInicie uma nova solicitação usando o tipo adequado."
+    },
+    {
+      "role": "CPPD_CENTRAL",
+      "url": "http://127.0.0.1:3000/cppd",
+      "text": "SEC-EBTT\nMódulo CPPD\nINÍCIO\nPROCESSOS\nTABELA DE PONTUAÇÃO\nDOCENTES\nCAMPI E COMISSÕES\nPF\nMódulo CPPD\n\nAcompanhe, analise e registre pareceres sobre os processos dos docentes.\n\nBem-vindo ao módulo da CPPD! Aqui você pode consultar os processos submetidos, acompanhar o fluxo de análise e registrar decisões sobre Progressão, Promoção, RSC e Promoção à Classe Titular na carreira docente EBTT.\n\nProcessos\n\nVisualize processos em rascunho, submetidos, em análise, aprovados, devolvidos ou indeferidos.\n\nTabela de pontuação vigente\n\nConsulte a tabela vigente (blocos e itens) utilizada na avaliação dos processos.\n\nDocentes\n\nConsulte os docentes cadastrados, visualize seus dados, edite o email e envie link para redefinição de senha."
+    },
+    {
+      "role": "ADMIN",
+      "url": "http://127.0.0.1:3000/admin",
+      "text": "SEC-EBTT\nÁrea Administrativa\nINÍCIO\nTABELAS DE PONTUAÇÃO\nUSUÁRIOS\nCAMPI E CPPD\nPF\nMódulo Administrador\n\nGerencie usuários, configurações e tabelas do sistema.\n\nBem-vindo ao módulo de administração! Aqui você pode manter cadastros, revisar configurações gerais e gerenciar as tabelas de pontuação.\n\nUsuários\n\nCadastre, edite, ative/inative e gerencie permissões de acesso.\n\nTabelas de Pontuação\n\nCrie e gerencie as tabelas de atividades, pesos e critérios do sistema."
+    },
+    {
+      "role": "EXTERNAL_EVALUATOR",
+      "url": "http://127.0.0.1:3000/avaliador",
+      "text": "SEC-EBTT\nMódulo Avaliador Externo\nAvaliações\nPF\nMinhas avaliações\nRSC\nAceito\n\nProcesso #14 · Docente Teste\n\nCampus Santa Maria · Santa Maria/RS · Função: PRESIDENT\n\nComissão concluída. O parecer permanece disponível para consulta.\n\nConsultar\nRSC\nAceito\n\nProcesso #13 · Docente Teste\n\nCampus Santa Maria · Santa Maria/RS · Função: MEMBER\n\nComissão concluída. O parecer permanece disponível para consulta.\n\nConsultar"
+    }
+  ],
+  "runtimeErrors": [],
+  "failedRequests": []
+}

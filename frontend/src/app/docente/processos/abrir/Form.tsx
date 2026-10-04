@@ -30,7 +30,6 @@ type ConfiguredProcessType = {
   category: string
   requiresScoring: boolean
   requiresCommittee: boolean
-  requiresGecc: boolean
   active: boolean
 }
 
@@ -86,7 +85,6 @@ const FALLBACK_PROCESS_TYPES: ConfiguredProcessType[] = [
     category: "CAREER",
     requiresScoring: true,
     requiresCommittee: false,
-    requiresGecc: false,
     active: true
   },
   {
@@ -96,7 +94,6 @@ const FALLBACK_PROCESS_TYPES: ConfiguredProcessType[] = [
     category: "CAREER",
     requiresScoring: true,
     requiresCommittee: false,
-    requiresGecc: false,
     active: true
   }
 ]
@@ -105,10 +102,7 @@ const PROCESS_TYPE_LABELS: Record<string, string> = {
   PROGRESSION: "Progressão",
   PROMOTION: "Promoção",
   RSC: "RSC",
-  FULL_PROFESSOR: "Professor Titular",
-  TRAINING_LEAVE: "Afastamento",
-  QUALIFICATION_PAY: "Retribuição por Titulação",
-  IN_SERVICE_DEVELOPMENT: "Desenvolvimento em Serviço"
+  FULL_PROFESSOR: "Promoção à Classe Titular"
 }
 
 function mapLegacyTypeToProcessTypeCode(type: LegacyProcessType): ProcessTypeCode {
@@ -151,7 +145,11 @@ export default function Form() {
   const [nivelDestino, setNivelDestino] = useState("")
   const [externalNumber, setExternalNumber] = useState("")
   const [rscTargetLevel, setRscTargetLevel] = useState("")
-  const [simecReference, setSimecReference] = useState("")
+  const [rscCareerEntryDate, setRscCareerEntryDate] = useState("")
+  const [rscPreviousGrantDate, setRscPreviousGrantDate] = useState("")
+  const [rscActivityPeriodStart, setRscActivityPeriodStart] = useState("")
+  const [rscActivityPeriodEnd, setRscActivityPeriodEnd] = useState("")
+  const [rscTruthDeclaration, setRscTruthDeclaration] = useState(false)
   const [fullProfessorEvaluationMode, setFullProfessorEvaluationMode] =
     useState<"MEMORIAL" | "THESIS">("MEMORIAL")
 
@@ -439,9 +437,13 @@ export default function Form() {
           classeDestino: isCareerProcess ? classeDestino : undefined,
           nivelDestino: isCareerProcess ? nivelDestino : undefined,
           rscDetails: isRscProcess
-            ? {
+              ? {
                 targetLevel: rscTargetLevel,
-                simecReference: simecReference.trim() || null
+                careerEntryDateISO: rscCareerEntryDate,
+                previousRscGrantedAtISO: rscPreviousGrantDate || null,
+                activityPeriodStartISO: rscActivityPeriodStart,
+                activityPeriodEndISO: rscActivityPeriodEnd,
+                truthDeclarationAccepted: rscTruthDeclaration
               }
             : undefined,
           fullProfessorDetails: isFullProfessorProcess
@@ -768,16 +770,62 @@ export default function Form() {
                 </div>
                 <div className="flex flex-col gap-1 text-sm">
                   <label className="font-medium text-[var(--text-primary)]">
-                    Referência SIMEC (opcional)
+                    Ingresso na carreira EBTT
                   </label>
                   <input
+                    type="date"
                     className={inputClass}
-                    value={simecReference}
-                    onChange={e => setSimecReference(e.target.value)}
-                    maxLength={120}
+                    value={rscCareerEntryDate}
+                    onChange={e => setRscCareerEntryDate(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="flex flex-col gap-1 text-sm">
+                  <label className="font-medium text-[var(--text-primary)]">
+                    Início das atividades consideradas
+                  </label>
+                  <input
+                    type="date"
+                    className={inputClass}
+                    value={rscActivityPeriodStart}
+                    onChange={e => setRscActivityPeriodStart(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="flex flex-col gap-1 text-sm">
+                  <label className="font-medium text-[var(--text-primary)]">
+                    Fim das atividades consideradas
+                  </label>
+                  <input
+                    type="date"
+                    className={inputClass}
+                    value={rscActivityPeriodEnd}
+                    onChange={e => setRscActivityPeriodEnd(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="flex flex-col gap-1 text-sm">
+                  <label className="font-medium text-[var(--text-primary)]">
+                    Concessão anterior de RSC (se houver)
+                  </label>
+                  <input
+                    type="date"
+                    className={inputClass}
+                    value={rscPreviousGrantDate}
+                    onChange={e => setRscPreviousGrantDate(e.target.value)}
                   />
                 </div>
               </div>
+              <label className="flex items-start gap-2 text-sm text-[var(--text-primary)]">
+                <input
+                  type="checkbox"
+                  checked={rscTruthDeclaration}
+                  onChange={e => setRscTruthDeclaration(e.target.checked)}
+                  required
+                  className="mt-1"
+                />
+                Declaro que as informações e os períodos informados são verdadeiros e correspondem aos documentos comprobatórios do processo.
+              </label>
             </section>
           )}
 

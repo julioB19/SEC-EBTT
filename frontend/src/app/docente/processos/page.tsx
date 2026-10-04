@@ -11,7 +11,6 @@ type ProcessStatus =
   | "AWAITING_ORDINANCE"
   | "UNDER_REVIEW"
   | "IN_EVALUATION"
-  | "AWAITING_GECC"
   | "RETURNED"
   | "APPROVED"
   | "REJECTED"
@@ -94,8 +93,6 @@ function statusLabel(status: ProcessStatus) {
       return "Em análise"
     case "IN_EVALUATION":
       return "Em avaliação"
-    case "AWAITING_GECC":
-      return "Aguardando GECC"
     case "RETURNED":
       return "Devolvido"
     case "APPROVED":

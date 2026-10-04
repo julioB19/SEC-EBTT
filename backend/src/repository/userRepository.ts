@@ -244,6 +244,7 @@ export class UserRepository {
         where: { idUser: userId },
         include: {
           roles: { include: { role: true } },
+          docente: true,
           externalEvaluator: true,
           person: true
         }
@@ -321,10 +322,10 @@ export class UserRepository {
         if (p.role !== undefined) docenteUpdate.role = p.role
         if (p.immediateSupervisor !== undefined) docenteUpdate.immediate_supervisor = p.immediateSupervisor
 
-        data.docente = {
-          upsert: {
-            update: docenteUpdate,
-            create: {
+        data.docente = current.docente
+          ? { update: docenteUpdate }
+          : {
+              create: {
               siape: p.siape!,
               classLevel: p.classLevel!,
               start_interstice: p.startInterstice!,
@@ -338,9 +339,8 @@ export class UserRepository {
               division: p.division ?? null,
               role: p.role ?? null,
               immediate_supervisor: p.immediateSupervisor ?? null
+              }
             }
-          }
-        }
       }
 
       const hasExternalEvaluatorRole = effectiveRoles.includes(RoleName.EXTERNAL_EVALUATOR)

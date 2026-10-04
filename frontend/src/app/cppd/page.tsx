@@ -32,7 +32,7 @@ export default async function CppdPage() {
             <p className="text-[var(--text-primary)]">
               Bem-vindo ao módulo da CPPD! Aqui você pode consultar os processos
               submetidos, acompanhar o fluxo de análise e registrar decisões sobre
-              progressão e promoção na carreira docente EBTT.
+              Progressão, Promoção, RSC e Promoção à Classe Titular na carreira docente EBTT.
             </p>
           </div>
 

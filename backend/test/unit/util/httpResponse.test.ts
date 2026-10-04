@@ -28,4 +28,14 @@ describe("HttpResponse", () => {
     HttpResponse.notFound(res, "X", "não", null)
     expect(res.status).not.toHaveBeenCalled()
   })
+
+  test("converte BigInt em número antes de serializar respostas", () => {
+    const res = responseMock()
+    HttpResponse.ok(res, "ok", { sizeBytes: BigInt(123) })
+    expect(res.json).toHaveBeenCalledWith({
+      status: StatusCodeDescription.SUCCESS,
+      message: "ok",
+      data: { sizeBytes: 123 }
+    })
+  })
 })

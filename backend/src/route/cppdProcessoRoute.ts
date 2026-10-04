@@ -9,11 +9,6 @@ import {
   requireCppdAccess,
   requireCppdProcessAccess,
 } from "../middleware/cppdAccessMiddleware";
-import {
-  validatorMiddleware,
-  ParamType,
-} from "../middleware/validatorMiddleware";
-import { documentReviewDecisionSchema } from "../validator/processEvaluationValidator";
 
 export function cppdProcessoRoute() {
   const router = Router();
@@ -38,14 +33,6 @@ export function cppdProcessoRoute() {
     requireCppdAccess,
     requireCppdProcessAccess(),
     controller.obter,
-  );
-  router.post(
-    "/cppd/processos/:id/analise-documental/decisao",
-    authMiddleware,
-    requireCppdAccess,
-    requireCppdProcessAccess(),
-    validatorMiddleware(ParamType.BODY, documentReviewDecisionSchema),
-    controller.finalizarAnaliseDocumental,
   );
   router.get(
     "/cppd/processos/:id/avaliacao/detalhes",

@@ -1,4 +1,13 @@
 import { Response } from "express"
+
+function jsonSafe<T>(value: T): T {
+    return JSON.parse(
+        JSON.stringify(value, (_key, current) =>
+            typeof current === "bigint" ? Number(current) : current
+        )
+    ) as T
+}
+
 interface HttpResponseBody<T> {
     status: StatusCodeDescription,
     message: string,
@@ -6,7 +15,7 @@ interface HttpResponseBody<T> {
 }
 
 export class HttpResponse {
-    static INTERNAL_SERVER_ERROR(res: any) {
+    static INTERNAL_SERVER_ERROR(_res: any) {
         throw new Error("Method not implemented.")
     }
     static ok<T>(res: any, message: string, data: T | null) {
@@ -15,7 +24,7 @@ export class HttpResponse {
             message: message,
             data: data,
         }
-        res.status(200).json(body)
+        res.status(200).json(jsonSafe(body))
     }
 
     static created<T>(res: any, message: string, data: T | null) {
@@ -24,7 +33,7 @@ export class HttpResponse {
             message: message,
             data: data,
         }
-        res.status(201).json(body)
+        res.status(201).json(jsonSafe(body))
     }
 
     static badRequest<T>(res: any, status: StatusCodeDescription, message: string, data: T | null) {
@@ -33,7 +42,7 @@ export class HttpResponse {
             message: message,
             data: data,
         }
-        res.status(400).json(body)
+        res.status(400).json(jsonSafe(body))
     }
 
     static unauthorized<T>(res: any) {
@@ -42,7 +51,7 @@ export class HttpResponse {
             message: "Unauthorized",
             data: null,
         }
-        res.status(401).json(body)
+        res.status(401).json(jsonSafe(body))
     }
 
     static forbidden<T>(res: any, message = "Forbidden") {
@@ -51,7 +60,7 @@ export class HttpResponse {
             message,
             data: null,
         }
-        res.status(403).json(body)
+        res.status(403).json(jsonSafe(body))
     }
 
     static internalError<T>(res: any) {
@@ -60,15 +69,15 @@ export class HttpResponse {
             message: "Internal error",
             data: null,
         }
-        res.status(500).json(body)
+        res.status(500).json(jsonSafe(body))
     }
     static notFound(res: Response, code: string, message: string, data: any): void {
         if (!res.headersSent) {
-            res.status(404).json({
+            res.status(404).json(jsonSafe({
                 status: code,
                 message,
                 data,
-            })
+            }))
         }
     }
 
@@ -78,7 +87,7 @@ export class HttpResponse {
             message: message,
             data: data,
         }
-        res.status(423).json(body)
+        res.status(423).json(jsonSafe(body))
     }
 }
 

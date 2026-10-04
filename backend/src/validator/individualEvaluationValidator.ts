@@ -2,7 +2,7 @@ import Joi from "joi"
 
 const scoreSchema = Joi.object({
   itemId: Joi.number().integer().positive().required(),
-  awardedPoints: Joi.number().precision(2).min(0).max(99999999).required(),
+  recognizedQuantity: Joi.number().integer().min(0).max(99999999).required(),
   evaluatorComment: Joi.string().trim().allow(null, "").max(500).optional()
 })
 

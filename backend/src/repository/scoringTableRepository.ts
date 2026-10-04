@@ -141,6 +141,7 @@ export class ScoringTableRepository {
     parentId?: number | null
     hasFormula?: boolean
     formulaExpression?: string | null
+    maxPoints?: string | null
   }) {
     return prisma.scoringNode.create({
       data: {
@@ -153,7 +154,8 @@ export class ScoringTableRepository {
         hasFormula: params.hasFormula ?? false,
         formulaExpression: (params.hasFormula ?? false)
           ? params.formulaExpression ?? null
-          : null
+          : null,
+        maxPoints: params.maxPoints ?? null
       }
     })
   }
@@ -174,6 +176,9 @@ export class ScoringTableRepository {
     hasMaxPoints?: boolean
     maxPoints?: string | null
     formulaKey?: string | null
+    factor?: string | null
+    weight?: string | null
+    maxQuantity?: number | null
   }) {
     return prisma.scoringItem.create({
       data: {
@@ -186,6 +191,10 @@ export class ScoringTableRepository {
         maxPoints: (params.hasMaxPoints ?? false) ? params.maxPoints ?? null : null,
         active: true,
         formulaKey: params.formulaKey ?? null
+        ,
+        factor: params.factor ?? null,
+        weight: params.weight ?? null,
+        maxQuantity: params.maxQuantity ?? null
       }
     })
   }
@@ -209,6 +218,7 @@ export class ScoringTableRepository {
       sortOrder: number
       hasFormula: boolean
       formulaExpression: string | null
+      maxPoints: string | null
       items: Array<{
         description: string
         unit: string | null
@@ -216,6 +226,9 @@ export class ScoringTableRepository {
         hasMaxPoints: boolean
         maxPoints: string | null
         formulaKey: string | null
+        factor: string | null
+        weight: string | null
+        maxQuantity: number | null
       }>
     }>
   }) {
@@ -233,6 +246,8 @@ export class ScoringTableRepository {
             active: true,
             hasFormula: n.hasFormula,
             formulaExpression: n.hasFormula ? n.formulaExpression : null
+            ,
+            maxPoints: n.maxPoints
           }
         })
 
@@ -268,6 +283,9 @@ export class ScoringTableRepository {
               hasMaxPoints: item.hasMaxPoints,
               maxPoints: item.hasMaxPoints ? item.maxPoints : null,
               formulaKey: item.formulaKey,
+              factor: item.factor,
+              weight: item.weight,
+              maxQuantity: item.maxQuantity,
               active: true
             }
           })
@@ -325,6 +343,7 @@ export class ScoringTableRepository {
     parentId?: number | null
     hasFormula?: boolean
     formulaExpression?: string | null
+    maxPoints?: string | null
   }) {
     return prisma.scoringNode.update({
       where: { idScoringNode: nodeId },
@@ -336,7 +355,8 @@ export class ScoringTableRepository {
         ...(data.hasFormula !== undefined ? { hasFormula: data.hasFormula } : {}),
         ...(data.formulaExpression !== undefined
           ? { formulaExpression: data.hasFormula ? data.formulaExpression : null }
-          : {})
+          : {}),
+        ...(data.maxPoints !== undefined ? { maxPoints: data.maxPoints } : {})
       }
     })
   }
@@ -348,6 +368,9 @@ export class ScoringTableRepository {
     hasMaxPoints?: boolean
     maxPoints?: string | null
     formulaKey?: string | null
+    factor?: string | null
+    weight?: string | null
+    maxQuantity?: number | null
   }) {
     return prisma.scoringItem.update({
       where: { idScoringItem: itemId },
@@ -357,7 +380,10 @@ export class ScoringTableRepository {
         ...(data.points !== undefined ? { points: data.points } : {}),
         ...(data.hasMaxPoints !== undefined ? { hasMaxPoints: data.hasMaxPoints } : {}),
         ...(data.maxPoints !== undefined ? { maxPoints: data.hasMaxPoints ? data.maxPoints : null } : {}),
-        ...(data.formulaKey !== undefined ? { formulaKey: data.formulaKey } : {})
+        ...(data.formulaKey !== undefined ? { formulaKey: data.formulaKey } : {}),
+        ...(data.factor !== undefined ? { factor: data.factor } : {}),
+        ...(data.weight !== undefined ? { weight: data.weight } : {}),
+        ...(data.maxQuantity !== undefined ? { maxQuantity: data.maxQuantity } : {})
       }
     })
   }

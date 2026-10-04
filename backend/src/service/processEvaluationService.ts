@@ -435,7 +435,7 @@ export class ProcessEvaluationService {
 
 
   private async recalculateEvaluationTotals(processId: number) {
-    const process = await this.repository.findProcess(processId)
+    const process = await this.repository.findProcessWithUserAndTable(processId)
     if (!process || process.deletedDate) throw new NotFoundError("Process not found")
     assertScoredCareerProcess(process)
 
@@ -662,7 +662,7 @@ export class ProcessEvaluationService {
   }
 
   private async computeOverallTotals(processId: number) {
-    const process = await this.repository.findProcess(processId)
+    const process = await this.repository.findProcessWithUserAndTable(processId)
     if (!process || process.deletedDate) throw new NotFoundError("Process not found")
     assertScoredCareerProcess(process)
 

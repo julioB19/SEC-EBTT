@@ -22,6 +22,7 @@ import { ProcessRepository } from "../repository/processoRepository";
 import { ScoringTableRepository } from "../repository/scoringTableRepository";
 import { UserRepository } from "../repository/userRepository";
 import { ProcessScoreRepository } from "../repository/processScoreRepository";
+import { capScore } from "../util/rscScoring";
 
 dayjs.locale("pt-br");
 dayjs.extend(utc);
@@ -98,6 +99,10 @@ export class ProcessoService {
     if (category === ProcessTypeCategory.CAREER) {
       this.validarRegrasDeRequerimento(careerProcess);
     } else if (category === ProcessTypeCategory.RSC) {
+      await this.validarElegibilidadeRsc(
+        userId,
+        careerProcess.rscDetail?.targetLevel ?? "",
+      );
       if (!careerProcess.rscDetail?.targetLevel) {
         throw new BusinessRuleError(
           "Informe o nível pretendido do RSC antes do envio",
@@ -108,7 +113,21 @@ export class ProcessoService {
           "Anexe o relatório descritivo ou memorial do RSC antes do envio",
         );
       }
+      this.validarPeriodoRsc({
+        careerEntryDateISO:
+          careerProcess.rscDetail.careerEntryDate?.toISOString(),
+        previousRscGrantedAtISO:
+          careerProcess.rscDetail.previousRscGrantedAt?.toISOString() ?? null,
+        activityPeriodStartISO:
+          careerProcess.rscDetail.activityPeriodStart?.toISOString(),
+        activityPeriodEndISO:
+          careerProcess.rscDetail.activityPeriodEnd?.toISOString(),
+        truthDeclarationAccepted: Boolean(
+          careerProcess.rscDetail.truthDeclarationAcceptedAt,
+        ),
+      });
     } else if (category === ProcessTypeCategory.FULL_PROFESSOR) {
+      await this.validarElegibilidadeClasseTitular(userId, false);
       const detail = careerProcess.fullProfessorDetail;
       if (!detail?.evaluationMode) {
         throw new BusinessRuleError(
@@ -148,7 +167,8 @@ export class ProcessoService {
         );
       }
 
-      totalPontos = await this.calcularPontuacaoTotalProcesso(processId);
+      const scoreSummary = await this.calcularPontuacaoProcesso(processId);
+      totalPontos = scoreSummary.total;
       const configuredMinimum = careerProcess.table.minRequiredPoints;
       const requiredMinimum =
         configuredMinimum !== null && configuredMinimum !== undefined
@@ -166,6 +186,24 @@ export class ProcessoService {
             currentTotal: totalPontos,
           },
         );
+      }
+
+      if (category === ProcessTypeCategory.RSC) {
+        const targetLevel = careerProcess.rscDetail?.targetLevel ?? "";
+        const targetLevelPoints = scoreSummary.byRscLevel[targetLevel] ?? 0;
+        const requiredTargetLevelPoints = 36;
+
+        if (targetLevelPoints < requiredTargetLevelPoints) {
+          throw new BusinessRuleError(
+            `Para enviar o RSC, é necessário atingir no mínimo ${requiredTargetLevelPoints} pontos no nível pretendido. ` +
+              `Pontuação atual no ${targetLevel.replace("_", " ")}: ${targetLevelPoints.toFixed(2)}`,
+            {
+              targetLevel,
+              requiredTargetLevelPoints,
+              currentTargetLevelPoints: targetLevelPoints,
+            },
+          );
+        }
       }
     }
 
@@ -264,11 +302,11 @@ export class ProcessoService {
       }
       await this.validarAberturaCarreira(userId, processType, dto);
     } else if (processTypeConfig.category === ProcessTypeCategory.RSC) {
-      this.validarAberturaRsc(dto);
+      await this.validarAberturaRsc(userId, dto);
     } else if (
       processTypeConfig.category === ProcessTypeCategory.FULL_PROFESSOR
     ) {
-      this.validarAberturaClasseTitular(dto);
+      await this.validarAberturaClasseTitular(userId, dto);
 
       const approved = await this.processRepo.findApprovedByProcessTypeId(
         userId,
@@ -302,7 +340,10 @@ export class ProcessoService {
     }
   }
 
-  private validarAberturaRsc(dto: AberturaProcessoDto) {
+  private async validarAberturaRsc(
+    userId: number,
+    dto: AberturaProcessoDto,
+  ) {
     const targetLevel = this.normalizeProcessTypeCode(
       dto.rscDetails?.targetLevel,
     );
@@ -312,9 +353,126 @@ export class ProcessoService {
       );
     }
     if (dto.rscDetails) dto.rscDetails.targetLevel = targetLevel;
+    await this.validarElegibilidadeRsc(userId, targetLevel);
+    this.validarPeriodoRsc(dto.rscDetails);
   }
 
-  private validarAberturaClasseTitular(dto: AberturaProcessoDto) {
+  private async validarElegibilidadeRsc(userId: number, targetLevel: string) {
+    const user = await this.userRepo.findById(userId);
+    const profile = user?.docente;
+    if (!profile) {
+      throw new BusinessRuleError("Perfil docente não encontrado");
+    }
+
+    const normalizedEducation = String(profile.educationLevel ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase();
+    const hasSpecialization =
+      Boolean(profile.specialization?.trim()) ||
+      /ESPECIALIZACAO|POS.?GRADUACAO/.test(normalizedEducation);
+    const hasMasters =
+      Boolean(profile.mastersDegree?.trim()) ||
+      /MESTRADO|MESTRE/.test(normalizedEducation);
+    const hasDoctorate =
+      Boolean(profile.doctorate?.trim()) ||
+      /DOUTORADO|DOUTOR/.test(normalizedEducation);
+    const hasGraduation =
+      Boolean(normalizedEducation.trim()) ||
+      hasSpecialization ||
+      hasMasters ||
+      hasDoctorate;
+
+    const eligible =
+      targetLevel === "RSC_I"
+        ? hasGraduation
+        : targetLevel === "RSC_II"
+          ? hasSpecialization || hasMasters || hasDoctorate
+          : targetLevel === "RSC_III"
+            ? hasMasters || hasDoctorate
+            : false;
+    if (!eligible) {
+      const requirement =
+        targetLevel === "RSC_II"
+          ? "especialização"
+          : targetLevel === "RSC_III"
+            ? "mestrado"
+            : "graduação";
+      throw new BusinessRuleError(
+        `O ${targetLevel.replace("_", " ")} exige ${requirement} concluída no perfil docente`,
+      );
+    }
+  }
+
+  private validarPeriodoRsc(
+    details: AberturaProcessoDto["rscDetails"] | undefined,
+  ) {
+    if (!details?.truthDeclarationAccepted) {
+      throw new BusinessRuleError(
+        "Confirme a declaração de veracidade das informações do RSC",
+      );
+    }
+    const careerEntryDate = this.parseRequiredDate(
+      details.careerEntryDateISO,
+      "Data de ingresso na carreira EBTT",
+    );
+    const activityPeriodStart = this.parseRequiredDate(
+      details.activityPeriodStartISO,
+      "Início do período de atividades",
+    );
+    const activityPeriodEnd = this.parseRequiredDate(
+      details.activityPeriodEndISO,
+      "Fim do período de atividades",
+    );
+    const today = dayjs().endOf("day");
+
+    if (activityPeriodStart.getTime() > activityPeriodEnd.getTime()) {
+      throw new BusinessRuleError(
+        "O início do período de atividades deve ser anterior ao fim",
+      );
+    }
+    if (dayjs(activityPeriodEnd).isAfter(today)) {
+      throw new BusinessRuleError(
+        "O período de atividades do RSC não pode terminar no futuro",
+      );
+    }
+    if (
+      dayjs(activityPeriodStart).isBefore(
+        dayjs(careerEntryDate).subtract(5, "year"),
+      )
+    ) {
+      throw new BusinessRuleError(
+        "As atividades anteriores ao ingresso estão limitadas aos cinco anos regulamentares",
+      );
+    }
+
+    if (details.previousRscGrantedAtISO) {
+      const previousGrant = this.parseRequiredDate(
+        details.previousRscGrantedAtISO,
+        "Data da concessão anterior de RSC",
+      );
+      if (dayjs(previousGrant).isAfter(today)) {
+        throw new BusinessRuleError(
+          "A concessão anterior de RSC não pode estar no futuro",
+        );
+      }
+      if (dayjs(activityPeriodStart).isBefore(dayjs(previousGrant))) {
+        throw new BusinessRuleError(
+          "Para um novo nível, considere apenas atividades posteriores à concessão anterior",
+        );
+      }
+      if (dayjs(activityPeriodEnd).isBefore(dayjs(previousGrant).add(3, "year"))) {
+        throw new BusinessRuleError(
+          "Para um novo nível de RSC, o período deve abranger ao menos três anos após a concessão anterior",
+        );
+      }
+    }
+  }
+
+  private async validarAberturaClasseTitular(
+    userId: number,
+    dto: AberturaProcessoDto,
+  ) {
     const mode = String(
       dto.fullProfessorDetails?.evaluationMode ?? "",
     ).toUpperCase();
@@ -330,6 +488,42 @@ export class ProcessoService {
     if (dto.fullProfessorDetails) {
       dto.fullProfessorDetails.evaluationMode =
         mode as FullProfessorEvaluationMode;
+    }
+    await this.validarElegibilidadeClasseTitular(userId, false);
+  }
+
+  private async validarElegibilidadeClasseTitular(
+    userId: number,
+    requireFullInterstice: boolean,
+  ) {
+    const user = await this.userRepo.findById(userId);
+    const profile = user?.docente;
+    if (!profile) {
+      throw new BusinessRuleError("Perfil docente não encontrado");
+    }
+    if (profile.classLevel !== ClassLevel.C4) {
+      throw new BusinessRuleError(
+        "A Promoção à Classe Titular exige que o docente esteja em C4",
+      );
+    }
+    if (!profile.start_interstice) {
+      throw new BusinessRuleError(
+        "Informe o início do interstício em C4 no perfil docente",
+      );
+    }
+
+    const requiredMonths = requireFullInterstice ? 24 : 12;
+    const eligibleAt = dayjs(profile.start_interstice).add(
+      requiredMonths,
+      "month",
+    );
+    if (dayjs().isBefore(eligibleAt)) {
+      throw new BusinessRuleError(
+        requireFullInterstice
+          ? "A concessão da Classe Titular exige 24 meses completos em C4"
+          : "A abertura da Classe Titular só é permitida após 12 meses completos em C4",
+        { eligibleAt: eligibleAt.toISOString(), requiredMonths },
+      );
     }
   }
 
@@ -353,6 +547,16 @@ export class ProcessoService {
       origemCodigo,
       destinoCodigo,
     );
+
+    const user = await this.userRepo.findById(userId);
+    if (!user?.docente) {
+      throw new BusinessRuleError("Perfil docente não encontrado");
+    }
+    if (String(user.docente.classLevel).toUpperCase() !== origemCodigo) {
+      throw new BusinessRuleError(
+        `A classe de origem ${origemCodigo} deve corresponder à classe atual do perfil funcional (${user.docente.classLevel})`,
+      );
+    }
 
     const intersticeStart = this.parseRequiredDate(
       dto.intersticioInicioISO,
@@ -484,9 +688,7 @@ export class ProcessoService {
     if (config.code === "PROMOTION") return ProcessType.PROMOCAO;
     if (
       config.category === ProcessTypeCategory.RSC ||
-      config.category === ProcessTypeCategory.FULL_PROFESSOR ||
-      config.category === ProcessTypeCategory.SIMPLE ||
-      config.category === ProcessTypeCategory.OTHER
+      config.category === ProcessTypeCategory.FULL_PROFESSOR
     ) {
       return null;
     }
@@ -594,6 +796,12 @@ export class ProcessoService {
     if (params.sizeBytes !== null && params.sizeBytes > 5 * 1024 * 1024) {
       throw new BusinessRuleError(
         "O arquivo excede o tamanho máximo permitido de 5 MB",
+      );
+    }
+
+    if (params.mimeType !== "application/pdf") {
+      throw new BusinessRuleError(
+        "Os documentos de RSC e Classe Titular devem ser enviados em arquivo PDF",
       );
     }
 
@@ -823,6 +1031,27 @@ export class ProcessoService {
       if (targetLevel && !RSC_TARGET_LEVELS.has(targetLevel)) {
         throw new BusinessRuleError("Nível de RSC inválido");
       }
+      const periodDetails = {
+        careerEntryDateISO:
+          dto.rscDetails?.careerEntryDateISO ??
+          careerProcess.rscDetail?.careerEntryDate?.toISOString(),
+        previousRscGrantedAtISO:
+          dto.rscDetails?.previousRscGrantedAtISO !== undefined
+            ? dto.rscDetails.previousRscGrantedAtISO
+            : (careerProcess.rscDetail?.previousRscGrantedAt?.toISOString() ??
+              null),
+        activityPeriodStartISO:
+          dto.rscDetails?.activityPeriodStartISO ??
+          careerProcess.rscDetail?.activityPeriodStart?.toISOString(),
+        activityPeriodEndISO:
+          dto.rscDetails?.activityPeriodEndISO ??
+          careerProcess.rscDetail?.activityPeriodEnd?.toISOString(),
+        truthDeclarationAccepted:
+          dto.rscDetails?.truthDeclarationAccepted ??
+          Boolean(careerProcess.rscDetail?.truthDeclarationAcceptedAt),
+      };
+      await this.validarElegibilidadeRsc(userId, targetLevel ?? "");
+      this.validarPeriodoRsc(periodDetails);
 
       const updated = await this.processRepo.updateRscProcess(processId, {
         campus: dto.campus,
@@ -832,10 +1061,23 @@ export class ProcessoService {
             ? dto.externalNumber?.trim() || null
             : undefined,
         targetLevel,
-        simecReference:
-          dto.rscDetails?.simecReference !== undefined
-            ? dto.rscDetails.simecReference?.trim() || null
-            : undefined,
+        careerEntryDate: periodDetails.careerEntryDateISO
+          ? new Date(periodDetails.careerEntryDateISO)
+          : undefined,
+        previousRscGrantedAt:
+          periodDetails.previousRscGrantedAtISO === null
+            ? null
+            : periodDetails.previousRscGrantedAtISO
+              ? new Date(periodDetails.previousRscGrantedAtISO)
+              : undefined,
+        activityPeriodStart: periodDetails.activityPeriodStartISO
+          ? new Date(periodDetails.activityPeriodStartISO)
+          : undefined,
+        activityPeriodEnd: periodDetails.activityPeriodEndISO
+          ? new Date(periodDetails.activityPeriodEndISO)
+          : undefined,
+        truthDeclarationAccepted:
+          periodDetails.truthDeclarationAccepted === true,
       });
       return this.mapProcessToDto(updated);
     }
@@ -1473,7 +1715,14 @@ export class ProcessoService {
       rscDetails: careerProcess.rscDetail
         ? {
             targetLevel: careerProcess.rscDetail.targetLevel,
-            simecReference: careerProcess.rscDetail.simecReference,
+            careerEntryDate: careerProcess.rscDetail.careerEntryDate,
+            previousRscGrantedAt:
+              careerProcess.rscDetail.previousRscGrantedAt,
+            activityPeriodStart:
+              careerProcess.rscDetail.activityPeriodStart,
+            activityPeriodEnd: careerProcess.rscDetail.activityPeriodEnd,
+            truthDeclarationAcceptedAt:
+              careerProcess.rscDetail.truthDeclarationAcceptedAt,
             finalResult: careerProcess.rscDetail.finalResult,
             reportFile: this.mapEvidenceFileToDto(
               careerProcess.rscDetail.reportFile,
@@ -1557,7 +1806,6 @@ export class ProcessoService {
       category: config.category,
       requiresScoring: config.requiresScoring,
       requiresCommittee: config.requiresCommittee,
-      requiresGecc: config.requiresGecc,
       defaultDestination: config.defaultDestination,
       version: config.version,
       validFrom: config.validFrom,
@@ -1590,22 +1838,25 @@ export class ProcessoService {
     return type === ProcessType.PROMOCAO ? "Promoção" : "Progressão";
   }
 
-  private async calcularPontuacaoTotalProcesso(
+  private async calcularPontuacaoProcesso(
     processId: number,
-  ): Promise<number> {
+  ): Promise<{ total: number; byRscLevel: Record<string, number> }> {
     const blocks =
       await this.scoreRepo.findBlocksWithScoresByProcess(processId);
 
     if (!blocks || blocks.length === 0) {
-      return 0;
+      return { total: 0, byRscLevel: {} };
     }
 
     type TreeNode = {
       nodeId: number;
+      code: string | null;
+      name: string;
       parentId: number | null;
       sortOrder: number;
       hasFormula: boolean;
       formulaExpression: string | null;
+      maxPoints: number | null;
       items: Array<{
         itemId: number;
         points: number;
@@ -1624,10 +1875,13 @@ export class ProcessoService {
     blocks.forEach((b) => {
       map.set(b.nodeId, {
         nodeId: b.nodeId,
+        code: b.code ?? null,
+        name: b.name,
         parentId: b.parentId ?? null,
         sortOrder: b.sortOrder,
         hasFormula: b.hasFormula,
         formulaExpression: b.formulaExpression ?? null,
+        maxPoints: b.maxPoints ?? null,
         items: b.items,
         children: [],
       });
@@ -1705,59 +1959,34 @@ export class ProcessoService {
         0,
       );
 
-      return selfTotal + childrenSum;
+      return capScore(selfTotal + childrenSum, node.maxPoints);
     }
 
-    return roots.reduce((acc, node) => acc + computeNodeTotal(node), 0);
-  }
+    const byRscLevel: Record<string, number> = {};
+    let total = 0;
 
-  public async finalizarAnaliseDocumentalCppd(
-    processId: number,
-    currentUserId: number,
-    dto: { decision: "APPROVED" | "REJECTED"; opinionText: string },
-  ) {
-    const process = await this.processRepo.obterParaCppdPorId(processId);
-    if (!process) throw new NotFoundError("Processo não encontrado");
+    roots.forEach((node) => {
+      const nodeTotal = computeNodeTotal(node);
+      total += nodeTotal;
 
-    if (
-      process.status !== ProcessStatus.SUBMITTED &&
-      process.status !== ProcessStatus.UNDER_REVIEW
-    ) {
-      throw new BusinessRuleError(
-        "Somente processos enviados ou em análise podem receber uma decisão documental",
-      );
-    }
-
-    const config = process.processTypeConfig;
-    if (!config || config.requiresScoring || config.requiresCommittee) {
-      throw new BusinessRuleError(
-        "Este processo deve seguir o fluxo específico de pontuação ou comissão",
-      );
-    }
-
-    const opinionText = String(dto.opinionText ?? "").trim();
-    if (!opinionText) {
-      throw new BusinessRuleError("O parecer da CPPD é obrigatório");
-    }
-
-    const toStatus =
-      dto.decision === "APPROVED"
-        ? ProcessStatus.APPROVED
-        : ProcessStatus.REJECTED;
-
-    const updated = await this.processRepo.finalizeDocumentReview({
-      processId,
-      fromStatus: process.status,
-      toStatus,
-      evaluationOpinion: opinionText,
-      changedById: currentUserId,
+      const level = this.identifyRscLevel(node.code, node.name);
+      if (level) byRscLevel[level] = (byRscLevel[level] ?? 0) + nodeTotal;
     });
 
-    return {
-      idProcess: updated.idProcess,
-      status: updated.status,
-      evaluationOpinion: updated.evaluationOpinion,
-    };
+    return { total, byRscLevel };
+  }
+
+  private identifyRscLevel(code: string | null, name: string): string | null {
+    const normalized = `${code ?? ""} ${name}`
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "_");
+
+    if (/(^|_)RSC_?III($|_)/.test(normalized)) return "RSC_III";
+    if (/(^|_)RSC_?II($|_)/.test(normalized)) return "RSC_II";
+    if (/(^|_)RSC_?I($|_)/.test(normalized)) return "RSC_I";
+    return null;
   }
 
   public async listarProcessosCppd(
@@ -1771,7 +2000,6 @@ export class ProcessoService {
       ProcessStatus.AWAITING_ORDINANCE,
       ProcessStatus.UNDER_REVIEW,
       ProcessStatus.IN_EVALUATION,
-      ProcessStatus.AWAITING_GECC,
     ];
     const evaluated: ProcessStatus[] = [
       ProcessStatus.APPROVED,

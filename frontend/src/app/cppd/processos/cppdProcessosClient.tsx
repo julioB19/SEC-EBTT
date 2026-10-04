@@ -14,7 +14,6 @@ type ProcessStatus =
   | "AWAITING_ORDINANCE"
   | "UNDER_REVIEW"
   | "IN_EVALUATION"
-  | "AWAITING_GECC"
   | "APPROVED"
   | "REJECTED"
   | "RETURNED"
@@ -64,7 +63,6 @@ function statusLabel(s: ProcessStatus) {
   if (s === "AWAITING_ORDINANCE") return "Aguardando portaria"
   if (s === "UNDER_REVIEW") return "Em análise"
   if (s === "IN_EVALUATION") return "Em avaliação"
-  if (s === "AWAITING_GECC") return "Aguardando GECC"
   if (s === "APPROVED") return "Deferido"
   if (s === "REJECTED") return "Indeferido"
   if (s === "RETURNED") return "Devolvido"
@@ -258,14 +256,7 @@ export default function CppdProcessosClient() {
                       </td>
 
                       <td className="px-4 py-3 text-right">
-                        {view === "pending" && p.status === "AWAITING_GECC" ? (
-                          <Link
-                            href={`/cppd/processos/${p.idProcess}/gecc`}
-                            className="inline-flex items-center rounded-md px-4 py-2 text-[11px] font-semibold bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover-bg)] transition"
-                          >
-                            Organizar GECC
-                          </Link>
-                        ) : view === "pending" &&
+                        {view === "pending" &&
                           p.processTypeConfig?.requiresCommittee ? (
                           <Link
                             href={`/cppd/processos/${p.idProcess}/comissao`}
@@ -287,6 +278,16 @@ export default function CppdProcessosClient() {
                                       hover:bg-[var(--btn-primary-hover-bg)] transition"
                           >
                             Avaliar
+                          </Link>
+                        ) : p.processTypeConfig?.requiresCommittee ? (
+                          <Link
+                            href={`/cppd/processos/${p.idProcess}/comissao`}
+                            className="inline-flex items-center rounded-full px-4 py-2 text-[11px] font-semibold
+                                      border border-[var(--btn-secondary-border)]
+                                      text-[var(--btn-secondary-text)]
+                                      hover:bg-[var(--btn-secondary-hover-bg)] transition"
+                          >
+                            Ver comissão
                           </Link>
                         ) : (
                           <Link

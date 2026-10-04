@@ -55,6 +55,9 @@ type ScoringItem = {
   maxPoints?: string | number | null
   active: boolean
   formulaKey: string | null
+  factor: string | number | null
+  weight: string | number | null
+  maxQuantity: number | null
   currentScore: CurrentScore | null
 }
 
@@ -68,12 +71,14 @@ type BlockNode = {
   hasFormula: boolean
   formulaExpression: string | null
   totalPoints: number | null
+  maxPoints: string | number | null
 }
 
 type EstruturaPontuacao = {
   processId: number
   scoringTableId: number
   type: ProcessType
+  processTypeCategory: "CAREER" | "RSC" | "FULL_PROFESSOR" | null
   status: ProcessStatus
   blocks: BlockNode[]
 }
@@ -89,6 +94,15 @@ type TreeNode = {
   hasFormula: boolean
   formulaExpression: string | null
   totalPoints: number | null
+  maxPoints: string | number | null
+}
+
+function calculateItemPoints(item: ScoringItem, quantity: number) {
+  const base = Number(item.points)
+  const factor = item.factor === null || item.factor === undefined ? 1 : Number(item.factor)
+  const weight = item.weight === null || item.weight === undefined ? 1 : Number(item.weight)
+  if (![base, factor, weight, quantity].every(Number.isFinite)) return 0
+  return Math.round(quantity * base * factor * weight)
 }
 
 type UserEvidenceFile = {
@@ -260,7 +274,8 @@ export default function ProcessoPontuacaoPage() {
         children: [],
         hasFormula: b.hasFormula,
         formulaExpression: b.formulaExpression,
-        totalPoints: b.totalPoints
+        totalPoints: b.totalPoints,
+        maxPoints: b.maxPoints
       })
     })
 
@@ -358,7 +373,19 @@ export default function ProcessoPontuacaoPage() {
     return treeRoots.reduce((acc, node) => acc + computeNodeTotal(node), 0)
   }, [treeRoots])
 
-  const hasMinimumPoints = totalProcessPoints >= 120
+  const minimumRequiredPoints =
+    estrutura?.processTypeCategory === "RSC" ? 60 : 120
+
+  const scoringProcessTypeLabel =
+    estrutura?.processTypeCategory === "RSC"
+      ? "RSC"
+      : estrutura?.processTypeCategory === "FULL_PROFESSOR"
+        ? "Promoção à Classe Titular"
+        : estrutura?.type === "PROGRESSAO"
+          ? "Progressão"
+          : "Promoção"
+
+  const hasMinimumPoints = totalProcessPoints >= minimumRequiredPoints
 
   async function loadUserEvidenceFiles() {
     try {
@@ -462,10 +489,7 @@ export default function ProcessoPontuacaoPage() {
 
       let newPoints = 0
       if (!Number.isNaN(quantityNumber) && quantityNumber >= 0) {
-        const base = Number(item.points)
-        if (!Number.isNaN(base)) {
-          newPoints = quantityNumber * base
-        }
+        newPoints = calculateItemPoints(item, quantityNumber)
       }
 
       return {
@@ -640,8 +664,14 @@ export default function ProcessoPontuacaoPage() {
       0
     )
 
-    // 4) total final = o que pertence a este bloco + tudo que está abaixo dele
-    return selfTotal + childrenSum
+    // 4) total final respeita o teto configurado para a diretriz ou nível
+    const total = selfTotal + childrenSum
+    const maximum = node.maxPoints === null || node.maxPoints === undefined
+      ? null
+      : Number(node.maxPoints)
+    return maximum !== null && Number.isFinite(maximum)
+      ? Math.min(total, maximum)
+      : total
   }
 
   // atualiza só evidência de um item (estrutura + árvore)
@@ -844,9 +874,19 @@ export default function ProcessoPontuacaoPage() {
         return
       }
 
-      const base = Number(item.points)
-      const autoPoints =
-        !Number.isNaN(base) && quantityNumber >= 0 ? quantityNumber * base : 0
+      if (
+        item.maxQuantity !== null &&
+        item.maxQuantity !== undefined &&
+        quantityNumber > item.maxQuantity
+      ) {
+        openModal({
+          title: "Quantidade acima do permitido",
+          message: `Este critério permite no máximo ${item.maxQuantity} unidades.`,
+          variant: "error"
+        })
+        return
+      }
+      const autoPoints = calculateItemPoints(item, quantityNumber)
 
       finalPointsNumber = autoPoints
       awardedPointsToSend = autoPoints.toFixed(2)
@@ -1071,10 +1111,9 @@ export default function ProcessoPontuacaoPage() {
 
             {!isMaxItem && (
               <div className="text-xs text-[var(--text-muted)]">
-                <span className="font-medium">
-                  {formatPoints(item.points)}
-                </span>{" "}
-                {Number(item.points) > 1 ? "pontos" : "ponto"} para cada{" "}
+                Fator <span className="font-medium">{formatPoints(item.factor ?? 1)}</span>
+                {" · "}peso <span className="font-medium">{formatPoints(item.weight ?? 1)}</span>
+                {" · "}máximo <span className="font-medium">{item.maxQuantity ?? "—"}</span>{" "}
                 <span className="font-medium">
                   {item.unit || "unidade"}
                 </span>
@@ -1120,6 +1159,8 @@ export default function ProcessoPontuacaoPage() {
                     <input
                       type="number"
                       min={0}
+                      max={item.maxQuantity ?? undefined}
+                      step={1}
                       className="w-full border border-[var(--input-border)] rounded-xl px-2 py-1.5 text-sm
                                  bg-[var(--input-bg)] text-[var(--text-primary)]
                                  placeholder:text-[var(--input-placeholder)]
@@ -1413,11 +1454,15 @@ export default function ProcessoPontuacaoPage() {
 
             <div className="space-y-2">
               <label className="block text-[11px] text-[var(--text-muted)] mb-1">
-                Enviar novo arquivo (PDF ou imagem &lt;= 5MB)
+                Enviar novo arquivo ({estrutura?.processTypeCategory === "RSC" ? "PDF" : "PDF ou imagem"} &lt;= 5MB)
               </label>
               <input
                 type="file"
-                accept=".pdf,image/jpeg,image/jpg,image/png"
+                accept={
+                  estrutura?.processTypeCategory === "RSC"
+                    ? ".pdf,application/pdf"
+                    : ".pdf,image/jpeg,image/jpg,image/png"
+                }
                 className="block w-full text-xs border border-[var(--input-border)] rounded-xl px-2 py-1.5 bg-[var(--input-bg)] text-[var(--text-primary)]"
                 onChange={e => {
                   const file = e.target.files?.[0] ?? null
@@ -1551,9 +1596,7 @@ export default function ProcessoPontuacaoPage() {
                   <span className="font-medium text-[var(--text-primary)]">
                     Tipo:
                   </span>{" "}
-                  {estrutura.type === "PROGRESSAO"
-                    ? "Progressão"
-                    : "Promoção"}
+                  {scoringProcessTypeLabel}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-[var(--text-primary)]">
@@ -1594,14 +1637,17 @@ export default function ProcessoPontuacaoPage() {
                 </div>
                 <div className="text-[11px] text-[var(--text-muted)]">
                   É necessário atingir pelo menos{" "}
-                  <span className="font-medium">120 pontos</span> para enviar o
+                  <span className="font-medium">
+                    {formatPoints(minimumRequiredPoints)} pontos
+                  </span>{" "}
+                  para enviar o
                   processo para avaliação da CPPD.
                 </div>
 
                 {!hasMinimumPoints && (
                   <div className="text-[11px] text-red-600 mt-1">
                     Pontuação mínima ainda não alcançada. Continue preenchendo
-                    a planilha para atingir os 120 pontos necessários.
+                    a planilha para atingir os {formatPoints(minimumRequiredPoints)} pontos necessários.
                   </div>
                 )}
 

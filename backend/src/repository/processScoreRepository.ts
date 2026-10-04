@@ -177,10 +177,13 @@ export class ProcessScoreRepository {
 
     return nodes.map(node => ({
       nodeId: node.idScoringNode,
+      code: node.code,
+      name: node.name,
       parentId: node.parentId,
       sortOrder: node.sortOrder,
       hasFormula: node.hasFormula,
       formulaExpression: node.formulaExpression,
+      maxPoints: node.maxPoints === null ? null : Number(node.maxPoints),
       items: node.items.map(item => {
         const score = item.ProcessScore[0] ?? null
 
@@ -192,6 +195,9 @@ export class ProcessScoreRepository {
             item.maxPoints !== null && item.maxPoints !== undefined
               ? Number(item.maxPoints)
               : null,
+          factor: item.factor === null ? null : Number(item.factor),
+          weight: item.weight === null ? null : Number(item.weight),
+          maxQuantity: item.maxQuantity,
           formulaKey: item.formulaKey,
           currentScore: score
             ? {

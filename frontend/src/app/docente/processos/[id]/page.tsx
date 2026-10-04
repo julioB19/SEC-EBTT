@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Modal from "@/components/Modal";
 import ConfirmModal from "@/components/ConfirmModal";
+import FullProfessorProcedurePanel from "@/components/FullProfessorProcedurePanel";
 import SpecificProcessDocuments, {
   FullProfessorProcessDetails,
   RscProcessDetails,
@@ -19,7 +20,6 @@ type ProcessTypeCategory =
   | "CAREER"
   | "RSC"
   | "FULL_PROFESSOR"
-  | "SIMPLE"
   | "OTHER";
 
 type ProcessStatus =
@@ -30,7 +30,6 @@ type ProcessStatus =
   | "AWAITING_ORDINANCE"
   | "UNDER_REVIEW"
   | "IN_EVALUATION"
-  | "AWAITING_GECC"
   | "RETURNED"
   | "APPROVED"
   | "REJECTED"
@@ -50,7 +49,6 @@ type Processo = {
     category: ProcessTypeCategory;
     requiresScoring: boolean;
     requiresCommittee: boolean;
-    requiresGecc: boolean;
     documentRequirements: ConfiguredDocumentRequirement[];
   } | null;
   status: ProcessStatus;
@@ -192,8 +190,6 @@ function statusLabel(status: ProcessStatus) {
       return "Em análise";
     case "IN_EVALUATION":
       return "Em avaliação";
-    case "AWAITING_GECC":
-      return "Aguardando GECC";
     case "RETURNED":
       return "Devolvido";
     case "APPROVED":
@@ -218,8 +214,7 @@ function badgeColor(status: ProcessStatus) {
   if (
     status === "SUBMITTED" ||
     status === "AWAITING_EVALUATOR_ACCEPTANCE" ||
-    status === "AWAITING_ORDINANCE" ||
-    status === "AWAITING_GECC"
+    status === "AWAITING_ORDINANCE"
   ) {
     return "bg-slate-100 text-slate-800";
   }
@@ -388,7 +383,6 @@ export default function ProcessoDetalhePage() {
   const [formClasseDestino, setFormClasseDestino] = useState("");
   const [formNivelDestino, setFormNivelDestino] = useState("");
   const [formRscTargetLevel, setFormRscTargetLevel] = useState("");
-  const [formSimecReference, setFormSimecReference] = useState("");
   const [formEvaluationMode, setFormEvaluationMode] = useState<
     "MEMORIAL" | "THESIS"
   >("MEMORIAL");
@@ -606,7 +600,6 @@ export default function ProcessoDetalhePage() {
     setFormClasseDestino(p.classeDestino ?? "");
     setFormNivelDestino(p.nivelDestino ?? "");
     setFormRscTargetLevel(p.rscDetails?.targetLevel ?? "");
-    setFormSimecReference(p.rscDetails?.simecReference ?? "");
     setFormEvaluationMode(p.fullProfessorDetails?.evaluationMode ?? "MEMORIAL");
     setFormFinalReferenceDate(
       toISODateInput(p.fullProfessorDetails?.finalReferenceDate),
@@ -899,13 +892,9 @@ export default function ProcessoDetalhePage() {
           processoPayload.nivelDestino = formNivelDestino;
         }
       } else if (processo.processTypeCategory === "RSC") {
-        if (
-          formRscTargetLevel !== (processo.rscDetails?.targetLevel ?? "") ||
-          formSimecReference !== (processo.rscDetails?.simecReference ?? "")
-        ) {
+        if (formRscTargetLevel !== (processo.rscDetails?.targetLevel ?? "")) {
           processoPayload.rscDetails = {
             targetLevel: formRscTargetLevel,
-            simecReference: formSimecReference,
           };
         }
       } else if (processo.processTypeCategory === "FULL_PROFESSOR") {
@@ -1229,14 +1218,6 @@ export default function ProcessoDetalhePage() {
                         </span>{" "}
                         {processo.rscDetails?.targetLevel?.replace("_", " ")}
                       </div>
-                      {processo.rscDetails?.simecReference && (
-                        <div>
-                          <span className="font-medium text-[var(--text-primary)]">
-                            Referência SIMEC:
-                          </span>{" "}
-                          {processo.rscDetails.simecReference}
-                        </div>
-                      )}
                     </>
                   )}
                   {processo.processTypeCategory === "FULL_PROFESSOR" && (
@@ -1424,16 +1405,6 @@ export default function ProcessoDetalhePage() {
                           <option value="RSC_III">RSC III</option>
                         </select>
                       </label>
-                      <label className="flex flex-col gap-1 text-sm text-[var(--text-secondary)]">
-                        Referência SIMEC
-                        <input
-                          value={formSimecReference}
-                          onChange={(e) =>
-                            setFormSimecReference(e.target.value)
-                          }
-                          className="border border-[var(--input-border)] rounded-xl p-2 text-sm bg-[var(--input-bg)] text-[var(--text-primary)]"
-                        />
-                      </label>
                     </div>
                   )}
 
@@ -1522,6 +1493,13 @@ export default function ProcessoDetalhePage() {
               }}
               notify={openModal}
             />
+
+            {processo.processTypeCategory === "FULL_PROFESSOR" && (
+              <FullProfessorProcedurePanel
+                processId={processo.processId}
+                actor="TEACHER"
+              />
+            )}
 
             <section className="space-y-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4 shadow-sm">
               {requiresScoring && (

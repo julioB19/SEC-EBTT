@@ -97,4 +97,21 @@ export class IndividualEvaluationController {
       this.handleError(res, error)
     }
   }
+
+  public getOpinionPdf: RequestHandler = async (req, res) => {
+    try {
+      const auth = this.getAuth(req)
+      if (!auth) return HttpResponse.unauthorized(res)
+      const memberId = this.getPositiveId(req.params.memberId)
+      if (!memberId) {
+        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Invalid member id", null)
+      }
+      const file = await this.service.generateOpinionPdf(auth.userId, memberId)
+      res.setHeader("Content-Type", "application/pdf")
+      res.setHeader("Content-Disposition", `attachment; filename="${file.filename}"`)
+      return res.send(file.buffer)
+    } catch (error) {
+      this.handleError(res, error)
+    }
+  }
 }

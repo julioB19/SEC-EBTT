@@ -9,6 +9,8 @@ interface Assignment {
   memberId: number
   acceptanceStatus: AcceptanceStatus
   acceptedAt: string | null
+  conflictDeclarationAt: string | null
+  responseReason: string | null
   role: string
   commission: {
     type: "RSC" | "FULL_PROFESSOR"
@@ -82,6 +84,17 @@ export default function ExternalEvaluatorPage() {
   }, [load])
 
   async function respond(memberId: number, responseValue: "ACCEPTED" | "DECLINED") {
+    let absenceOfConflictDeclared = false
+    let reason: string | null = null
+    if (responseValue === "ACCEPTED") {
+      absenceOfConflictDeclared = window.confirm(
+        "Ao aceitar, declaro que não possuo conflito de interesses ou impedimento para avaliar este processo. Deseja continuar?"
+      )
+      if (!absenceOfConflictDeclared) return
+    } else {
+      reason = window.prompt("Informe o motivo da recusa:")?.trim() || null
+      if (!reason) return
+    }
     setBusyId(memberId)
     setError(null)
     try {
@@ -89,7 +102,11 @@ export default function ExternalEvaluatorPage() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ response: responseValue })
+        body: JSON.stringify({
+          response: responseValue,
+          absenceOfConflictDeclared,
+          reason
+        })
       })
       const payload = (await response.json().catch(() => null)) as ApiResponse<Assignment[]> | null
       if (!response.ok || !payload?.data) {
@@ -140,9 +157,19 @@ export default function ExternalEvaluatorPage() {
                 <p className="text-xs text-[var(--text-secondary)]">
                   {item.process.campus} · {item.process.cityState} · Função: {item.role}
                 </p>
-                {item.acceptanceStatus === "ACCEPTED" && item.commission.status !== "ACTIVE" && (
+                {item.acceptanceStatus === "ACCEPTED" && item.commission.status === "DRAFT" && (
                   <p className="pt-1 text-xs text-[var(--text-secondary)]">
                     Aceite registrado. A avaliação será liberada após a emissão da portaria.
+                  </p>
+                )}
+                {item.acceptanceStatus === "ACCEPTED" && item.commission.status === "COMPLETED" && (
+                  <p className="pt-1 text-xs font-semibold text-[var(--state-success-text)]">
+                    Comissão concluída. O parecer permanece disponível para consulta.
+                  </p>
+                )}
+                {item.acceptanceStatus === "ACCEPTED" && item.commission.status === "CANCELED" && (
+                  <p className="pt-1 text-xs text-[var(--state-danger-text)]">
+                    Comissão cancelada.
                   </p>
                 )}
                 {item.acceptanceStatus === "ACCEPTED" && item.commission.status === "ACTIVE" && (

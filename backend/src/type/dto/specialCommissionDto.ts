@@ -1,4 +1,9 @@
-import { AcceptanceStatus, CommissionStatus, SpecialCommissionMemberRole } from "@prisma/client"
+import {
+  AcceptanceStatus,
+  CommissionStatus,
+  SpecialCommissionMemberOrigin,
+  SpecialCommissionMemberRole
+} from "@prisma/client"
 
 export interface SaveSpecialCommissionDto {
   ordinance?: string | null
@@ -7,6 +12,7 @@ export interface SaveSpecialCommissionDto {
 
 export interface AddSpecialCommissionMemberDto {
   email: string
+  origin?: SpecialCommissionMemberOrigin
   role?: SpecialCommissionMemberRole
 }
 
@@ -16,6 +22,8 @@ export interface UpdateSpecialCommissionStatusDto {
 
 export interface RespondSpecialCommissionInvitationDto {
   response: AcceptanceStatus
+  absenceOfConflictDeclared?: boolean
+  reason?: string | null
 }
 
 export interface FinalizeSpecialCommissionDecisionDto {

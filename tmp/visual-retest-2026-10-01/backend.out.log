@@ -1,0 +1,5 @@
+
+> tcc@1.0.0 start
+> node dist/src/server.js
+
+Running on http://localhost:3333

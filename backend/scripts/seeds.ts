@@ -9,6 +9,13 @@ import {
 } from "@prisma/client"
 import bcrypt from "bcryptjs"
 import { hashCpf, protectCpf } from "../src/util/cpfProtection"
+import {
+  OFFICIAL_RSC_ITEM_COUNT,
+  OFFICIAL_RSC_LEVELS,
+  OFFICIAL_RSC_MIN_TOTAL_POINTS,
+  OFFICIAL_RSC_SOURCE,
+  OFFICIAL_RSC_TABLE_NAME
+} from "./official-rsc-criteria"
 
 const prisma = new PrismaClient()
 
@@ -127,6 +134,155 @@ async function ensureUserRoles(userId: number, roles: RoleName[]) {
   }
 }
 
+async function ensureOfficialRscScoringTable() {
+  if (OFFICIAL_RSC_ITEM_COUNT !== 82) {
+    throw new Error(`Catálogo oficial RSC inválido: esperados 82 critérios, encontrados ${OFFICIAL_RSC_ITEM_COUNT}`)
+  }
+
+  const existing = await prisma.scoringTable.findFirst({
+    where: { name: OFFICIAL_RSC_TABLE_NAME },
+    orderBy: { idScoringTable: "asc" }
+  })
+  const table = existing
+    ? await prisma.scoringTable.update({
+        where: { idScoringTable: existing.idScoringTable },
+        data: {
+          purpose: ScoringTablePurpose.RSC,
+          startsOn: new Date("2025-07-17T00:00:00.000Z"),
+          endsOn: null,
+          minRequiredPoints: String(OFFICIAL_RSC_MIN_TOTAL_POINTS),
+          status: ScoringTableStatus.ACTIVE,
+          deletedDate: null
+        }
+      })
+    : await prisma.scoringTable.create({
+        data: {
+          name: OFFICIAL_RSC_TABLE_NAME,
+          purpose: ScoringTablePurpose.RSC,
+          startsOn: new Date("2025-07-17T00:00:00.000Z"),
+          minRequiredPoints: String(OFFICIAL_RSC_MIN_TOTAL_POINTS),
+          status: ScoringTableStatus.ACTIVE
+        }
+      })
+
+  await prisma.scoringTable.updateMany({
+    where: {
+      purpose: ScoringTablePurpose.RSC,
+      status: ScoringTableStatus.ACTIVE,
+      idScoringTable: { not: table.idScoringTable }
+    },
+    data: { status: ScoringTableStatus.INACTIVE }
+  })
+
+  const retainedNodeIds: number[] = []
+  const retainedItemIds: number[] = []
+  for (const level of OFFICIAL_RSC_LEVELS) {
+    const existingLevel = await prisma.scoringNode.findFirst({
+      where: { scoringTableId: table.idScoringTable, code: level.code }
+    })
+    const levelNode = existingLevel
+      ? await prisma.scoringNode.update({
+          where: { idScoringNode: existingLevel.idScoringNode },
+          data: {
+            parentId: null,
+            name: level.name,
+            sortOrder: level.sortOrder,
+            maxPoints: String(level.maxPoints),
+            active: true,
+            deletedDate: null
+          }
+        })
+      : await prisma.scoringNode.create({
+          data: {
+            scoringTableId: table.idScoringTable,
+            code: level.code,
+            name: level.name,
+            sortOrder: level.sortOrder,
+            maxPoints: String(level.maxPoints)
+          }
+        })
+    retainedNodeIds.push(levelNode.idScoringNode)
+
+    for (const directive of level.directives) {
+      const directiveCode = `${level.code}_D${directive.sortOrder}`
+      const existingDirective = await prisma.scoringNode.findFirst({
+        where: { scoringTableId: table.idScoringTable, code: directiveCode }
+      })
+      const directiveNode = existingDirective
+        ? await prisma.scoringNode.update({
+            where: { idScoringNode: existingDirective.idScoringNode },
+            data: {
+              parentId: levelNode.idScoringNode,
+              name: directive.name,
+              sortOrder: directive.sortOrder,
+              maxPoints: String(directive.maxPoints),
+              active: true,
+              deletedDate: null
+            }
+          })
+        : await prisma.scoringNode.create({
+            data: {
+              scoringTableId: table.idScoringTable,
+              parentId: levelNode.idScoringNode,
+              code: directiveCode,
+              name: directive.name,
+              sortOrder: directive.sortOrder,
+              maxPoints: String(directive.maxPoints)
+            }
+          })
+      retainedNodeIds.push(directiveNode.idScoringNode)
+
+      for (const item of directive.items) {
+        const formulaKey = `RSC_${item.code.padStart(3, "0")}`
+        const existingItem = await prisma.scoringItem.findFirst({
+          where: { scoringTableId: table.idScoringTable, formulaKey }
+        })
+        const data = {
+          scoringTableId: table.idScoringTable,
+          nodeId: directiveNode.idScoringNode,
+          description: item.description,
+          unit: item.unit,
+          points: "1.00",
+          factor: String(item.factor),
+          weight: String(item.weight),
+          maxQuantity: item.maxQuantity,
+          hasMaxPoints: false,
+          maxPoints: null,
+          formulaKey,
+          active: true,
+          deletedDate: null
+        }
+        const saved = existingItem
+          ? await prisma.scoringItem.update({
+              where: { idScoringItem: existingItem.idScoringItem },
+              data
+            })
+          : await prisma.scoringItem.create({ data })
+        retainedItemIds.push(saved.idScoringItem)
+      }
+    }
+  }
+
+  await prisma.scoringItem.updateMany({
+    where: {
+      scoringTableId: table.idScoringTable,
+      idScoringItem: { notIn: retainedItemIds }
+    },
+    data: { active: false, deletedDate: new Date() }
+  })
+  await prisma.scoringNode.updateMany({
+    where: {
+      scoringTableId: table.idScoringTable,
+      idScoringNode: { notIn: retainedNodeIds }
+    },
+    data: { active: false, deletedDate: new Date() }
+  })
+
+  console.log(`Tabela RSC ativa: ${table.name} (#${table.idScoringTable}), ${OFFICIAL_RSC_ITEM_COUNT} critérios`)
+  console.log(`Fonte: ${OFFICIAL_RSC_SOURCE}`)
+  return table
+}
+
 async function main() {
   await prisma.role.createMany({
     data: Object.values(RoleName).map(name => ({ name })),
@@ -165,56 +321,28 @@ async function main() {
       name: "Progression",
       category: ProcessTypeCategory.CAREER,
       requiresScoring: true,
-      requiresCommittee: false,
-      requiresGecc: false
+      requiresCommittee: false
     },
     {
       code: "PROMOTION",
       name: "Promotion",
       category: ProcessTypeCategory.CAREER,
       requiresScoring: true,
-      requiresCommittee: false,
-      requiresGecc: false
+      requiresCommittee: false
     },
     {
       code: "RSC",
       name: "RSC",
       category: ProcessTypeCategory.RSC,
       requiresScoring: true,
-      requiresCommittee: true,
-      requiresGecc: true
+      requiresCommittee: true
     },
     {
       code: "FULL_PROFESSOR",
       name: "Full Professor",
       category: ProcessTypeCategory.FULL_PROFESSOR,
       requiresScoring: false,
-      requiresCommittee: true,
-      requiresGecc: true
-    },
-    {
-      code: "TRAINING_LEAVE",
-      name: "Training Leave",
-      category: ProcessTypeCategory.SIMPLE,
-      requiresScoring: false,
-      requiresCommittee: false,
-      requiresGecc: false
-    },
-    {
-      code: "QUALIFICATION_PAY",
-      name: "Qualification Pay",
-      category: ProcessTypeCategory.SIMPLE,
-      requiresScoring: false,
-      requiresCommittee: false,
-      requiresGecc: false
-    },
-    {
-      code: "IN_SERVICE_DEVELOPMENT",
-      name: "In-Service Development",
-      category: ProcessTypeCategory.SIMPLE,
-      requiresScoring: false,
-      requiresCommittee: false,
-      requiresGecc: false
+      requiresCommittee: true
     }
   ]
 
@@ -545,6 +673,8 @@ async function main() {
       await prisma.scoringItem.create({ data })
     }
   }
+
+  await ensureOfficialRscScoringTable()
 
   console.log("Seed concluído. Credenciais de teste:")
   console.log(`ADMIN   CPF ${credentials.admin.cpf} senha ${credentials.admin.password}`)

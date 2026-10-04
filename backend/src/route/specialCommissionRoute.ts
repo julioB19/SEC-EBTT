@@ -72,6 +72,11 @@ export function specialCommissionRoute() {
     controller.respond
   )
   router.get("/external-evaluator/assignments/:memberId/evaluation", authMiddleware, evaluationController.get)
+  router.get(
+    "/external-evaluator/assignments/:memberId/evaluation/opinion.pdf",
+    authMiddleware,
+    evaluationController.getOpinionPdf
+  )
   router.put(
     "/external-evaluator/assignments/:memberId/evaluation",
     authMiddleware,

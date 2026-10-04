@@ -10,6 +10,8 @@ import {
 import { IndividualEvaluationRepository } from "../repository/individualEvaluationRepository"
 import { SaveIndividualEvaluationDto } from "../type/dto/individualEvaluationDto"
 import { BusinessRuleError, NotFoundError } from "./processoService"
+import { calculateRscItemPoints, capScore } from "../util/rscScoring"
+import { generateIndividualEvaluationPdf } from "../util/individualEvaluationPdf"
 
 function decimalToNumber(value: any): number {
   if (value === null || value === undefined) return 0
@@ -85,6 +87,48 @@ export class IndividualEvaluationService {
     }
   }
 
+  async generateOpinionPdf(userId: number, memberId: number) {
+    const assignment = await this.getAuthorizedAssignment(userId, memberId)
+    const evaluation = assignment.individualEvaluations[0]
+    if (evaluation.status !== IndividualEvaluationStatus.SUBMITTED || !evaluation.submittedAt) {
+      throw new BusinessRuleError("O parecer PDF só pode ser gerado após o envio da avaliação")
+    }
+    const process = assignment.specialCommission.process
+    const scoreByItem = new Map<number, any>(
+      evaluation.scores.map((score: any) => [score.itemId, score])
+    )
+    const scores = process.scores
+      .map((claim: any) => ({ claim, score: scoreByItem.get(claim.itemId) }))
+      .filter(({ score }: any) => Boolean(score))
+      .map(({ claim, score }: any) => ({
+        description: claim.item.description,
+        recognizedQuantity: Number(score.quantity),
+        awardedPoints: decimalToNumber(score.awardedPoints),
+        evaluatorComment: score.evaluatorComment
+      }))
+    const buffer = await generateIndividualEvaluationPdf({
+      processId: process.idProcess,
+      externalNumber: process.externalNumber,
+      processTypeName: process.processTypeConfig?.name ?? String(process.type ?? "Processo"),
+      teacherName: process.user.name,
+      teacherSiape: process.user.docente?.siape,
+      campus: process.campus,
+      cityState: process.cidadeUF,
+      targetLevel: process.rscDetail?.targetLevel,
+      evaluatorName: assignment.person.name,
+      submittedAt: evaluation.submittedAt,
+      result: String(evaluation.result ?? "NÃO INFORMADO"),
+      recognizedPoints:
+        evaluation.recognizedPoints === null ? null : decimalToNumber(evaluation.recognizedPoints),
+      opinionText: evaluation.opinionText ?? "",
+      scores
+    })
+    return {
+      buffer,
+      filename: `parecer-processo-${process.idProcess}-avaliador-${memberId}.pdf`
+    }
+  }
+
   private async getAuthorizedAssignment(userId: number, memberId: number) {
     const assignment = await this.repository.findAssignmentForUser(memberId, userId)
     if (!assignment) throw new NotFoundError("Avaliação não encontrada")
@@ -125,12 +169,12 @@ export class IndividualEvaluationService {
     const evaluation = assignment.individualEvaluations[0]
     const process = assignment.specialCommission.process
     const opinionText = dto.opinionText?.trim() || null
-    const result = dto.result ?? null
+    let result = dto.result ?? null
 
-    if (submitting && !result) throw new BusinessRuleError("Informe o resultado da avaliação")
     if (submitting && !opinionText) throw new BusinessRuleError("Informe o parecer individual")
 
     if (assignment.specialCommission.type === SpecialCommissionType.FULL_PROFESSOR) {
+      if (submitting && !result) throw new BusinessRuleError("Informe o resultado da avaliação")
       if (dto.scores?.length) {
         throw new BusinessRuleError("Este tipo de processo não utiliza pontuação por item")
       }
@@ -153,16 +197,33 @@ export class IndividualEvaluationService {
     const normalizedScores = (dto.scores ?? []).map(score => {
       const claim = claimedByItem.get(Number(score.itemId))
       if (!claim) throw new BusinessRuleError("Foi informada pontuação para um item não declarado pelo docente")
-      const awardedPoints = Number(score.awardedPoints)
-      const claimedPoints = decimalToNumber(claim.awardedPoints)
-      if (!Number.isFinite(awardedPoints) || awardedPoints < 0 || awardedPoints > claimedPoints) {
+      const recognizedQuantity = Number(score.recognizedQuantity)
+      if (
+        !Number.isInteger(recognizedQuantity) ||
+        recognizedQuantity < 0 ||
+        recognizedQuantity > Number(claim.quantity)
+      ) {
         throw new BusinessRuleError(
-          `A pontuação reconhecida para "${claim.item.description}" deve ficar entre 0 e ${claimedPoints.toFixed(2)}`
+          `A quantidade reconhecida para "${claim.item.description}" deve ficar entre 0 e ${claim.quantity}`
+        )
+      }
+      let awardedPoints: number
+      try {
+        awardedPoints = calculateRscItemPoints({
+          quantity: recognizedQuantity,
+          basePoints: decimalToNumber(claim.item.points),
+          factor: claim.item.factor == null ? null : decimalToNumber(claim.item.factor),
+          weight: claim.item.weight == null ? null : decimalToNumber(claim.item.weight),
+          maxQuantity: claim.item.maxQuantity
+        })
+      } catch (error) {
+        throw new BusinessRuleError(
+          error instanceof Error ? error.message : "Pontuação RSC inválida"
         )
       }
       return {
         itemId: Number(score.itemId),
-        quantity: claim.quantity,
+        quantity: recognizedQuantity,
         awardedPoints,
         evaluatorComment: score.evaluatorComment?.trim() || null
       }
@@ -178,22 +239,23 @@ export class IndividualEvaluationService {
       }
     }
 
-    const recognizedPoints = normalizedScores
-      .reduce((total, score) => total + score.awardedPoints, 0)
-      .toFixed(2)
+    const totals = this.calculateRecognizedTotals(process, normalizedScores)
+    const recognizedPoints = totals.total.toFixed(2)
 
     const minRequiredPoints =
       process.table.minRequiredPoints === null || process.table.minRequiredPoints === undefined
         ? 60
         : decimalToNumber(process.table.minRequiredPoints)
-    if (
-      submitting &&
-      (result === "DEFERRED" || result === "APPROVED") &&
-      Number(recognizedPoints) < minRequiredPoints
-    ) {
-      throw new BusinessRuleError(
-        `O resultado favorável exige ao menos ${minRequiredPoints.toFixed(2)} pontos reconhecidos`
-      )
+    if (assignment.specialCommission.type === SpecialCommissionType.RSC && submitting) {
+      const targetLevel = process.rscDetail?.targetLevel
+      if (!targetLevel) {
+        throw new BusinessRuleError("O nível pretendido do RSC não foi informado")
+      }
+      const targetLevelPoints = totals.byRscLevel[targetLevel] ?? 0
+      result =
+        totals.total >= minRequiredPoints && targetLevelPoints >= 36
+          ? "DEFERRED"
+          : "DENIED"
     }
 
     return {
@@ -205,12 +267,68 @@ export class IndividualEvaluationService {
     }
   }
 
+  private calculateRecognizedTotals(
+    process: any,
+    scores: Array<{ itemId: number; awardedPoints: number }>
+  ) {
+    const nodes = process.table?.nodes ?? []
+    const nodeById = new Map<number, any>(nodes.map((node: any) => [node.idScoringNode, node]))
+    const childrenByParent = new Map<number | null, number[]>()
+    for (const node of nodes) {
+      const parentId = node.parentId ?? null
+      childrenByParent.set(parentId, [
+        ...(childrenByParent.get(parentId) ?? []),
+        node.idScoringNode
+      ])
+    }
+
+    const pointsByNode = new Map<number, number>()
+    const claimByItem = new Map<number, any>(
+      process.scores.map((claim: any) => [claim.itemId, claim])
+    )
+    for (const score of scores) {
+      const claim = claimByItem.get(score.itemId)
+      if (!claim) continue
+      const nodeId = claim.item.nodeId
+      pointsByNode.set(nodeId, (pointsByNode.get(nodeId) ?? 0) + score.awardedPoints)
+    }
+
+    const nodeTotals = new Map<number, number>()
+    const calculateNode = (nodeId: number): number => {
+      const cached = nodeTotals.get(nodeId)
+      if (cached !== undefined) return cached
+      const childTotal = (childrenByParent.get(nodeId) ?? [])
+        .reduce((total, childId) => total + calculateNode(childId), 0)
+      const node = nodeById.get(nodeId)
+      const total = capScore(
+        (pointsByNode.get(nodeId) ?? 0) + childTotal,
+        node?.maxPoints === null || node?.maxPoints === undefined
+          ? null
+          : decimalToNumber(node.maxPoints)
+      )
+      nodeTotals.set(nodeId, total)
+      return total
+    }
+
+    const byRscLevel: Record<string, number> = {}
+    let total = 0
+    for (const rootId of childrenByParent.get(null) ?? []) {
+      const root = nodeById.get(rootId)
+      const rootTotal = calculateNode(rootId)
+      total += rootTotal
+      const level = this.identifyRscLevel(root?.code, root?.name)
+      if (level) byRscLevel[level] = rootTotal
+    }
+    return { total, byRscLevel }
+  }
+
   private mapEvaluation(assignment: any) {
     const process = assignment.specialCommission.process
     const evaluation = assignment.individualEvaluations[0]
     const currentScores = evaluation.scores.map((score: any) => ({
       itemId: score.itemId,
       quantity: score.quantity,
+      recognizedQuantity: score.quantity,
       awardedPoints: decimalToNumber(score.awardedPoints),
       evaluatorComment: score.evaluatorComment
     }))
@@ -238,7 +356,6 @@ export class IndividualEvaluationService {
         rscDetails: process.rscDetail
           ? {
               targetLevel: process.rscDetail.targetLevel,
-              simecReference: process.rscDetail.simecReference,
               reportFile: mapFile(process.rscDetail.reportFile)
             }
           : null,
@@ -270,13 +387,18 @@ export class IndividualEvaluationService {
               parentId: node.parentId,
               name: node.name,
               code: node.code,
-              sortOrder: node.sortOrder
+              sortOrder: node.sortOrder,
+              maxPoints: node.maxPoints === null ? null : decimalToNumber(node.maxPoints)
             })),
             items: process.scores.map((score: any) => ({
               idScoringItem: score.itemId,
               nodeId: score.item.nodeId,
               description: score.item.description,
               unit: score.item.unit,
+              basePoints: decimalToNumber(score.item.points),
+              factor: score.item.factor === null ? null : decimalToNumber(score.item.factor),
+              weight: score.item.weight === null ? null : decimalToNumber(score.item.weight),
+              maxQuantity: score.item.maxQuantity,
               claimedQuantity: score.quantity,
               claimedPoints: decimalToNumber(score.awardedPoints),
               evidenceFile: mapFile(score.evidenceFile)
@@ -294,5 +416,44 @@ export class IndividualEvaluationService {
         scores: currentScores
       }
     }
+  }
+
+  private mapRscLevelByNode(nodes: any[]): Map<number, string> {
+    const nodeById = new Map(nodes.map(node => [node.idScoringNode, node]))
+    const result = new Map<number, string>()
+
+    const resolve = (nodeId: number): string | null => {
+      const cached = result.get(nodeId)
+      if (cached) return cached
+
+      let current = nodeById.get(nodeId)
+      const visited = new Set<number>()
+      while (current && !visited.has(current.idScoringNode)) {
+        visited.add(current.idScoringNode)
+        const level = this.identifyRscLevel(current.code, current.name)
+        if (level) {
+          visited.forEach(id => result.set(id, level))
+          return level
+        }
+        current = current.parentId ? nodeById.get(current.parentId) : null
+      }
+      return null
+    }
+
+    nodes.forEach(node => resolve(node.idScoringNode))
+    return result
+  }
+
+  private identifyRscLevel(code?: string | null, name?: string | null): string | null {
+    const normalized = `${code ?? ""} ${name ?? ""}`
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "_")
+
+    if (/(^|_)RSC_?III($|_)/.test(normalized)) return "RSC_III"
+    if (/(^|_)RSC_?II($|_)/.test(normalized)) return "RSC_II"
+    if (/(^|_)RSC_?I($|_)/.test(normalized)) return "RSC_I"
+    return null
   }
 }

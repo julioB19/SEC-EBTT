@@ -1,6 +1,5 @@
 import { IndividualEvaluationStatus } from "@prisma/client"
 import { prisma } from "../infra/prismaClient"
-import { IndividualEvaluationScoreDto } from "../type/dto/individualEvaluationDto"
 
 const assignmentInclude = {
   person: true,
@@ -70,7 +69,12 @@ export class IndividualEvaluationRepository {
     result: any
     opinionText: string | null
     recognizedPoints: string | null
-    scores: Array<IndividualEvaluationScoreDto & { quantity: number }>
+    scores: Array<{
+      itemId: number
+      quantity: number
+      awardedPoints: number
+      evaluatorComment?: string | null
+    }>
   }) {
     return prisma.$transaction(async tx => {
       const itemIds = params.scores.map(score => score.itemId)

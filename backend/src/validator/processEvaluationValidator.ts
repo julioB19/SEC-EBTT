@@ -39,8 +39,3 @@ export const generateParecerSchema = Joi.object({
     .optional(),
   overrideOpinion: Joi.string().allow(null, "").optional(),
 });
-
-export const documentReviewDecisionSchema = Joi.object({
-  decision: Joi.string().valid("APPROVED", "REJECTED").required(),
-  opinionText: Joi.string().trim().min(1).max(10000).required(),
-});

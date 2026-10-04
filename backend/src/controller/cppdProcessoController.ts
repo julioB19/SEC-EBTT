@@ -122,53 +122,6 @@ export class CppdProcessoController {
     }
   };
 
-  public finalizarAnaliseDocumental: RequestHandler = async (req, res) => {
-    try {
-      const auth = this.ensureCppdMember(req, res);
-      if (!auth) return;
-
-      const processId = Number(req.params.id);
-      if (!processId || Number.isNaN(processId)) {
-        HttpResponse.badRequest(
-          res,
-          StatusCodeDescription.INVALID_INPUT,
-          "Parâmetro de processo inválido",
-          null,
-        );
-        return;
-      }
-
-      const result = await this.service.finalizarAnaliseDocumentalCppd(
-        processId,
-        auth.userId,
-        req.body,
-      );
-      return HttpResponse.ok(
-        res,
-        "Análise documental concluída com sucesso",
-        result,
-      );
-    } catch (error) {
-      console.error("Erro ao concluir análise documental:", error);
-
-      if (
-        error instanceof NotFoundError ||
-        error instanceof BusinessRuleError
-      ) {
-        const details = (error as any).details ?? null;
-        HttpResponse.badRequest(
-          res,
-          StatusCodeDescription.INVALID_INPUT,
-          error.message,
-          details,
-        );
-        return;
-      }
-
-      HttpResponse.internalError(res);
-    }
-  };
-
   public obterDetalhesAvaliacao: RequestHandler = async (req, res) => {
     try {
       const auth = this.ensureCppdMember(req, res);

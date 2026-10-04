@@ -115,8 +115,23 @@ export class ProcessRepository {
             ? {
                 create: {
                   targetLevel: dto.rscDetails?.targetLevel?.trim() || null,
-                  simecReference:
-                    dto.rscDetails?.simecReference?.trim() || null,
+                  careerEntryDate: dto.rscDetails?.careerEntryDateISO
+                    ? new Date(dto.rscDetails.careerEntryDateISO)
+                    : null,
+                  previousRscGrantedAt: dto.rscDetails
+                    ?.previousRscGrantedAtISO
+                    ? new Date(dto.rscDetails.previousRscGrantedAtISO)
+                    : null,
+                  activityPeriodStart: dto.rscDetails?.activityPeriodStartISO
+                    ? new Date(dto.rscDetails.activityPeriodStartISO)
+                    : null,
+                  activityPeriodEnd: dto.rscDetails?.activityPeriodEndISO
+                    ? new Date(dto.rscDetails.activityPeriodEndISO)
+                    : null,
+                  truthDeclarationAcceptedAt: dto.rscDetails
+                    ?.truthDeclarationAccepted
+                    ? new Date()
+                    : null,
                 },
               }
             : undefined,
@@ -562,7 +577,6 @@ export class ProcessRepository {
       ProcessStatus.AWAITING_ORDINANCE,
       ProcessStatus.UNDER_REVIEW,
       ProcessStatus.IN_EVALUATION,
-      ProcessStatus.AWAITING_GECC,
       ProcessStatus.RETURNED,
     ];
 
@@ -741,7 +755,11 @@ export class ProcessRepository {
       cidadeUF?: string;
       externalNumber?: string | null;
       targetLevel?: string;
-      simecReference?: string | null;
+      careerEntryDate?: Date;
+      previousRscGrantedAt?: Date | null;
+      activityPeriodStart?: Date;
+      activityPeriodEnd?: Date;
+      truthDeclarationAccepted?: boolean;
     },
   ) {
     return prisma.careerProcess.update({
@@ -756,14 +774,32 @@ export class ProcessRepository {
           upsert: {
             create: {
               targetLevel: data.targetLevel ?? null,
-              simecReference: data.simecReference ?? null,
+              careerEntryDate: data.careerEntryDate ?? null,
+              previousRscGrantedAt: data.previousRscGrantedAt ?? null,
+              activityPeriodStart: data.activityPeriodStart ?? null,
+              activityPeriodEnd: data.activityPeriodEnd ?? null,
+              truthDeclarationAcceptedAt: data.truthDeclarationAccepted
+                ? new Date()
+                : null,
             },
             update: {
               ...(data.targetLevel !== undefined
                 ? { targetLevel: data.targetLevel }
                 : {}),
-              ...(data.simecReference !== undefined
-                ? { simecReference: data.simecReference }
+              ...(data.careerEntryDate !== undefined
+                ? { careerEntryDate: data.careerEntryDate }
+                : {}),
+              ...(data.previousRscGrantedAt !== undefined
+                ? { previousRscGrantedAt: data.previousRscGrantedAt }
+                : {}),
+              ...(data.activityPeriodStart !== undefined
+                ? { activityPeriodStart: data.activityPeriodStart }
+                : {}),
+              ...(data.activityPeriodEnd !== undefined
+                ? { activityPeriodEnd: data.activityPeriodEnd }
+                : {}),
+              ...(data.truthDeclarationAccepted === true
+                ? { truthDeclarationAcceptedAt: new Date() }
                 : {}),
             },
           },
@@ -824,37 +860,6 @@ export class ProcessRepository {
         table: true,
         ...processDetailsInclude,
       },
-    });
-  }
-
-  async finalizeDocumentReview(params: {
-    processId: number;
-    fromStatus: ProcessStatus;
-    toStatus: ProcessStatus;
-    evaluationOpinion: string;
-    changedById: number;
-  }) {
-    return prisma.$transaction(async (tx) => {
-      const updated = await tx.careerProcess.update({
-        where: { idProcess: params.processId },
-        data: {
-          status: params.toStatus,
-          evaluationOpinion: params.evaluationOpinion,
-          finalPoints: null,
-        },
-      });
-
-      await tx.processStatusHistory.create({
-        data: {
-          processId: params.processId,
-          fromStatus: params.fromStatus,
-          toStatus: params.toStatus,
-          changedById: params.changedById,
-          note: "Análise documental concluída pela CPPD",
-        },
-      });
-
-      return updated;
     });
   }
 

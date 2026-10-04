@@ -4,6 +4,7 @@ import {
   CommissionStatus,
   ProcessStatus,
   ProcessTypeCategory,
+  SpecialCommissionMemberOrigin,
   SpecialCommissionMemberRole,
   SpecialCommissionType
 } from "@prisma/client"
@@ -40,6 +41,25 @@ describe("SpecialCommissionService", () => {
     ordinanceDate: null,
     members: []
   }
+
+  const acceptedRscMembers = () => [
+    {
+      idSpecialCommissionMember: 1,
+      acceptanceStatus: AcceptanceStatus.ACCEPTED,
+      role: SpecialCommissionMemberRole.PRESIDENT,
+      origin: SpecialCommissionMemberOrigin.INTERNAL,
+      person: { name: "Avaliador interno", email: "interno@exemplo.com" },
+      individualEvaluations: []
+    },
+    ...[2, 3, 4].map(id => ({
+      idSpecialCommissionMember: id,
+      acceptanceStatus: AcceptanceStatus.ACCEPTED,
+      role: SpecialCommissionMemberRole.MEMBER,
+      origin: SpecialCommissionMemberOrigin.EXTERNAL,
+      person: { name: `Avaliador externo ${id}`, email: `externo${id}@exemplo.com` },
+      individualEvaluations: []
+    }))
+  ]
 
   beforeEach(() => {
     repository = {
@@ -122,7 +142,9 @@ describe("SpecialCommissionService", () => {
       ...commission,
       ordinance: "Portaria 10/2026",
       ordinanceDate: new Date(),
-      members: [{ acceptanceStatus: AcceptanceStatus.PENDING }]
+      members: acceptedRscMembers().map((member, index) =>
+        index === 3 ? { ...member, acceptanceStatus: AcceptanceStatus.PENDING } : member
+      )
     } as any)
 
     await expect(service.updateStatus(process.idProcess, 2, { status: CommissionStatus.ACTIVE })).rejects.toThrow(
@@ -130,33 +152,36 @@ describe("SpecialCommissionService", () => {
     )
   })
 
+  test("exige um membro interno e três externos para ativar comissão RSC", async () => {
+    repository.findCurrentByProcess.mockResolvedValue({
+      ...commission,
+      ordinance: "Portaria 10/2026",
+      ordinanceDate: new Date(),
+      members: [acceptedRscMembers()[0]]
+    } as any)
+
+    await expect(
+      service.updateStatus(process.idProcess, 2, { status: CommissionStatus.ACTIVE })
+    ).rejects.toThrow("um membro interno e três externos")
+    expect(repository.updateStatus).not.toHaveBeenCalled()
+  })
+
   test("ativa a comissão quando documentação e aceites estão completos", async () => {
     repository.findCurrentByProcess.mockResolvedValue({
       ...commission,
       ordinance: "Portaria 10/2026",
       ordinanceDate: new Date(),
-      members: [
-        {
-          idSpecialCommissionMember: 5,
-          acceptanceStatus: AcceptanceStatus.ACCEPTED,
-          acceptedAt: new Date(),
-          role: SpecialCommissionMemberRole.MEMBER,
-          origin: "EXTERNAL",
-          sortOrder: 0,
-          person: { name: "Avaliador", email: "avaliador@exemplo.com" },
-          individualEvaluations: []
-        }
-      ]
+      members: acceptedRscMembers()
     } as any)
 
     await service.updateStatus(process.idProcess, 2, { status: CommissionStatus.ACTIVE })
 
-    expect(repository.updateStatus).toHaveBeenCalledWith({
+    expect(repository.updateStatus).toHaveBeenCalledWith(expect.objectContaining({
       commissionId: commission.idSpecialCommission,
       processId: process.idProcess,
       status: CommissionStatus.ACTIVE,
       changedById: 2
-    })
+    }))
   })
 
   test("conclui comissão ativa somente após todos os pareceres", async () => {
@@ -209,12 +234,12 @@ describe("SpecialCommissionService", () => {
     } as any)
 
     await service.updateStatus(process.idProcess, 2, { status: CommissionStatus.COMPLETED })
-    expect(repository.updateStatus).toHaveBeenCalledWith({
+    expect(repository.updateStatus).toHaveBeenCalledWith(expect.objectContaining({
       commissionId: commission.idSpecialCommission,
       processId: process.idProcess,
       status: CommissionStatus.COMPLETED,
       changedById: 2
-    })
+    }))
   })
 
   test("somente o usuário vinculado à pessoa pode responder ao convite", async () => {
@@ -238,8 +263,32 @@ describe("SpecialCommissionService", () => {
     } as any)
     repository.listAssignmentsForUser.mockResolvedValue([])
 
-    await expect(service.respond(77, 5, { response: AcceptanceStatus.ACCEPTED })).resolves.toEqual([])
-    expect(repository.respondToInvitation).toHaveBeenCalledWith(5, 77, AcceptanceStatus.ACCEPTED)
+    await expect(
+      service.respond(77, 5, {
+        response: AcceptanceStatus.ACCEPTED,
+        absenceOfConflictDeclared: true
+      })
+    ).resolves.toEqual([])
+    expect(repository.respondToInvitation).toHaveBeenCalledWith({
+      memberId: 5,
+      userId: 77,
+      response: AcceptanceStatus.ACCEPTED,
+      absenceOfConflictDeclared: true,
+      reason: null
+    })
+  })
+
+  test("impede aceite sem declaração de ausência de conflito", async () => {
+    repository.findMember.mockResolvedValue({
+      acceptanceStatus: AcceptanceStatus.PENDING,
+      person: { users: [{ idUser: 77 }] },
+      specialCommission: { status: CommissionStatus.DRAFT }
+    } as any)
+
+    await expect(service.respond(77, 5, { response: AcceptanceStatus.ACCEPTED })).rejects.toThrow(
+      "Declare a ausência de conflito"
+    )
+    expect(repository.respondToInvitation).not.toHaveBeenCalled()
   })
 
   test("registra decisão da CPPD com a média das avaliações concluídas", async () => {
@@ -282,6 +331,45 @@ describe("SpecialCommissionService", () => {
         opinionText: "Parecer consolidado."
       })
     ).rejects.toThrow("Conclua a comissão especial")
+    expect(repository.finalizeDecision).not.toHaveBeenCalled()
+  })
+
+  test("impede concessão da Classe Titular antes de 24 meses completos em C4", async () => {
+    const procedureGet = jest.fn<() => Promise<any>>()
+    procedureGet.mockResolvedValue({ stage: "COMPLETED", currentOutcome: "APPROVED" })
+    const fullProfessorProcedure = { get: procedureGet }
+    service = new SpecialCommissionService(repository, fullProfessorProcedure as any)
+    repository.findProcess.mockResolvedValue({
+      ...process,
+      status: ProcessStatus.UNDER_REVIEW,
+      user: {
+        ...process.user,
+        docente: {
+          siape: "123",
+          classLevel: "C4",
+          start_interstice: new Date(Date.now() - 23 * 30 * 24 * 60 * 60 * 1000)
+        }
+      },
+      processTypeConfig: {
+        ...process.processTypeConfig,
+        code: "FULL_PROFESSOR",
+        category: ProcessTypeCategory.FULL_PROFESSOR
+      }
+    } as any)
+    repository.findCurrentByProcess.mockResolvedValue({
+      ...commission,
+      status: CommissionStatus.COMPLETED,
+      members: [{
+        individualEvaluations: [{ status: "SUBMITTED", result: "APPROVED", recognizedPoints: 120 }]
+      }]
+    } as any)
+
+    await expect(
+      service.finalizeDecision(process.idProcess, 2, {
+        decision: "APPROVED",
+        opinionText: "Parecer favorável"
+      })
+    ).rejects.toThrow("24 meses completos em C4")
     expect(repository.finalizeDecision).not.toHaveBeenCalled()
   })
 })

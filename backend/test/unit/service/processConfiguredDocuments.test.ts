@@ -34,9 +34,9 @@ describe("ProcessoService - documentos configurados", () => {
     deletedDate: null,
     processTypeConfig: {
       idProcessType: 3,
-      code: "CUSTOM_PROCESS",
-      name: "Processo customizado",
-      category: ProcessTypeCategory.SIMPLE,
+      code: "RSC",
+      name: "Reconhecimento de Saberes e Competências",
+      category: ProcessTypeCategory.RSC,
       requiresScoring: false,
       documentRequirements: [requirement],
     },
