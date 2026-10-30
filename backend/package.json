@@ -11,7 +11,7 @@
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "test:db:setup": "ts-node scripts/test-database-setup.ts",
-    "test:unit": "npx jest test/unit",
+    "test:unit": "npx jest test/unit --coverage=false",
     "test:integration": "npx jest test/integration --runInBand",
     "test": "npx jest test --runInBand --coverage=false",
     "test:coverage": "npx jest test --config jest.regulatory.config.js --runInBand",
