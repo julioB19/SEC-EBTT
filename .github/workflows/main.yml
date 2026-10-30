@@ -74,6 +74,12 @@ jobs:
         run: npm ci
         working-directory: ./backend
 
+      - name: Install LibreOffice for PDF conversion
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libreoffice-writer libreoffice-calc
+          soffice --headless --version
+
       - name: Prepare integration test database
         run: npm run test:db:setup
         working-directory: ./backend
