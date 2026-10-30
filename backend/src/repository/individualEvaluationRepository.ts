@@ -1,4 +1,5 @@
 import { IndividualEvaluationStatus } from "@prisma/client"
+import { auditActor } from "../util/requestActor"
 import { prisma } from "../infra/prismaClient"
 
 const assignmentInclude = {
@@ -77,6 +78,8 @@ export class IndividualEvaluationRepository {
     }>
   }) {
     return prisma.$transaction(async tx => {
+      const previous = await tx.individualEvaluation.findUniqueOrThrow({ where: { idIndividualEvaluation: params.evaluationId }, include: { process: true, scores: true } })
+      await tx.processAudit.create({ data: { processId: previous.processId, actorId: auditActor(previous.process.userId), action: "INDIVIDUAL_EVALUATION_CHANGED", details: { evaluationId: params.evaluationId, previous: { status: previous.status, result: previous.result, opinion: previous.opinionText, scores: previous.scores.map(value => ({ itemId: value.itemId, quantity: value.quantity, points: String(value.awardedPoints) })) }, current: { status: params.status, result: params.result, opinion: params.opinionText, scores: params.scores } } } })
       const itemIds = params.scores.map(score => score.itemId)
 
       await tx.individualEvaluationScore.updateMany({

@@ -1,0 +1,44 @@
+{
+  "reference": "Tela de Usuários existente no sistema",
+  "pages": [
+    "/admin/campi-comissoes",
+    "/cppd/comissoes",
+    "/admin/conformidade",
+    "/cppd/conformidade",
+    "/docente/perfil",
+    "/docente/processos/67"
+  ],
+  "viewportDesktop": {
+    "width": 1440,
+    "height": 1000
+  },
+  "viewportMobile": {
+    "width": 390,
+    "height": 844
+  },
+  "mobileLayout": {
+    "documentClientWidth": 375,
+    "documentScrollWidth": 375,
+    "horizontalOverflow": false
+  },
+  "sampleCommissionCard": {
+    "background": "rgb(255, 255, 255)",
+    "border": "rgb(229, 229, 229)",
+    "radius": "16px"
+  },
+  "checks": [
+    "Abas Comissões/Campi e seleção de comissão",
+    "Abertura do formulário de edição da comissão",
+    "Listagem e formulário de Campi",
+    "Calendário e versões de modelos",
+    "Dados pessoais e funcionais",
+    "Biblioteca e expansão de cadastro de titulação",
+    "Requisitos do processo e expansão dos sete indicados",
+    "Desktop e celular sem transbordamento horizontal nos estados verificados"
+  ],
+  "builds": {
+    "workCopyNextProduction": "passed",
+    "originalNextTurbopackProduction": "passed"
+  },
+  "data": "Somente dados sintéticos no MySQL isolado TCC_AUDIT; nenhuma operação de cadastro, exclusão ou decisão foi enviada nesta conferência visual."
+}

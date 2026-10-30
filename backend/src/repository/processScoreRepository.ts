@@ -1,3 +1,4 @@
+import { auditActor } from "../util/requestActor"
 import { prisma } from "../infra/prismaClient"
 
 export class ProcessScoreRepository {
@@ -23,7 +24,9 @@ export class ProcessScoreRepository {
     awardedPoints: string,
     evidenceFileId?: number | null
   ) {
-    return prisma.processScore.upsert({
+    return prisma.$transaction(async tx => {
+      const previous = await tx.processScore.findUnique({ where: { processId_itemId: { processId, itemId } } })
+      const saved = await tx.processScore.upsert({
       where: {
         processId_itemId: {
           processId,
@@ -46,6 +49,10 @@ export class ProcessScoreRepository {
         evidenceFile: true,
         item: true
       }
+    })
+      const process = await tx.careerProcess.findUniqueOrThrow({ where: { idProcess: processId } })
+      await tx.processAudit.create({ data: { processId, actorId: auditActor(process.userId), action: "SCORE_CHANGED", details: { itemId, previous: previous ? { quantity: previous.quantity, points: String(previous.awardedPoints), evidenceFileId: previous.evidenceFileId } : null, current: { quantity, points: awardedPoints, evidenceFileId: evidenceFileId ?? null } } } })
+      return saved
     })
   }
 
@@ -93,7 +100,9 @@ export class ProcessScoreRepository {
     itemId: number,
     evidenceFileId: number | null
   ) {
-    return prisma.processScore.update({
+    return prisma.$transaction(async tx => {
+      const previous = await tx.processScore.findUnique({ where: { processId_itemId: { processId, itemId } } })
+      const saved = await tx.processScore.update({
       where: {
         processId_itemId: {
           processId,
@@ -107,6 +116,10 @@ export class ProcessScoreRepository {
         evidenceFile: true,
         item: true
       }
+    })
+      const process = await tx.careerProcess.findUniqueOrThrow({ where: { idProcess: processId } })
+      await tx.processAudit.create({ data: { processId, actorId: auditActor(process.userId), action: "EVIDENCE_LINK_CHANGED", details: { itemId, previous: previous?.evidenceFileId ?? null, current: evidenceFileId } } })
+      return saved
     })
   }
 

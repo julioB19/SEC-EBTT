@@ -1,4 +1,5 @@
 "use client"
+import CaseCompliancePanel from "@/components/CaseCompliancePanel";
 
 import Link from "next/link"
 import { useParams } from "next/navigation"
@@ -596,6 +597,7 @@ export default function SpecialCommissionPage() {
             </section>
           )}
 
+        <CaseCompliancePanel processId={processId} actor="CPPD" />
         {data.process.processTypeCategory === "FULL_PROFESSOR" && (
           <FullProfessorProcedurePanel processId={processId} actor="CPPD" />
         )}

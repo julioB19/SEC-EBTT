@@ -44,7 +44,7 @@ async function accessTokenOrError() {
   return { ok: true as const, access }
 }
 
-async function getUserIdFromCtx(ctx: { params: Promise<{ userId: string }> | { userId: string } }) {
+async function getUserIdFromCtx(ctx: { params: Promise<{ userId: string }> }) {
   const p: any = await ctx.params
   const raw = String(p?.userId ?? "").trim()
   const n = Number(raw)
@@ -96,7 +96,7 @@ async function safeFetch(url: string, init: RequestInit) {
   }
 }
 
-export async function GET(_req: NextRequest, ctx: { params: Promise<{ userId: string }> | { userId: string } }) {
+export async function GET(_req: NextRequest, ctx: { params: Promise<{ userId: string }> }) {
   const b = backendUrlOrError()
   if (!b.ok) return b.res
 
@@ -142,7 +142,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ userId: st
   return NextResponse.json(payloadOut, { status: r.res.status })
 }
 
-export async function PUT(req: NextRequest, ctx: { params: Promise<{ userId: string }> | { userId: string } }) {
+export async function PUT(req: NextRequest, ctx: { params: Promise<{ userId: string }> }) {
   const b = backendUrlOrError()
   if (!b.ok) return b.res
 

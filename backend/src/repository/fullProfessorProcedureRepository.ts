@@ -8,7 +8,7 @@ import { prisma } from "../infra/prismaClient"
 
 export class FullProfessorProcedureRepository {
   async findContext(processId: number) {
-    return prisma.careerProcess.findFirst({
+    const context = await prisma.careerProcess.findFirst({
       where: { idProcess: processId, deletedDate: null },
       include: {
         processTypeConfig: true,
@@ -40,6 +40,9 @@ export class FullProfessorProcedureRepository {
         }
       }
     })
+    if (!context) return null
+    const calendarPeriods = await prisma.academicCalendarPeriod.findMany({ where: { deletedAt: null, OR: [{ campusId: null }, { campusId: context.campusId }] } })
+    return { ...context, calendarPeriods }
   }
 
   async initialize(params: {

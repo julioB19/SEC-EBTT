@@ -1,4 +1,5 @@
 "use client"
+import CaseCompliancePanel from "@/components/CaseCompliancePanel"
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -54,6 +55,7 @@ export default function CppdParecerPage() {
 
   const [preview, setPreview] = useState<ParecerPreviewDto | null>(null)
   const [opinion, setOpinion] = useState("")
+  const [requirementsMetAt, setRequirementsMetAt] = useState("")
   const [decision, setDecision] = useState<CppdDecision>("APPROVED")
 
   const [finalized, setFinalized] = useState(false)
@@ -98,7 +100,7 @@ export default function CppdParecerPage() {
     setInfoMessage(null)
 
     try {
-      const body = overrideOpinion !== undefined ? { overrideOpinion } : {}
+      const body = { ...(overrideOpinion !== undefined ? { overrideOpinion } : {}), requirementsMetAtISO: requirementsMetAt || undefined, decision }
 
       const { ok, payload } = await fetchApi<ParecerPreviewDto>(
         `/api/cppd/processos/${processId}/avaliacao/parecer`,
@@ -152,7 +154,7 @@ export default function CppdParecerPage() {
   const divergentCount = preview?.divergentItems?.length ?? 0
 
   async function handleRefreshPreview() {
-    await loadPreview()
+    await loadPreview(opinion)
     setInfoMessage("Prévia atualizada.")
   }
 
@@ -218,6 +220,7 @@ export default function CppdParecerPage() {
       const trimmedOpinion = opinion.trim()
       const body = {
         decision,
+        requirementsMetAtISO: requirementsMetAt || undefined,
         overrideOpinion: trimmedOpinion === "" ? null : trimmedOpinion,
         evaluatorUserIds
       }
@@ -243,7 +246,7 @@ export default function CppdParecerPage() {
         return
       }
 
-      setFinalOpinion(trimmedOpinion === "" ? (preview.suggestedOpinion ?? "") : trimmedOpinion)
+      setFinalOpinion(payload.data?.evaluationOpinion ?? (trimmedOpinion === "" ? (preview.suggestedOpinion ?? "") : trimmedOpinion))
       setFinalized(true)
       setInfoMessage("Avaliação finalizada. Parecer gerado abaixo.")
     } catch (err) {
@@ -526,7 +529,9 @@ export default function CppdParecerPage() {
               </div>
 
               <div className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl p-4 shadow-sm">
+                <CaseCompliancePanel processId={processId} actor="CPPD" />
                 <div className="text-sm font-semibold text-[var(--text-primary)]">Finalizar avaliação</div>
+                <label className="mt-3 block text-sm">Data comprovada de cumprimento dos requisitos de desempenho<input type="date" value={requirementsMetAt} onChange={event => setRequirementsMetAt(event.target.value)} className="ml-2 rounded border p-2" /></label>
 
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>

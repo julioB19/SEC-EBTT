@@ -72,15 +72,15 @@ export class FullProfessorProcedureService {
       evaluationDeadlineAt: commission.evaluationDeadlineAt,
       reassessmentDeadlineAt:
         stage === FullProfessorProcedureStage.AWAITING_REASSESSMENT
-          ? addBusinessDaysDeadline(now, 2)
+          ? addBusinessDaysDeadline(now, 2, context.calendarPeriods ?? [])
           : null,
       oralDefenseDeadlineAt:
         isMemorial && outcome === FullProfessorProcedureOutcome.REJECTED
-          ? addCalendarDaysDeadline(now, 30)
+          ? addCalendarDaysDeadline(now, 30, context.calendarPeriods ?? [])
           : null,
       appealDeadlineAt:
         stage === FullProfessorProcedureStage.AWAITING_APPEAL
-          ? addBusinessDaysDeadline(now, 2)
+          ? addBusinessDaysDeadline(now, 2, context.calendarPeriods ?? [])
           : null
     })
   }
@@ -180,7 +180,7 @@ export class FullProfessorProcedureService {
             oralDefenseHeldAt: heldAt,
             oralDefenseRecordingUrl: recordingUrl,
             oralDefenseNotes: notes,
-            appealDeadlineAt: rejected ? addBusinessDaysDeadline(heldAt, 2) : null
+            appealDeadlineAt: rejected ? addBusinessDaysDeadline(heldAt, 2, context.calendarPeriods ?? []) : null
           },
           details: { outcome, heldAt: heldAt.toISOString(), recordingUrl }
         })
@@ -255,6 +255,13 @@ export class FullProfessorProcedureService {
     if (!context) throw new NotFoundError("Processo não encontrado")
     if (context.processTypeConfig?.category !== ProcessTypeCategory.FULL_PROFESSOR || !context.fullProfessorDetail) {
       throw new BusinessRuleError("Este recurso é exclusivo da Promoção à Classe Titular")
+    }
+    const detail = context.fullProfessorDetail
+    if (detail && detail.procedureStage !== FullProfessorProcedureStage.COMPLETED && detail.initialOpinionAt) {
+      const calendar = context.calendarPeriods ?? []
+      detail.reassessmentDeadlineAt = addBusinessDaysDeadline(detail.initialOpinionAt, 2, calendar)
+      detail.oralDefenseDeadlineAt = addCalendarDaysDeadline(detail.initialOpinionAt, 30, calendar)
+      detail.appealDeadlineAt = addBusinessDaysDeadline(detail.oralDefenseHeldAt ?? detail.initialOpinionAt, 2, calendar)
     }
     return context
   }

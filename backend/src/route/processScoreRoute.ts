@@ -1,3 +1,5 @@
+import { RoleName } from "@prisma/client"
+import { requireSelectedRole } from "../middleware/cppdAccessMiddleware"
 import { Router } from "express"
 import { ProcessScoreController } from "../controller/processScoreController"
 import { ProcessScoreService } from "../service/processScoreService"
@@ -9,6 +11,7 @@ import { ProcessNodeScoreRepository } from "../repository/processNodeScoreReposi
 
 export function processScoreRoute() {
   const router = Router()
+  router.use(["/processos", "/evidencias"], requireSelectedRole(RoleName.DOCENTE))
 
   const controller = new ProcessScoreController(
     new ProcessScoreService(

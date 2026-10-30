@@ -1,4 +1,5 @@
 "use client";
+import CaseCompliancePanel from "@/components/CaseCompliancePanel";
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
@@ -341,7 +342,7 @@ const PROGRESSAO_MOVES = [
 const PROMOCAO_MOVES = [
   { from: "A1", to: "B1" },
   { from: "B4", to: "C1" },
-  { from: "C4", to: "D1" },
+
 ];
 
 function isAllowedMove(type: ProcessType, origem: string, destino: string) {
@@ -604,6 +605,13 @@ export default function ProcessoDetalhePage() {
     setFormFinalReferenceDate(
       toISODateInput(p.fullProfessorDetails?.finalReferenceDate),
     );
+  }
+
+  async function refreshComplianceDetails() {
+    const response = await fetch(`/api/processos/${id}`, { credentials: "include", cache: "no-store" });
+    const payload = await response.json().catch(() => null) as ApiResponse<Processo>;
+    if (!response.ok || !payload?.data) throw new Error("Registro salvo; atualize a página para conferir os detalhes do processo.");
+    setProcesso(payload.data);
   }
 
   async function handleGerarRequerimento() {
@@ -1220,7 +1228,7 @@ export default function ProcessoDetalhePage() {
                       </div>
                     </>
                   )}
-                  {processo.processTypeCategory === "FULL_PROFESSOR" && (
+            {processo.processTypeCategory === "FULL_PROFESSOR" && (
                     <div>
                       <span className="font-medium text-[var(--text-primary)]">
                         Modalidade:
@@ -1234,6 +1242,7 @@ export default function ProcessoDetalhePage() {
                 </div>
               )}
 
+              <CaseCompliancePanel processId={processo.processId} actor="DOCENTE" onChanged={refreshComplianceDetails} />
               {editMode && (
                 <form
                   onSubmit={handleSaveEdit}
@@ -1426,9 +1435,10 @@ export default function ProcessoDetalhePage() {
                         </select>
                       </label>
                       <label className="flex flex-col gap-1 text-sm text-[var(--text-secondary)]">
-                        Data de referência final
+                        Data de referência final, calculada pelo sistema
                         <input
                           type="date"
+                          disabled
                           value={formFinalReferenceDate}
                           onChange={(e) =>
                             setFormFinalReferenceDate(e.target.value)

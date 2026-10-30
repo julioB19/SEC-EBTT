@@ -1,36 +1,18 @@
-# SEC-EBTT — estado atual e pendências
+# SEC-EBTT — estado atual
 
-**Última revisão:** 01/10/2026
+Atualizado em 17/10/2026.
 
-## Estado comprovado
+Os itens de implementação do checklist dos quatro processos foram concluídos e verificados: Progressão, Promoção, RSC e Classe Titular. As alterações foram aplicadas ao repositório original e as 23 migrações estão instaladas no banco local. Sete usuários e cinco processos foram preservados, com backup SQL anterior à atualização.
 
-O sistema local possui os quatro fluxos definidos para o produto: Progressão, Promoção, RSC e Promoção à Classe Titular. GECC, processos administrativos genéricos e integrações automáticas externas permanecem fora do escopo.
+- 36 suítes e 220 testes aprovados, com cobertura integral de 81,37% e cobertura regulatória de 88,18% das linhas/instruções.
+- Build/lint do backend e build/tipos do frontend aprovados.
+- Regras de elegibilidade, datas financeiras, sete indicados, calendário, documentos, assinaturas, auditoria, recursos RSC e administração de versões implementados.
+- Os testes permanecem no MySQL isolado; os processos históricos do banco principal são preservados.
+- Mantida autenticação por CPF e senha, conforme RF-GER-01. GECC, processos simples e integrações automáticas externas continuam fora do escopo.
 
-A tabela oficial de RSC IFFar 2025 está ativa no banco como tabela **#6**, com **82 critérios** (37/16/29), sete diretrizes por nível, fatores, pesos, quantidades máximas e tetos oficiais. A pontuação é calculada no servidor, com arredondamento por critério, e a submissão/avaliação exige 60 pontos totais e 36 no nível pretendido.
+Detalhes: [Checklist](checklist-adequacao-cppd.md) e [Conclusão e instruções de uso](conclusao-quatro-processos-2026-10-17.md).
 
-O fluxo manual completo foi executado e preservado no banco no processo **#14**: abertura pelo docente, relatório e comprovantes PDF, 60 pontos no RSC-III, envio à CPPD, comissão, aceite, avaliação individual, consolidação e decisão final aprovada.
 
-O processo **#15** preserva o novo cenário de elegibilidade RSC-I: ingresso em 01/01/2018, atividades desde 01/01/2013 (limite exato de cinco anos), fim em 30/09/2026 e declaração de veracidade. Antes dele, a API recusou corretamente um início em 31/12/2012.
+## Rodada de navegador de 17/10/2026
 
-Durante o teste foi corrigida a serialização de `BigInt` nas respostas da API. Antes da correção, a fila da CPPD falhava ao listar um processo que continha arquivo com `sizeBytes`; há teste de regressão para esse caso.
-
-## Validações executadas
-
-- Prisma formatado e cliente regenerado.
-- 21 migrations aplicadas; banco MySQL atualizado.
-- Backend compilado e lint aprovado.
-- Frontend compilado e verificação de tipos aprovada; o projeto não possui script de lint próprio.
-- 30 suítes e 179 testes automatizados aprovados.
-- Fluxos RSC, Progressão, Promoção e Classe Titular (memorial e tese) validados pelas rotas reais da aplicação e pelo banco isolado `TCC_TEST`.
-- Concorrência na formação de comissão validada, sem duplicidade persistida e sem resposta 500.
-- Cobertura do núcleo regulatório protegida por barreira automática: 88,01% de linhas/instruções, 98,14% de funções e 68,24% de ramos.
-- Cobertura integral do backend protegida por barreira automática: 80,10% de linhas/instruções, 94,32% de funções e 62,58% de ramos.
-- Conferência visual concluída em 21 telas dos perfis Docente, CPPD, Administrador e Avaliador Externo; nenhuma exceção JavaScript, falha de requisição, imagem quebrada ou estouro horizontal permaneceu. Evidências em `Documentacao/testes/visual/final`.
-
-## Itens que dependem de confirmação de escopo
-
-- Parecer consolidado em PDF e metadados de assinatura/hash; o parecer individual em PDF já é gerado e foi validado visualmente.
-- Recursos de RSC, caso façam parte do escopo aprovado.
-- Lista de sete indicados, suspensão de prazos e anexos oficiais da Classe Titular, apenas se confirmados no escopo do TCC.
-
-O detalhamento e a distinção entre implementado, pendente e dependente de validação institucional estão em `checklist-adequacao-cppd.md`.
+31 cenários aprovados após correções e retestes nos quatro perfis. Corrigidas datas civis, data financeira na prévia/conclusão do parecer, acesso à biblioteca pelo perfil e atualização imediata do diploma selecionado. Regressão: 220 testes em 36 suítes aprovados. Consulte o relatório de navegador para o alcance exato e as evidências.

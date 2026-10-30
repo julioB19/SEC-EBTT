@@ -8,6 +8,7 @@ export type CppdDecision = "APPROVED" | "REJECTED"
 
 export interface FinalizeEvaluationDto {
   decision: CppdDecision
+  requirementsMetAtISO?: string
   evaluatorUserIds?: number[]
   overrideOpinion?: string | null
 }
@@ -17,6 +18,7 @@ export interface SetEvaluatorsDto {
 }
 
 export interface GenerateParecerPreviewDto {
+  requirementsMetAtISO?: string
   overrideOpinion?: string | null
   evaluatorUserIds?: number[]
   decision?: CppdDecision

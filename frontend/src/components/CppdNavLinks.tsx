@@ -15,6 +15,7 @@ export function CppdNavLinks({ canManageCommissions = false }: { canManageCommis
     <div className="relative flex items-center">
       {/* DESKTOP */}
       <div className="hidden md:flex items-center gap-2">
+        {canManageCommissions && (<Link href="/cppd/conformidade" className={desktopLinkClass}>Calendário e documentos</Link>)}
         <Link href="/cppd" className={desktopLinkClass}>
           Início
         </Link>
@@ -60,6 +61,7 @@ export function CppdNavLinks({ canManageCommissions = false }: { canManageCommis
                      bg-[var(--surface-contrast-bg)] text-[var(--navbar-text)]
                      shadow-xl border border-[var(--border-subtle)] md:hidden overflow-hidden"
         >
+{canManageCommissions && (<Link href="/cppd/conformidade" className="block px-4 py-2.5 text-sm" onClick={() => setOpen(false)}>Calendário e documentos</Link>)}
           <Link
             href="/cppd"
             className="block px-4 py-2.5 text-sm hover:bg-[var(--navbar-item-hover-bg)]"

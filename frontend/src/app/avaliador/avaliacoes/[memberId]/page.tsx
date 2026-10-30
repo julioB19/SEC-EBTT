@@ -1,4 +1,5 @@
 "use client"
+import CaseCompliancePanel from "@/components/CaseCompliancePanel";
 
 import Link from "next/link"
 import { useParams } from "next/navigation"
@@ -319,6 +320,7 @@ export default function IndividualEvaluationPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 pb-8">
+      <CaseCompliancePanel processId={data.process.idProcess} actor="AVALIADOR" memberId={memberId} />
       <ConfirmModal
         open={confirmOpen}
         title="Enviar avaliação individual?"

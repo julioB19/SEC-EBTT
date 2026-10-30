@@ -11,6 +11,15 @@ import {
 import { SpecialCommissionRepository } from "../../../src/repository/specialCommissionRepository"
 import { SpecialCommissionService } from "../../../src/service/specialCommissionService"
 
+jest.mock("../../../src/infra/prismaClient", () => ({ prisma: {
+  rscAppeal: { findFirst: async () => null },
+  academicCalendarPeriod: { findMany: async () => [] },
+  signedProcessArtifact: { findMany: async () => [
+    ...[1, 2, 3, 4].map(memberId => ({ documentKind: "INDIVIDUAL_OPINION", memberId, version: 1, validatedAt: new Date(), rejectedAt: null, uploadedAt: new Date() })),
+    { documentKind: "CONSOLIDATED_OPINION", memberId: null, version: 1, validatedAt: new Date(), rejectedAt: null, uploadedAt: new Date() }
+  ] }
+} }))
+
 describe("SpecialCommissionService", () => {
   let repository: jest.Mocked<SpecialCommissionRepository>
   let service: SpecialCommissionService
@@ -296,16 +305,10 @@ describe("SpecialCommissionService", () => {
     repository.findCurrentByProcess.mockResolvedValue({
       ...commission,
       status: CommissionStatus.COMPLETED,
-      members: [
-        {
-          person: { name: "Avaliador 1", email: "um@exemplo.com" },
-          individualEvaluations: [{ status: "SUBMITTED", recognizedPoints: 70, result: "DEFERRED" }]
-        },
-        {
-          person: { name: "Avaliador 2", email: "dois@exemplo.com" },
-          individualEvaluations: [{ status: "SUBMITTED", recognizedPoints: 60, result: "DEFERRED" }]
-        }
-      ]
+      members: acceptedRscMembers().map((member, index) => ({
+        ...member,
+        individualEvaluations: [{ status: "SUBMITTED", recognizedPoints: index % 2 === 0 ? 70 : 60, result: "DEFERRED" }]
+      }))
     } as any)
 
     await service.finalizeDecision(process.idProcess, 2, {
@@ -318,6 +321,7 @@ describe("SpecialCommissionService", () => {
       decision: "APPROVED",
       opinionText: "Parecer consolidado favorável.",
       finalPoints: "65.00",
+      financialEffectsAt: null,
       changedById: 2
     })
   })

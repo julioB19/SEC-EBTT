@@ -14,6 +14,7 @@ export function AdminNavLinks() {
   return (
     <div className="relative flex items-center">
       <div className="hidden md:flex items-center gap-2">
+        <Link href="/admin/conformidade" className={desktopLinkClass}>Calendário e documentos</Link>
         <Link href="/admin" className={desktopLinkClass}>
           Início
         </Link>
@@ -51,6 +52,7 @@ export function AdminNavLinks() {
                      bg-[var(--surface-contrast-bg)] text-[var(--navbar-text)]
                      shadow-xl border border-[var(--border-subtle)] md:hidden overflow-hidden"
         >
+<Link href="/admin/conformidade" className="block px-4 py-2.5 text-sm" onClick={() => setOpen(false)}>Calendário e documentos</Link>
           <Link
             href="/admin"
             className="block px-4 py-2.5 text-sm hover:bg-[var(--navbar-item-hover-bg)]"

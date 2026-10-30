@@ -1,8 +1,10 @@
+import { auditActor } from "../util/requestActor"
 import { ClassLevel, ProcessStatus } from "@prisma/client"
 import { prisma } from "../infra/prismaClient"
 
 export class MissingProcessScoreError extends Error {}
 export class MissingDocenteProfileError extends Error {}
+export class StaleDocenteProfileError extends Error {}
 
 export class ProcessEvaluationRepository {
   async findProcess(processId: number) {
@@ -52,6 +54,8 @@ export class ProcessEvaluationRepository {
           where: { processId_itemId: { processId, itemId: update.itemId } }
         })
         if (!existing || existing.deletedDate) throw new MissingProcessScoreError()
+        const process = await tx.careerProcess.findUniqueOrThrow({ where: { idProcess: processId } })
+        await tx.processAudit.create({ data: { processId, actorId: auditActor(process.userId), action: "CPPD_SCORE_CHANGED", details: { itemId: update.itemId, previousPoints: String(existing.evaluatorAwardedPoints ?? ""), previousComment: existing.evaluatorComment, points: update.evaluatorAwardedPoints, comment: update.evaluatorComment } } })
         await tx.processScore.update({
           where: { processId_itemId: { processId, itemId: update.itemId } },
           data: {
@@ -92,6 +96,8 @@ export class ProcessEvaluationRepository {
     changedById: number
     targetLevel: ClassLevel | null
     intersticeEnd: Date
+    originLevel?: ClassLevel
+    financialEffectsAt?: Date | null
   }) {
     return prisma.$transaction(async tx => {
       const updated = await tx.careerProcess.update({
@@ -100,7 +106,8 @@ export class ProcessEvaluationRepository {
           status: params.toStatus,
           finalPoints: params.finalPoints,
           evaluationOpinion: params.evaluationOpinion,
-          evaluatorUserIds: params.evaluatorUserIds
+          evaluatorUserIds: params.evaluatorUserIds,
+          financialEffectsAt: params.financialEffectsAt
         }
       })
       await tx.processStatusHistory.create({
@@ -115,9 +122,10 @@ export class ProcessEvaluationRepository {
       if (params.targetLevel !== null) {
         const docente = await tx.docenteProfile.findUnique({ where: { userId: params.userId } })
         if (!docente || docente.deletedDate) throw new MissingDocenteProfileError()
+        if (params.originLevel && docente.classLevel !== params.originLevel) throw new StaleDocenteProfileError()
         await tx.docenteProfile.update({
           where: { userId: params.userId },
-          data: { classLevel: params.targetLevel, start_interstice: params.intersticeEnd }
+          data: { classLevel: params.targetLevel, start_interstice: params.financialEffectsAt ?? params.intersticeEnd }
         })
       }
       return updated

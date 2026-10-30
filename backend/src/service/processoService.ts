@@ -1,4 +1,7 @@
 import dayjs from "dayjs";
+import { prisma } from "../infra/prismaClient";
+import { careerPreparationAllowed, addMonthsClamped } from "../util/careerDates";
+import { assertTitularReady } from "./caseComplianceService";
 import "dayjs/locale/pt-br";
 import utc from "dayjs/plugin/utc";
 import path from "path";
@@ -128,6 +131,7 @@ export class ProcessoService {
       });
     } else if (category === ProcessTypeCategory.FULL_PROFESSOR) {
       await this.validarElegibilidadeClasseTitular(userId, false);
+      await assertTitularReady(processId, "SUBMIT");
       const detail = careerProcess.fullProfessorDetail;
       if (!detail?.evaluationMode) {
         throw new BusinessRuleError(
@@ -572,6 +576,12 @@ export class ProcessoService {
       );
     }
 
+    const requiredMonths = origemCodigo === "A1" && destinoCodigo === "B1" ? 36 : 24;
+    const functionalStart = user.docente.start_interstice ?? intersticeStart;
+    if (dayjs(functionalStart).format("YYYY-MM-DD") !== dayjs(intersticeStart).format("YYYY-MM-DD")) throw new BusinessRuleError("O início do interstício deve corresponder ao cadastro funcional");
+    if (!careerPreparationAllowed(intersticeStart, new Date(), requiredMonths)) throw new BusinessRuleError("A preparação só pode começar nos 60 dias anteriores ao cumprimento do interstício");
+    if (new Date(intersticeEnd.getTime() + 86400000) < addMonthsClamped(intersticeStart, requiredMonths)) throw new BusinessRuleError("O término informado não cumpre o interstício mínimo da movimentação");
+
     const lastApproved =
       await this.processRepo.findLastApprovedProcessForUser(userId);
     if (
@@ -745,11 +755,10 @@ export class ProcessoService {
     }
 
     if (
-      careerProcess.status !== ProcessStatus.DRAFT &&
-      careerProcess.status !== ProcessStatus.REJECTED
+      careerProcess.status !== ProcessStatus.DRAFT
     ) {
       throw new BusinessRuleError(
-        "Você só pode excluir processos com status DRAFT ou REJECTED",
+        "Você só pode excluir processos em rascunho",
       );
     }
 
@@ -1014,11 +1023,10 @@ export class ProcessoService {
 
     if (
       careerProcess.status !== ProcessStatus.DRAFT &&
-      careerProcess.status !== ProcessStatus.RETURNED &&
-      careerProcess.status !== ProcessStatus.REJECTED
+      careerProcess.status !== ProcessStatus.RETURNED
     ) {
       throw new BusinessRuleError(
-        "Você só pode editar processos com status DRAFT, RETURNED ou REJECTED",
+        "Você só pode editar processos em rascunho ou retornados",
       );
     }
 
@@ -1083,6 +1091,10 @@ export class ProcessoService {
     }
 
     if (category === ProcessTypeCategory.FULL_PROFESSOR) {
+      if (dto.fullProfessorDetails?.doctorateDegreeId) {
+        const degree = await prisma.teacherDegree.findFirst({ where: { idTeacherDegree: dto.fullProfessorDetails.doctorateDegreeId, teacher: { userId }, degreeType: { in: ["DOCTORATE", "DOUTORADO"] } } });
+        if (!degree) throw new BusinessRuleError("O diploma deve pertencer ao docente requerente");
+      }
       const modeRaw = dto.fullProfessorDetails?.evaluationMode;
       const mode = modeRaw ? String(modeRaw).toUpperCase() : undefined;
       if (
@@ -1094,12 +1106,8 @@ export class ProcessoService {
         throw new BusinessRuleError("Modalidade de avaliação inválida");
       }
 
-      const finalReferenceDate = dto.fullProfessorDetails?.finalReferenceDateISO
-        ? this.parseRequiredDate(
-            dto.fullProfessorDetails.finalReferenceDateISO,
-            "Data de referência final",
-          )
-        : undefined;
+      if (dto.fullProfessorDetails?.finalReferenceDateISO) throw new BusinessRuleError("A data de referência final é calculada pelo servidor");
+      const finalReferenceDate = undefined;
 
       const updated = await this.processRepo.updateFullProfessorProcess(
         processId,
@@ -1170,6 +1178,13 @@ export class ProcessoService {
       origemCodigo,
       destinoCodigo,
     );
+
+    const requiredMonths = origemCodigo === "A1" && destinoCodigo === "B1" ? 36 : 24;
+    const currentUser = await this.userRepo.findById(userId);
+    const functionalStart = currentUser?.docente?.start_interstice ?? newIntersticeStart;
+    if (dayjs(functionalStart).format("YYYY-MM-DD") !== dayjs(newIntersticeStart).format("YYYY-MM-DD")) throw new BusinessRuleError("O início do interstício deve corresponder ao cadastro funcional");
+    if (!careerPreparationAllowed(newIntersticeStart, new Date(), requiredMonths)) throw new BusinessRuleError("A preparação só pode começar nos 60 dias anteriores ao cumprimento do interstício");
+    if (new Date(newIntersticeEnd.getTime() + 86400000) < addMonthsClamped(newIntersticeStart, requiredMonths)) throw new BusinessRuleError("O término informado não cumpre o interstício mínimo da movimentação");
 
     const lastApproved =
       await this.processRepo.findLastApprovedProcessForUser(userId);
@@ -1551,7 +1566,10 @@ export class ProcessoService {
     }
 
     if (processType === ProcessType.PROMOCAO) {
-      const combinacoesValidas = ["A1->B1", "B4->C1", "C4->D1"];
+      if (origemCodigo === "C4" && destinoCodigo === "D1") {
+        throw new BusinessRuleError("Utilize o processo próprio de Promoção à Classe Titular")
+      }
+      const combinacoesValidas = ["A1->B1", "B4->C1"];
 
       const chave = `${origemCodigo}->${destinoCodigo}`;
 
@@ -1687,6 +1705,7 @@ export class ProcessoService {
         ? this.mapProcessTypeConfigToDto(processTypeConfig)
         : null,
       status: careerProcess.status,
+      financialEffectsAt: careerProcess.financialEffectsAt ?? null,
       scoringTableId: careerProcess.scoringTableId,
       scoringTable: careerProcess.table
         ? {

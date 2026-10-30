@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 type Role = "DOCENTE" | "CPPD_MEMBER" | "CPPD_CENTRAL" | "ADMIN" | "EXTERNAL_EVALUATOR"
 
@@ -458,6 +459,12 @@ export default function PerfilPage() {
             </div>
           </section>
         )}
+
+        {hasDocenteRole && <section className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4">
+          <h2 className="font-semibold">Titulações e diplomas</h2>
+          <p className="my-2 text-sm">Cadastre seus diplomas e o reconhecimento nacional de títulos estrangeiros para reutilizar nos processos.</p>
+          <Link href="/docente/perfil" className="text-sm underline">Abrir biblioteca de titulações no perfil Docente</Link>
+        </section>}
 
         <div className="flex justify-end">
           <button

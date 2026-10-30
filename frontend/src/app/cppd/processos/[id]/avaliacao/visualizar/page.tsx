@@ -167,7 +167,7 @@ function formatDateISOToBr(iso: string) {
   if (!iso) return ""
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleDateString("pt-BR")
+  return d.toLocaleDateString("pt-BR", { timeZone: "UTC" })
 }
 
 function formatDateTime(iso: string | null | undefined) {

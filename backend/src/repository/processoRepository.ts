@@ -1,3 +1,4 @@
+import { auditActor } from "../util/requestActor";
 import { prisma } from "../infra/prismaClient";
 import {
   FullProfessorEvaluationMode,
@@ -31,6 +32,8 @@ const processDetailsInclude = {
       generatedSpreadsheetFile: true,
     },
   },
+  compliance: true,
+  nominees: true,
   fullProfessorDetail: {
     include: {
       memorialFile: true,
@@ -146,10 +149,7 @@ export class ProcessRepository {
                     : null,
                   doctorateDegreeId:
                     dto.fullProfessorDetails?.doctorateDegreeId ?? null,
-                  finalReferenceDate: dto.fullProfessorDetails
-                    ?.finalReferenceDateISO
-                    ? new Date(dto.fullProfessorDetails.finalReferenceDateISO)
-                    : null,
+                  finalReferenceDate: null,
                 },
               }
             : undefined,
@@ -279,6 +279,7 @@ export class ProcessRepository {
     file: ProcessDocumentFileInput,
   ) {
     return prisma.$transaction(async (tx) => {
+      const previous = await tx.rscProcessDetail.findUnique({ where: { processId } });
       const evidence = await tx.evidenceFile.create({
         data: {
           userId,
@@ -296,6 +297,7 @@ export class ProcessRepository {
         data: { reportFileId: evidence.idEvidenceFile },
       });
 
+      await tx.processAudit.create({ data: { processId, actorId: userId, action: "SPECIFIC_DOCUMENT_CHANGED", details: { previous: JSON.parse(JSON.stringify(previous)), fileId: evidence.idEvidenceFile } } });
       return tx.careerProcess.findUnique({
         where: { idProcess: processId },
         include: {
@@ -315,6 +317,7 @@ export class ProcessRepository {
     file: ProcessDocumentFileInput,
   ) {
     return prisma.$transaction(async (tx) => {
+      const previous = await tx.fullProfessorProcessDetail.findUnique({ where: { processId } });
       const evidence = await tx.evidenceFile.create({
         data: {
           userId,
@@ -335,6 +338,8 @@ export class ProcessRepository {
             : { thesisFileId: evidence.idEvidenceFile },
       });
 
+      await tx.processAudit.create({ data: { processId, actorId: userId, action: "SPECIFIC_DOCUMENT_CHANGED", details: { previous: JSON.parse(JSON.stringify(previous)), fileId: evidence.idEvidenceFile } } });
+      if (kind === "FULL_PROFESSOR_THESIS") await tx.processCompliance.upsert({ where: { processId }, create: { processId }, update: { thesisOriginalityDeclaredAt: null } });
       return tx.careerProcess.findUnique({
         where: { idProcess: processId },
         include: {
@@ -373,44 +378,21 @@ export class ProcessRepository {
         },
       });
 
-      let degreeId: number | null = null;
-      if (params.existingDegreeId) {
-        const updated = await tx.teacherDegree.updateMany({
-          where: {
-            idTeacherDegree: params.existingDegreeId,
-            teacherId: params.teacherId,
-            deletedDate: null,
-          },
-          data: {
-            degreeType: "DOCTORATE",
-            course: params.course,
-            institution: params.institution,
-            conclusionDate: params.conclusionDate,
-            evidenceFileId: evidence.idEvidenceFile,
-          },
-        });
-        if (updated.count > 0) degreeId = params.existingDegreeId;
-      }
-
-      if (!degreeId) {
-        const degree = await tx.teacherDegree.create({
-          data: {
-            teacherId: params.teacherId,
-            degreeType: "DOCTORATE",
-            course: params.course,
-            institution: params.institution,
-            conclusionDate: params.conclusionDate,
-            evidenceFileId: evidence.idEvidenceFile,
-          },
-        });
-        degreeId = degree.idTeacherDegree;
-      }
+      const degree = await tx.teacherDegree.create({ data: {
+        teacherId: params.teacherId, degreeType: "DOCTORATE", course: params.course,
+        institution: params.institution, conclusionDate: params.conclusionDate,
+        evidenceFileId: evidence.idEvidenceFile,
+      } });
+      const degreeId = degree.idTeacherDegree;
+      await tx.processAudit.create({ data: { processId: params.processId, actorId: params.userId,
+        action: "DOCTORATE_VERSION_CREATED", details: { previousDegreeId: params.existingDegreeId ?? null, degreeId, fileId: evidence.idEvidenceFile } } });
 
       await tx.fullProfessorProcessDetail.update({
         where: { processId: params.processId },
         data: { doctorateDegreeId: degreeId },
       });
 
+      await tx.processCompliance.upsert({ where: { processId: params.processId }, create: { processId: params.processId }, update: { doctorateValidatedAt: null } });
       return tx.careerProcess.findUnique({
         where: { idProcess: params.processId },
         include: {
@@ -460,64 +442,15 @@ export class ProcessRepository {
         },
       });
 
-      if (existing) {
-        await tx.documentProcess.update({
-          where: { idDocumentProcess: existing.idDocumentProcess },
-          data: {
-            nature: params.required ? "REQUIRED" : "OPTIONAL",
-            format:
-              params.file.originalName
-                .split(".")
-                .pop()
-                ?.toLowerCase()
-                .slice(0, 30) ??
-              params.file.mimeType?.slice(0, 30) ??
-              null,
-            receivedAt: new Date(),
-            checked: false,
-            evidenceFileId: evidence.idEvidenceFile,
-            generatedById: params.userId,
-          },
-        });
+      if (existing) await tx.documentProcess.update({ where: { idDocumentProcess: existing.idDocumentProcess }, data: { deletedDate: new Date() } });
+      const document = await tx.documentProcess.create({ data: {
+        processId: params.processId, documentType: params.requirementCode,
+        nature: params.required ? "REQUIRED" : "OPTIONAL", format: "PDF", receivedAt: new Date(),
+        checked: false, evidenceFileId: evidence.idEvidenceFile, generatedById: params.userId, purpose: "PROCESS_REQUIREMENT"
+      } });
+      await tx.processAudit.create({ data: { processId: params.processId, actorId: params.userId, action: "DOCUMENT_VERSION_CREATED", details: { kind: params.requirementCode, previousDocumentId: existing?.idDocumentProcess ?? null, previousFileId: existing?.evidenceFileId ?? null, documentId: document.idDocumentProcess, fileId: evidence.idEvidenceFile } } });
 
-        if (existing.evidenceFileId) {
-          await tx.evidenceFile.update({
-            where: { idEvidenceFile: existing.evidenceFileId },
-            data: { deletedDate: new Date() },
-          });
-        }
-      } else {
-        await tx.documentProcess.create({
-          data: {
-            processId: params.processId,
-            documentType: params.requirementCode,
-            nature: params.required ? "REQUIRED" : "OPTIONAL",
-            format:
-              params.file.originalName
-                .split(".")
-                .pop()
-                ?.toLowerCase()
-                .slice(0, 30) ??
-              params.file.mimeType?.slice(0, 30) ??
-              null,
-            receivedAt: new Date(),
-            evidenceFileId: evidence.idEvidenceFile,
-            generatedById: params.userId,
-            purpose: "PROCESS_REQUIREMENT",
-          },
-        });
-      }
-
-      const process = await tx.careerProcess.findUnique({
-        where: { idProcess: params.processId },
-        include: {
-          user: true,
-          processTypeConfig: processTypeConfigInclude,
-          table: true,
-          ...processDetailsInclude,
-        },
-      });
-
+      const process = await tx.careerProcess.findUnique({ where: { idProcess: params.processId }, include: { user: true, processTypeConfig: processTypeConfigInclude, table: true, ...processDetailsInclude } });
       return {
         process,
         replacedFileUrl: existing?.evidenceFile?.url ?? null,
@@ -544,23 +477,9 @@ export class ProcessRepository {
         data: { deletedDate: deletedAt },
       });
 
-      if (document.evidenceFileId) {
-        await tx.evidenceFile.update({
-          where: { idEvidenceFile: document.evidenceFileId },
-          data: { deletedDate: deletedAt },
-        });
-      }
+      await tx.processAudit.create({ data: { processId, actorId: auditActor(0), action: "DOCUMENT_REMOVED", details: { documentId, fileId: document.evidenceFileId } } });
 
-      const process = await tx.careerProcess.findUnique({
-        where: { idProcess: processId },
-        include: {
-          user: true,
-          processTypeConfig: processTypeConfigInclude,
-          table: true,
-          ...processDetailsInclude,
-        },
-      });
-
+      const process = await tx.careerProcess.findUnique({ where: { idProcess: processId }, include: { user: true, processTypeConfig: processTypeConfigInclude, table: true, ...processDetailsInclude } });
       return {
         process,
         removedFileUrl: document.evidenceFile?.url ?? null,
@@ -580,11 +499,12 @@ export class ProcessRepository {
       ProcessStatus.RETURNED,
     ];
 
+    const type = processTypeId ? await prisma.processTypeConfig.findUnique({ where: { idProcessType: processTypeId } }) : null;
     return prisma.careerProcess.findFirst({
       where: {
         userId,
         deletedDate: null,
-        ...(processTypeId ? { processTypeId } : {}),
+        ...(type ? { processTypeConfig: { code: type.code } } : processTypeId ? { processTypeId } : {}),
         status: {
           in: activeStatuses,
         },

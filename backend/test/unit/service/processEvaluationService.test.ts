@@ -16,7 +16,7 @@ describe("ProcessEvaluationService", () => {
   const process = {
     idProcess: 1, userId: 7, scoringTableId: 2, status: ProcessStatus.SUBMITTED,
     deletedDate: null, type: ProcessType.PROGRESSAO, campus: "Campus Teste", cidadeUF: "Cidade/RS",
-    intersticeStart: new Date("2024-01-01"), intersticeEnd: new Date("2025-01-01"),
+    intersticeStart: new Date("2020-01-01"), intersticeEnd: new Date("2023-01-01"),
     classeOrigem: "A", nivelOrigem: "1", classeDestino: "B", nivelDestino: "1",
     finalPoints: null, evaluationOpinion: null, evaluatorUserIds: [],
     user: { name: "Docente", docente: { siape: "123" } },
@@ -109,7 +109,7 @@ describe("ProcessEvaluationService", () => {
     jest.spyOn(service, "getProcessForEvaluation").mockResolvedValue({} as any)
     jest.spyOn(service as any, "checkAllFilledItemsEvaluated").mockReturnValue(true)
     jest.spyOn(service as any, "recalculateEvaluationTotals").mockResolvedValue({})
-    jest.spyOn(service as any, "computeOverallTotals").mockResolvedValue({ totalsCppd: 20 })
+    jest.spyOn(service as any, "computeOverallTotals").mockResolvedValue({ totalsCppd: 120 })
     repository.finalizeEvaluation.mockRejectedValue(new MissingDocenteProfileError())
     await expect(service.finalizeEvaluation(1, 9, { decision: "APPROVED" }))
       .rejects.toThrow("DocenteProfile não encontrado")

@@ -27,7 +27,7 @@ async function accessTokenOrError() {
   return { ok: true as const, access }
 }
 
-async function getUserId(ctx: { params: Promise<{ userId: string }> | { userId: string } }) {
+async function getUserId(ctx: { params: Promise<{ userId: string }> }) {
   const p: any = await ctx.params
   const userId = String(p?.userId ?? "").trim()
   return userId
@@ -41,7 +41,7 @@ function jsonFromText(text: string) {
   }
 }
 
-export async function GET(_req: NextRequest, ctx: { params: Promise<{ userId: string }> | { userId: string } }) {
+export async function GET(_req: NextRequest, ctx: { params: Promise<{ userId: string }> }) {
   const backend = backendUrlOrError()
   if (!backend.ok) return backend.res
 
@@ -66,7 +66,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ userId: st
   })
 }
 
-export async function PUT(req: NextRequest, ctx: { params: Promise<{ userId: string }> | { userId: string } }) {
+export async function PUT(req: NextRequest, ctx: { params: Promise<{ userId: string }> }) {
   const backend = backendUrlOrError()
   if (!backend.ok) return backend.res
 
@@ -94,7 +94,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ userId: str
   return new NextResponse(text, { status: backendRes.status, headers: { "Content-Type": contentType } })
 }
 
-export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ userId: string }> | { userId: string } }) {
+export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ userId: string }> }) {
   const backend = backendUrlOrError()
   if (!backend.ok) return backend.res
 

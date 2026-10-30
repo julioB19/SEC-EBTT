@@ -1,6 +1,7 @@
 import express from "express";
+import { requestActor } from "./util/requestActor";
+import { caseComplianceRoute } from "./route/caseComplianceRoute";
 import "dotenv/config";
-import path from "path";
 import { authMiddleware } from "./middleware/authMiddleware";
 import { corsMiddleware } from "./middleware/corsMiddleware";
 import { userRoute } from "./route/userRoute";
@@ -20,7 +21,7 @@ const app = express();
 
 app.use(corsMiddleware);
 app.use(express.json());
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.use("/uploads", (_req, res) => { res.sendStatus(404); });
 //app.use(express.urlencoded({ extended: true }))
 
 //rotas publicas
@@ -28,6 +29,7 @@ app.use(publicRegistrationRoute());
 app.use(authRoute());
 
 app.use(authMiddleware);
+app.use((req: any, _res, next) => requestActor.run({ userId: Number(req.user.sub) }, next));
 //rotas protegidas
 app.use(userRoute());
 app.use(meRoute());
@@ -39,4 +41,5 @@ app.use(scoringTableRoute());
 app.use(specialCommissionRoute());
 app.use(cppdManagementRoute());
 app.use(fullProfessorProcedureRoute());
+app.use(caseComplianceRoute());
 export default app;

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { fieldClass, primaryButtonClass } from "@/components/ui/systemStyles"
 import { FormEvent, useEffect, useMemo, useState } from "react"
 
 type ApiResponse<T> = {
@@ -85,12 +86,8 @@ const emptyCommission: CommissionForm = {
   validityEnd: ""
 }
 
-const inputClass =
-  "w-full rounded-md border border-[var(--border-subtle)] bg-[var(--surface-bg)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-[var(--brand)]"
-const primaryButton =
-  "rounded-md bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-semibold text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover-bg)] disabled:opacity-50"
-const secondaryButton =
-  "rounded-md border border-[var(--btn-secondary-border)] px-4 py-2 text-sm font-semibold text-[var(--btn-secondary-text)] hover:bg-[var(--btn-secondary-hover-bg)] disabled:opacity-50"
+const inputClass = fieldClass
+const primaryButton = primaryButtonClass
 
 function dateInput(value: string | null) {
   return value ? value.slice(0, 10) : ""
@@ -336,44 +333,46 @@ export default function CppdCommissionManagement({ backHref }: { backHref: strin
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+    <main className="mx-auto w-full max-w-6xl space-y-6">
+      <header className="space-y-3">
         <div>
           <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Campi e comissões CPPD</h1>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
             Gerencie os vínculos que determinam o acesso local aos processos.
           </p>
         </div>
-        <Link href={backHref} className={secondaryButton}>Voltar</Link>
+        <Link href={backHref} className={primaryButton}>Voltar</Link>
       </header>
 
-      <div className="inline-flex rounded-md border border-[var(--border-subtle)] p-1" role="tablist">
+      <div className="inline-flex rounded-full border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-1" role="tablist">
         <button
           type="button"
-          className={`rounded px-4 py-2 text-sm ${tab === "commissions" ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "text-[var(--text-secondary)]"}`}
+          className={`rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide transition-colors ${tab === "commissions" ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "text-[var(--text-secondary)]"}`}
+          role="tab" aria-selected={tab === "commissions"}
           onClick={() => setTab("commissions")}
         >
           Comissões
         </button>
         <button
           type="button"
-          className={`rounded px-4 py-2 text-sm ${tab === "campuses" ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "text-[var(--text-secondary)]"}`}
+          className={`rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide transition-colors ${tab === "campuses" ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "text-[var(--text-secondary)]"}`}
+          role="tab" aria-selected={tab === "campuses"}
           onClick={() => setTab("campuses")}
         >
           Campi
         </button>
       </div>
 
-      {error && <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      {notice && <p className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
+      {error && <p className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {notice && <p className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
 
       {loading ? (
         <p className="text-sm text-[var(--text-secondary)]">Carregando...</p>
       ) : tab === "campuses" ? (
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="overflow-x-auto rounded-md border border-[var(--border-subtle)]">
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <section className="min-w-0 overflow-x-auto rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]">
             <table className="w-full min-w-[680px] text-sm">
-              <thead className="bg-[var(--surface-bg-2)] text-left">
+              <thead className="text-left">
                 <tr>
                   <th className="px-4 py-3">Campus</th>
                   <th className="px-4 py-3">E-mail CPPD</th>
@@ -384,13 +383,13 @@ export default function CppdCommissionManagement({ backHref }: { backHref: strin
               </thead>
               <tbody>
                 {campuses.map(campus => (
-                  <tr key={campus.idCampus} className="border-t border-[var(--border-subtle)]">
+                  <tr key={campus.idCampus} className="border-t border-[var(--border-subtle)] hover:bg-[var(--table-row-hover-bg)]">
                     <td className="px-4 py-3 font-medium">{campus.name} ({campus.acronym})</td>
                     <td className="px-4 py-3">{campus.cppdEmail || "Não informado"}</td>
                     <td className="px-4 py-3">{campus._count?.docentes ?? 0}</td>
                     <td className="px-4 py-3">{campus.active ? "Ativo" : "Inativo"}</td>
                     <td className="px-4 py-3">
-                      <button type="button" className="font-semibold text-[var(--brand)]" onClick={() => beginCampusEdit(campus)}>
+                      <button type="button" className="font-semibold text-[var(--text-primary)]" onClick={() => beginCampusEdit(campus)}>
                         Editar
                       </button>
                     </td>
@@ -400,10 +399,10 @@ export default function CppdCommissionManagement({ backHref }: { backHref: strin
             </table>
           </section>
 
-          <form onSubmit={saveCampus} className="space-y-4 rounded-md border border-[var(--border-subtle)] p-4">
+          <form onSubmit={saveCampus} className="min-w-0 space-y-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-base font-semibold">{editingCampusId ? "Editar campus" : "Novo campus"}</h2>
-              {editingCampusId && <button type="button" className="text-sm text-[var(--brand)]" onClick={() => beginCampusEdit()}>Cancelar</button>}
+              {editingCampusId && <button type="button" className="text-sm text-[var(--text-primary)]" onClick={() => beginCampusEdit()}>Cancelar</button>}
             </div>
             <label className="block text-sm">Nome<input required className={`${inputClass} mt-1`} value={campusForm.name} onChange={event => setCampusForm(value => ({ ...value, name: event.target.value }))} /></label>
             <label className="block text-sm">Sigla<input required className={`${inputClass} mt-1`} value={campusForm.acronym} onChange={event => setCampusForm(value => ({ ...value, acronym: event.target.value }))} /></label>
@@ -419,30 +418,31 @@ export default function CppdCommissionManagement({ backHref }: { backHref: strin
             <button type="button" className={primaryButton} onClick={() => beginCommissionEdit()}>Nova comissão</button>
           </div>
 
-          <div className="grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
-            <section className="space-y-2" aria-label="Comissões cadastradas">
+          <div className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <section className="max-h-80 space-y-2 overflow-y-auto p-0.5 lg:max-h-[70vh]" aria-label="Comissões cadastradas">
               {commissions.map(commission => (
                 <button
                   type="button"
                   key={commission.idCppdCommission}
                   onClick={() => setSelectedCommissionId(commission.idCppdCommission)}
-                  className={`w-full rounded-md border p-3 text-left ${selectedCommissionId === commission.idCppdCommission ? "border-[var(--brand)] bg-[var(--surface-bg-2)]" : "border-[var(--border-subtle)]"}`}
+                  aria-pressed={selectedCommissionId === commission.idCppdCommission}
+                  className={`w-full rounded-2xl border bg-[var(--surface-bg)] p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--input-border-focus)] ${selectedCommissionId === commission.idCppdCommission ? "border-[var(--border-strong)] ring-1 ring-[var(--border-subtle)]" : "border-[var(--border-subtle)] hover:border-[var(--border-strong)]"}`}
                 >
                   <span className="block text-sm font-semibold">{commission.campus?.name ?? "Campus não informado"}</span>
                   <span className="mt-1 block text-xs text-[var(--text-secondary)]">{commission.ordinance || "Sem portaria"}</span>
                   <span className="mt-2 block text-xs">{commissionStatus(commission)} · {commission.members.filter(member => member.active).length} membro(s)</span>
                 </button>
               ))}
-              {!commissions.length && <p className="rounded-md border border-[var(--border-subtle)] p-4 text-sm text-[var(--text-secondary)]">Nenhuma comissão cadastrada.</p>}
+              {!commissions.length && <p className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4 text-sm text-[var(--text-secondary)]">Nenhuma comissão cadastrada.</p>}
             </section>
 
-            <div className="space-y-5">
-              <form onSubmit={saveCommission} className="space-y-4 rounded-md border border-[var(--border-subtle)] p-4">
+            <div className="min-w-0 space-y-5">
+              <form onSubmit={saveCommission} className="min-w-0 space-y-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="text-base font-semibold">{editingCommissionId ? "Editar comissão" : "Dados da comissão"}</h2>
                   <div className="flex gap-3">
-                    {selectedCommission && !editingCommissionId && <button type="button" className="text-sm font-semibold text-[var(--brand)]" onClick={() => beginCommissionEdit(selectedCommission)}>Editar</button>}
-                    {editingCommissionId && <button type="button" className="text-sm text-[var(--brand)]" onClick={() => setEditingCommissionId(null)}>Cancelar</button>}
+                    {selectedCommission && !editingCommissionId && <button type="button" className="text-sm font-semibold text-[var(--text-primary)]" onClick={() => beginCommissionEdit(selectedCommission)}>Editar</button>}
+                    {editingCommissionId && <button type="button" className="text-sm text-[var(--text-primary)]" onClick={() => setEditingCommissionId(null)}>Cancelar</button>}
                   </div>
                 </div>
 
@@ -461,7 +461,7 @@ export default function CppdCommissionManagement({ backHref }: { backHref: strin
                     <button disabled={saving} className={primaryButton}>{saving ? "Salvando..." : "Salvar comissão"}</button>
                   </>
                 ) : (
-                  <dl className="grid gap-3 text-sm md:grid-cols-2">
+                  <dl className="grid gap-4 text-sm break-words md:grid-cols-2">
                     <div><dt className="text-[var(--text-secondary)]">Campus</dt><dd className="font-medium">{selectedCommission.campus?.name}</dd></div>
                     <div><dt className="text-[var(--text-secondary)]">Portaria</dt><dd className="font-medium">{selectedCommission.ordinance || "Não informada"}</dd></div>
                     <div><dt className="text-[var(--text-secondary)]">Mandato</dt><dd>{dateLabel(selectedCommission.mandateStart)} a {dateLabel(selectedCommission.mandateEnd)}</dd></div>
@@ -471,14 +471,14 @@ export default function CppdCommissionManagement({ backHref }: { backHref: strin
               </form>
 
               {selectedCommission && !editingCommissionId && (
-                <section className="space-y-4 rounded-md border border-[var(--border-subtle)] p-4">
+                <section className="min-w-0 space-y-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5">
                   <h2 className="text-base font-semibold">Membros</h2>
                   <div className="overflow-x-auto">
                     <table className="w-full min-w-[720px] text-sm">
-                      <thead className="bg-[var(--surface-bg-2)] text-left"><tr><th className="px-3 py-2">Pessoa</th><th className="px-3 py-2">Função</th><th className="px-3 py-2">Vínculo</th><th className="px-3 py-2">Ativo</th><th className="px-3 py-2">Ação</th></tr></thead>
+                      <thead className="text-left"><tr><th className="px-3 py-2">Pessoa</th><th className="px-3 py-2">Função</th><th className="px-3 py-2">Vínculo</th><th className="px-3 py-2">Ativo</th><th className="px-3 py-2">Ação</th></tr></thead>
                       <tbody>
                         {selectedCommission.members.map(member => (
-                          <tr key={member.personId} className="border-t border-[var(--border-subtle)]">
+                          <tr key={member.personId} className="border-t border-[var(--border-subtle)] hover:bg-[var(--table-row-hover-bg)]">
                             <td className="px-3 py-2"><span className="block font-medium">{member.person.name}</span><span className="text-xs text-[var(--text-secondary)]">{member.person.email}</span></td>
                             <td className="px-3 py-2"><select disabled={saving} className={inputClass} value={member.function} onChange={event => updateMember(member, { function: event.target.value as MemberFunction })}><option value="PRESIDENT">Presidente</option><option value="SECRETARY">Secretário(a)</option><option value="MEMBER">Membro</option></select></td>
                             <td className="px-3 py-2"><select disabled={saving} className={inputClass} value={member.membershipType} onChange={event => updateMember(member, { membershipType: event.target.value as MembershipType })}><option value="PRIMARY">Titular</option><option value="SUBSTITUTE">Suplente</option></select></td>
@@ -491,7 +491,7 @@ export default function CppdCommissionManagement({ backHref }: { backHref: strin
                     </table>
                   </div>
 
-                  <form onSubmit={addMember} className="grid gap-3 border-t border-[var(--border-subtle)] pt-4 md:grid-cols-[minmax(220px,1fr)_180px_160px_auto] md:items-end">
+                  <form onSubmit={addMember} className="grid gap-3 border-t border-[var(--border-subtle)] pt-4 sm:grid-cols-2 2xl:grid-cols-[minmax(0,1fr)_140px_130px_auto] sm:items-end">
                     <label className="block text-sm">Novo membro<select required className={`${inputClass} mt-1`} value={newMemberId} onChange={event => setNewMemberId(event.target.value)}><option value="">Selecione</option>{availableCandidates.map(candidate => <option key={candidate.idPerson} value={candidate.idPerson}>{candidate.name} · {candidate.email}</option>)}</select></label>
                     <label className="block text-sm">Função<select className={`${inputClass} mt-1`} value={newMemberFunction} onChange={event => setNewMemberFunction(event.target.value as MemberFunction)}><option value="PRESIDENT">Presidente</option><option value="SECRETARY">Secretário(a)</option><option value="MEMBER">Membro</option></select></label>
                     <label className="block text-sm">Vínculo<select className={`${inputClass} mt-1`} value={newMembershipType} onChange={event => setNewMembershipType(event.target.value as MembershipType)}><option value="PRIMARY">Titular</option><option value="SUBSTITUTE">Suplente</option></select></label>

@@ -69,3 +69,11 @@ Inicie o frontend em modo de desenvolvimento:
 npm run dev
 ```
 
+
+### Conclusão dos quatro processos — 17/10/2026
+
+Consulte [o checklist atualizado](Documentacao/checklist-adequacao-cppd.md) e [as instruções das funções acrescentadas](Documentacao/conclusao-quatro-processos-2026-10-17.md).
+
+Após obter esta versão, regenere o cliente Prisma com `npx prisma generate` e aplique as migrações versionadas com `npm run migrate:deploy`. Em bancos existentes, faça uma cópia de segurança antes da atualização. Não execute seeds de teste sobre dados de uso.
+
+O calendário institucional deve ser cadastrado por Administrador ou CPPD Central em “Calendário e documentos”. Assinaturas são realizadas na plataforma institucional e recebidas pelo sistema para conferência da CPPD.

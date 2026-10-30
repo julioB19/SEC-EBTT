@@ -11,6 +11,8 @@ import {
 import { SpecialCommissionRepository } from "../repository/specialCommissionRepository"
 import { BusinessRuleError, NotFoundError } from "./processoService"
 import { FullProfessorProcedureService } from "./fullProfessorProcedureService"
+import { assertTitularReady, assertSignedDecisionDocuments, calculateTitularEffects } from "./caseComplianceService"
+import { prisma } from "../infra/prismaClient"
 import { addCalendarDaysDeadline } from "../util/proceduralDeadline"
 import {
   AddSpecialCommissionMemberDto,
@@ -105,6 +107,15 @@ export class SpecialCommissionService {
       }
     }
 
+    const appeal = await prisma.rscAppeal.findFirst({ where: { processId, status: "SUBMITTED", newCommissionId: commission.idSpecialCommission } })
+    if (appeal?.originalCommissionId) {
+      const previousMember = await prisma.specialCommissionMember.findFirst({ where: { specialCommissionId: appeal.originalCommissionId, personId: evaluator.personId } })
+      if (previousMember) throw new BusinessRuleError("A comissão de recurso deve ter membros diferentes da comissão original")
+    }
+    if (process.processTypeConfig?.category === ProcessTypeCategory.FULL_PROFESSOR) {
+      const nominee = await prisma.processNominee.findFirst({ where: { processId, email, membership: "PRIMARY", origin } })
+      if (!nominee) throw new BusinessRuleError("O avaliador deve constar entre os titulares da lista validada de indicados")
+    }
     const existing = await this.repository.findActiveMember(commission.idSpecialCommission, evaluator.personId)
     if (existing) throw new BusinessRuleError("Este avaliador já pertence à comissão")
 
@@ -163,6 +174,7 @@ export class SpecialCommissionService {
       }
       if (commission.type === SpecialCommissionType.FULL_PROFESSOR) {
         this.assertFullProfessorComposition(commission)
+        await assertTitularReady(processId, "ACTIVATE")
       }
       const notAccepted = commission.members.filter(member => member.acceptanceStatus !== AcceptanceStatus.ACCEPTED)
       if (notAccepted.length > 0) {
@@ -202,7 +214,7 @@ export class SpecialCommissionService {
       changedById: currentUserId,
       evaluationDeadlineAt:
         dto.status === CommissionStatus.ACTIVE && commission.ordinanceDate
-          ? addCalendarDaysDeadline(commission.ordinanceDate, 45)
+          ? addCalendarDaysDeadline(commission.ordinanceDate, 45, await prisma.academicCalendarPeriod.findMany({ where: { deletedAt: null, OR: [{ campusId: null }, { campusId: process.campusId ?? -1 }] } }))
           : undefined
     })
     if (
@@ -315,6 +327,17 @@ export class SpecialCommissionService {
       throw new BusinessRuleError("Todas as avaliações individuais precisam estar enviadas")
     }
 
+    if (process.processTypeConfig?.category === ProcessTypeCategory.RSC) {
+      this.assertRscComposition(commission)
+      const favorable = submittedEvaluations.filter(evaluation =>
+        evaluation.result === "DEFERRED" || evaluation.result === "APPROVED"
+      ).length
+      const expectedDecision = favorable >= 3 ? "APPROVED" : "REJECTED"
+      if (dto.decision !== expectedDecision) {
+        throw new BusinessRuleError("A decisão do RSC deve corresponder aos quatro pareceres: são necessários pelo menos três pareceres favoráveis")
+      }
+    }
+
     if (process.processTypeConfig?.category === ProcessTypeCategory.FULL_PROFESSOR) {
       const procedure = await this.fullProfessorProcedure.get(processId, {
         userId: currentUserId,
@@ -343,6 +366,10 @@ export class SpecialCommissionService {
       }
     }
 
+    await assertSignedDecisionDocuments(processId, process.processTypeConfig?.category ?? "RSC", commission)
+    const financialEffectsAt = dto.decision === "APPROVED" && process.processTypeConfig?.category === ProcessTypeCategory.FULL_PROFESSOR
+      ? await calculateTitularEffects(processId) : null
+
     const pointValues = submittedEvaluations
       .filter(evaluation => evaluation.recognizedPoints !== null)
       .map(evaluation => Number(evaluation.recognizedPoints))
@@ -355,7 +382,8 @@ export class SpecialCommissionService {
       decision: dto.decision,
       opinionText: dto.opinionText.trim(),
       finalPoints,
-      changedById: currentUserId
+      changedById: currentUserId,
+      financialEffectsAt
     })
     return this.getForProcess(processId)
   }

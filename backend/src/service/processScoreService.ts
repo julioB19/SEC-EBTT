@@ -12,6 +12,7 @@ import { execFile } from "child_process"
 import { promisify } from "util"
 import ExcelJS from "exceljs"
 import { PDFDocument } from "pdf-lib"
+import { evidenceDossier } from "../util/processDocuments"
 import { convertImageToPdf } from "../util/imageToPdf"
 import { ProcessRepository } from "../repository/processoRepository"
 import { ScoringTableRepository } from "../repository/scoringTableRepository"
@@ -63,9 +64,9 @@ function evaluateNodeFormula(formulaExpression: string, variables: Record<string
 function formatDateBR(date: Date | null | undefined) {
   if (!date) return ""
   const d = new Date(date)
-  const dd = String(d.getDate()).padStart(2, "0")
-  const mm = String(d.getMonth() + 1).padStart(2, "0")
-  const yyyy = String(d.getFullYear())
+  const dd = String(d.getUTCDate()).padStart(2, "0")
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0")
+  const yyyy = String(d.getUTCFullYear())
   return `${dd}/${mm}/${yyyy}`
 }
 
@@ -304,6 +305,9 @@ export class ProcessScoreService {
       )
     }
 
+    if (careerProcess.table?.purpose === ScoringTablePurpose.RSC) {
+      return this.gerarPlanilhaRsc(careerProcess, items, scores)
+    }
     const envPath = process.env.SCORE_SPREADSHEET_TEMPLATE_PATH
 
     const candidatePaths = [
@@ -326,18 +330,7 @@ export class ProcessScoreService {
     const templateItemIds = this.extrairItemIdsDoTemplate(workbook)
     const missingItems = items.filter(item => !templateItemIds.has(item.idScoringItem))
 
-    if (missingItems.length > 0) {
-      const missingMarkers = missingItems
-        .map(item => `[[ID${item.idScoringItem}]]`)
-        .join(", ")
-
-      throw new BusinessRuleError(
-        `O modelo da planilha de pontuação está desatualizado. Marcadores ausentes: ${missingMarkers}.`,
-        missingItems.map(item =>
-          `Inclua o marcador [[ID${item.idScoringItem}]] para o item: ${item.description}`
-        )
-      )
-    }
+    if (missingItems.length > 0) return this.gerarPlanilhaAtual(careerProcess, items, scores)
 
     const tags = this.montarTagsIdentificacao(careerProcess)
     this.preencherTagsIdentificacaoNaPlanilha(workbook, tags)
@@ -357,6 +350,49 @@ export class ProcessScoreService {
       fileName: `pontuacao_processo_${processId}.pdf`,
       fileBuffer: pdfBuffer
     }
+  }
+
+  private async gerarPlanilhaRsc(careerProcess: any, items: RepoItem[], scores: RepoScore[]) {
+    const workbook = new ExcelJS.Workbook()
+    await workbook.xlsx.readFile(path.resolve(process.cwd(), "..", "Documentacao", "reference", "rsc", "formulario-oficial-avaliacao-rsc-iffar-2025.xlsx"))
+    const quantities = new Map(scores.map(score => [score.itemId, score]))
+    const byCode = new Map(items.map(item => [Number(item.formulaKey?.replace("RSC_", "")), item]))
+    for (const sheet of workbook.worksheets) {
+      if (!/^RSC (I|II|III)$/.test(sheet.name) && sheet.name !== "Dados Pessoais") { workbook.removeWorksheet(sheet.id); continue }
+      if (sheet.name === "Dados Pessoais") {
+        sheet.getCell("B2").value = careerProcess.externalNumber || String(careerProcess.idProcess)
+        sheet.getCell("B3").value = careerProcess.user.name
+        sheet.getCell("B4").value = careerProcess.user.docente?.siape ?? ""
+        sheet.getCell("B5").value = careerProcess.rscDetail?.targetLevel?.replace(/_/g, " ") ?? ""
+        sheet.getCell("B8").value = careerProcess.campus
+      } else {
+        sheet.eachRow(row => {
+          const code = Number(row.getCell(1).value)
+          const item = byCode.get(code)
+          if (!item) return
+          const score = quantities.get(item.idScoringItem)
+          row.getCell(7).value = score?.quantity ?? 0
+          row.getCell(8).value = { formula: `ROUND(G${row.number}*C${row.number}*F${row.number},0)`, result: Number(score?.awardedPoints ?? 0) }
+        })
+      }
+    }
+    workbook.calcProperties.fullCalcOnLoad = true
+    const raw = await workbook.xlsx.writeBuffer()
+    return { fileName: `pontuacao_rsc_${careerProcess.idProcess}.pdf`, fileBuffer: await this.converterXlsxBufferParaPdfBuffer(Buffer.from(raw), `rsc_${careerProcess.idProcess}`) }
+  }
+
+  private async gerarPlanilhaAtual(careerProcess: any, items: RepoItem[], scores: RepoScore[]) {
+    const workbook = new ExcelJS.Workbook()
+    const sheet = workbook.addWorksheet("Avaliação de desempenho")
+    sheet.columns = [{ header: "Critério", key: "code", width: 14 }, { header: "Descrição", key: "description", width: 65 }, { header: "Unidade", key: "unit", width: 15 }, { header: "Pontos", key: "points", width: 12 }, { header: "Quantidade", key: "quantity", width: 12 }, { header: "Pontuação", key: "score", width: 14 }]
+    const byId = new Map(scores.map(score => [score.itemId, score]))
+    for (const item of items) { const score = byId.get(item.idScoringItem); sheet.addRow({ code: item.formulaKey || item.idScoringItem, description: item.description, unit: item.unit, points: Number(item.points), quantity: score?.quantity ?? 0, score: Number(score?.awardedPoints ?? 0) }) }
+    sheet.eachRow(row => { row.alignment = { wrapText: true, vertical: "middle" }; row.height = 42 })
+    sheet.pageSetup = { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: "1:1" }
+    sheet.headerFooter.oddHeader = `${careerProcess.user.name} - ${careerProcess.table.name}`
+    sheet.headerFooter.oddFooter = "Página &P de &N"
+    const raw = await workbook.xlsx.writeBuffer()
+    return { fileName: `pontuacao_${careerProcess.idProcess}.pdf`, fileBuffer: await this.converterXlsxBufferParaPdfBuffer(Buffer.from(raw), `pontuacao_${careerProcess.idProcess}`) }
   }
 
   async gerarPdfComprovantesPontuacao(processId: number, userId: number) {
@@ -396,6 +432,13 @@ export class ProcessScoreService {
     }
 
     const pdfBuffers: Buffer[] = []
+    const entries: Array<{ label: string; bytes: Buffer }> = []
+    const report = careerProcess.rscDetail?.reportFile
+    if (report && !report.deletedDate) {
+      const reportPath = path.resolve(process.cwd(), "uploads", report.url.replace(/^\/uploads\//, ""))
+      if (!reportPath.startsWith(path.resolve(process.cwd(), "uploads") + path.sep)) throw new BusinessRuleError("Caminho inválido do memorial")
+      entries.push({ label: "Memorial docente", bytes: await fs.promises.readFile(reportPath) })
+    }
 
     for (const itemId of orderedItemIds) {
       const score = scoreByItemId.get(itemId)
@@ -408,10 +451,12 @@ export class ProcessScoreService {
       const relativePath = evidence.url.replace("/uploads/", "")
       const filePath = path.join(uploadsRoot, relativePath)
 
-      if (!fs.existsSync(filePath)) continue
+      if (!fs.existsSync(filePath)) throw new BusinessRuleError("Um comprovante vinculado não foi localizado; o dossiê não pode ser gerado incompleto")
 
       const buf = await fs.promises.readFile(filePath)
       pdfBuffers.push(buf)
+      const item = items.find(value => value.idScoringItem === itemId)
+      entries.push({ label: `${item?.formulaKey || itemId} - ${item?.description || "Comprovante"}`, bytes: buf })
     }
 
     if (pdfBuffers.length === 0) {
@@ -420,7 +465,7 @@ export class ProcessScoreService {
       )
     }
 
-    const merged = await this.mergePdfBuffers(pdfBuffers)
+    const merged = await evidenceDossier(`Processo ${processId}`, entries)
 
     return {
       fileName: `comprovantes_pontuacao_processo_${processId}.pdf`,
@@ -711,8 +756,7 @@ export class ProcessScoreService {
 
     if (
       process.status !== ProcessStatus.DRAFT &&
-      process.status !== ProcessStatus.RETURNED &&
-      process.status !== ProcessStatus.REJECTED
+      process.status !== ProcessStatus.RETURNED
     ) {
       throw new BusinessRuleError(
         "Só é permitido alterar pontuações de processos nos status DRAFT, RETURNED ou REJECTED."
@@ -962,8 +1006,7 @@ export class ProcessScoreService {
 
     if (
       process.status !== ProcessStatus.DRAFT &&
-      process.status !== ProcessStatus.RETURNED &&
-      process.status !== ProcessStatus.REJECTED
+      process.status !== ProcessStatus.RETURNED
     ) {
       throw new BusinessRuleError(
         "Só é permitido anexar comprovações em processos nos status DRAFT, RETURNED ou REJECTED."
@@ -1067,8 +1110,7 @@ export class ProcessScoreService {
 
     if (
       process.status !== ProcessStatus.DRAFT &&
-      process.status !== ProcessStatus.RETURNED &&
-      process.status !== ProcessStatus.REJECTED
+      process.status !== ProcessStatus.RETURNED
     ) {
       throw new BusinessRuleError(
         "Só é permitido vincular comprovações em processos nos status DRAFT, RETURNED ou REJECTED."

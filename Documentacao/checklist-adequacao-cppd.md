@@ -1,106 +1,62 @@
-# Checklist de adequação do SEC-EBTT às especificações da CPPD
+# Checklist de conclusão do SEC-EBTT
 
-**Atualizado em:** 01/10/2026  
-**Fontes:** regulamentos e formulários preservados em `Documentacao/reference`, formulário oficial de RSC, código local, banco MySQL local e testes executados.
+Ordem de execução: risco de exposição e decisão inválida, regras normativas, documentos, recursos e administração, validação final. Um item só será marcado concluído após implementação e verificação. Data de início: 17/10/2026.
 
-Legenda: `[x]` implementado e verificado; `[ ]` pendente; `[?]` depende de confirmação institucional ou do escopo do TCC.
+## Prioridade 1 Segurança e decisões
 
-## 1. Escopo do produto
+- [x] 01 Bloquear acesso público aos uploads e preservar downloads autorizados.
+- [x] 02 Exigir papel ativo correto nas operações de docente e avaliador.
+- [x] 03 Exigir quatro pareceres e pelo menos três favoráveis para deferir RSC.
+- [x] 04 Bloquear deferimento de carreira abaixo da pontuação reconhecida mínima.
+- [x] 05 Impedir C4→D1 pela promoção comum e validar origem funcional na decisão.
+- [x] 06 Proteger tabelas ativas, versões históricas, vigências e mínimos oficiais.
 
-- [x] Manter somente Progressão, Promoção, RSC e Promoção à Classe Titular.
-- [x] Manter GECC, processos administrativos genéricos e integrações automáticas SIPAC/SIMEC fora do escopo.
-- [x] Preservar Progressão/Promoção ao adicionar RSC e Classe Titular.
-- [x] Usar um processo-base comum e detalhes próprios para RSC e Classe Titular, sem exigir campos de interstício de Progressão/Promoção no RSC.
+## Prioridade 2 Elegibilidade e datas
 
-## 2. RSC — pontuação oficial
+- [x] 07 Validar preparação de carreira nos 60 dias anteriores ao término do interstício.
+- [x] 08 Exigir análise de desempenho e doutorado pela CPPD na Classe Titular.
+- [x] 09 Calcular no servidor as datas oficiais e efeitos financeiros.
+- [x] 10 Exigir reconhecimento do diploma estrangeiro e declaração de ineditismo da tese.
+- [x] 11 Implementar lista de sete indicados, suplentes e validação da qualificação da banca.
+- [x] 12 Aplicar feriados, férias e recessos aos prazos processuais.
 
-- [x] Carregar a tabela `Tabela oficial RSC IFFar 2025` com vigência e finalidade RSC.
-- [x] Cadastrar os **82 critérios oficiais**: 37 de RSC-I, 16 de RSC-II e 29 de RSC-III.
-- [x] Cadastrar sete diretrizes por nível e os respectivos tetos, totalizando 100 pontos por nível.
-- [x] Calcular no servidor `quantidade × ponto-base × fator × peso`.
-- [x] Arredondar o resultado de cada critério antes da soma.
-- [x] Aplicar o teto de cada diretriz e de cada nível.
-- [x] Impedir quantidade fracionária, negativa ou superior ao máximo oficial.
-- [x] Ignorar pontuação digitada pelo cliente e recalcular no servidor.
-- [x] Exigir no mínimo 60 pontos totais e 36 pontos no nível pretendido.
-- [x] Exigir comprovante PDF para todo critério pontuado no RSC.
-- [x] Exigir relatório/memorial PDF antes do envio.
-- [x] Registrar quantidade reconhecida pelo avaliador e recalcular o parecer individual pela mesma fórmula.
-- [x] Determinar automaticamente `DEFERRED`/`DENIED` pela regra 60/36.
-- [x] Preservar no banco a tabela temporária antiga como inativa, sem vinculá-la a novos processos.
+## Prioridade 3 Documentos e rastreabilidade
 
-## 3. RSC — processo, comissão e documentos
+- [x] 13 Gerar requerimentos próprios de RSC e Classe Titular.
+- [x] 14 Exportar planilhas corretas por finalidade e com mapeamento estável.
+- [x] 15 Gerar dossiê com índice, separadores, numeração global e memorial quando aplicável.
+- [x] 16 Gerar parecer consolidado, parecer do presidente, atas e anexos oficiais.
+- [x] 17 Receber PDFs assinados com signatário, provedor, data, hash, validação e versões.
+- [x] 18 Completar cadastro e reutilização de titulações e evidências.
+- [x] 19 Completar auditoria de pontuações, pareceres, documentos e modelos versionados.
+- [x] 20 Exibir orientação de equivalência Qualis e referências manuais SIPAC/SIMEC.
 
-- [x] Abrir, listar, consultar, editar e excluir logicamente rascunhos RSC.
-- [x] Selecionar RSC-I, RSC-II ou RSC-III.
-- [x] Submeter à CPPD, criar comissão, convidar avaliador, registrar aceite/recusa, portaria e prazo de 45 dias.
-- [x] Ocultar a avaliação e os documentos antes do aceite do convite.
-- [x] Salvar rascunho, enviar avaliação individual, consolidar resultados e registrar decisão da CPPD.
-- [x] Bloquear o requerente como avaliador do próprio processo.
-- [x] Validar titulação habilitante para cada nível solicitado.
-- [x] Registrar ingresso na carreira EBTT e limitar atividades anteriores à janela regulamentar de cinco anos.
-- [x] Registrar concessões anteriores e exigir três anos de atividades para novo nível.
-- [x] Exigir exatamente quatro membros no RSC: um interno e três externos titulares.
-- [x] Registrar declaração de ausência de conflito e justificativa auditável de recusa/impedimento.
-- [x] Gerar parecer individual em PDF após o envio da avaliação.
-- [ ] Gerar parecer consolidado em PDF no modelo oficial.
-- [ ] Registrar arquivo assinado, signatário, data, origem e hash SHA-256 do parecer.
-- [ ] Implementar recurso à CPPD e recurso final à CPRSC somente se estes fluxos fizerem parte do escopo aprovado do TCC.
-- [?] Confirmar com orientador/CPPD quais itens normativos acima pertencem ao MVP acadêmico.
+## Prioridade 4 Recursos e escopo complementar
 
-## 4. Progressão e Promoção
+- [x] 21 Implementar recursos do RSC à CPPD e CPRSC, preservando documentos e comissões anteriores.
+- [x] 22 Concluir a gestão de modelos e documentos obrigatórios por tipo de processo.
+- [x] 23 Manter CPF e senha conforme RF-GER-01 e registrar a autenticação externa fora desta entrega.
+- [x] 24 GECC excluído desta execução por confirmação explícita do usuário.
+- [x] 25 Processos simples excluídos desta execução por confirmação explícita do usuário.
 
-- [x] Manter abertura, pontuação, comprovantes, requerimento, submissão e análise da CPPD.
-- [x] Manter as transições válidas de Progressão/Promoção e as regras de interstício existentes.
-- [x] Gerar planilha de pontuação em PDF e PDF consolidado de comprovantes.
-- [x] Preservar os testes existentes após a inclusão da tabela oficial do RSC.
-- [x] Validar por integração HTTP os ciclos completos de Progressão e Promoção, incluindo perfil funcional, pontuação, comprovantes, downloads, autorização, decisão e atualização de classe.
+## Prioridade 5 Validação e entrega
 
-## 5. Promoção à Classe Titular
+- [x] 26 Aprovar testes de regressão, integração, builds, lint e cobertura.
+- [x] 27 Conferir fluxos dos perfis, documentos gerados e migrações em banco isolado.
+- [x] 28 Atualizar documentação, aplicar as alterações verificadas ao repositório local e registrar limitações restantes.
 
-- [x] Manter categoria e detalhes próprios, separados da Promoção comum.
-- [x] Permitir escolha entre memorial e tese.
-- [x] Exigir PDF correspondente à modalidade e cadastro do doutorado com diploma.
-- [x] Exigir tabela de avaliação com mínimo de 120 pontos para envio.
-- [x] Exigir comissão final com um presidente interno e três membros externos.
-- [x] Exigir quatro avaliações e aplicar aprovação mínima de três votos favoráveis.
-- [x] Controlar prazo de 45 dias, reavaliação do memorial, defesa oral e recurso do rito já modelado.
-- [x] Validar automaticamente C4 e as janelas de 12/24 meses previstas no regulamento.
-- [x] Validar por integração HTTP o ciclo completo nas modalidades memorial e tese, incluindo comissão, quatro pareceres, sessão de defesa e atualização final para D1.
-- [ ] Modelar e validar a lista inicial de sete indicados (3+2+1+1), se mantida no escopo do TCC.
-- [ ] Registrar pareceres assinados em PDF com metadados e hash.
-- [ ] Suspender prazos durante férias e recessos acadêmicos.
-- [ ] Gerar os formulários e atas dos Anexos IV, V, VII, IX e X.
-- [?] Confirmar quais anexos precisam ser gerados pelo sistema e quais apenas serão enviados como documentos externos.
+## Evidências da conclusão
 
-## 6. Segurança, consistência e qualidade
+- Escopo confirmado pelo usuário: somente Progressão, Promoção, RSC e Classe Titular.
+- 36 suítes e 220 testes aprovados, incluindo os fluxos HTTP reais e os dois recursos do RSC.
+- Cobertura integral do backend: 81,30% de linhas/instruções, 94,13% de funções e 64,08% de ramos. Limites existentes preservados.
+- Núcleo regulatório: 88,18% de linhas/instruções, 98,24% de funções e 70,62% de ramos.
+- Backend: build e lint aprovados. Frontend: build de produção e verificação de tipos aprovados.
+- 23 migrações verificadas em MySQL isolado no Docker, sem uso do banco principal pelos testes.
+- Telas de administração, titulações e Classe Titular conferidas no navegador. Planilha RSC, dossiê, pareceres e ata renderizados para conferência.
+- Cópia de segurança do banco local preservada antes da atualização. A sincronização verifica os hashes para não sobrescrever alterações concorrentes do usuário.
+- Assinatura institucional e referências SIPAC/SIMEC permanecem externas, com registro e conferência administrativa no sistema.
 
-- [x] Autorizar operações pelo perfil atualmente selecionado.
-- [x] Isolar o acesso da CPPD local por campus e permitir escopo global à CPPD Central.
-- [x] Proteger downloads de documentos e evidências por autenticação/autorização.
-- [x] Converter valores `BigInt` antes da resposta JSON, evitando erro ao listar processos com arquivos anexados.
-- [x] Aplicar as 21 migrations no MySQL local.
-- [x] Executar `prisma format`, `prisma generate`, build, lint do backend e build/typecheck do frontend.
-- [x] Conferir visualmente 21 telas dos quatro perfis, sem erros JavaScript, falhas de requisição, imagens quebradas ou estouro horizontal, com evidências em `Documentacao/testes/visual/final`.
-- [x] Aprovar 30 suítes e 179 testes automatizados após as validações de RSC, carreira, Classe Titular e administração.
-- [x] Criar testes de integração com MySQL e migrations em banco isolado `TCC_TEST`.
-- [x] Criar teste automatizado ponta a ponta do RSC para docente, CPPD e quatro avaliadores.
-- [x] Criar teste concorrente para formação/alteração de comissão e devolver erro de negócio, sem resposta 500, ao segundo cadastro simultâneo.
-- [x] Aplicar barreira mínima de 80% ao núcleo regulatório: 88,01% de linhas/instruções, 98,14% de funções e 68,24% de ramos.
-- [x] Aplicar barreira mínima de 80% ao backend inteiro: 80,10% de linhas/instruções, 94,32% de funções e 62,58% de ramos.
+Detalhes e instruções: [Conclusão dos quatro processos](conclusao-quatro-processos-2026-10-17.md).
 
-## 7. Teste manual preservado no banco
-
-- [x] Processo RSC **#14**, identificado como `TESTE-MANUAL-RSC-2026-09-30`.
-- [x] Processo RSC **#15**, identificado como `TESTE-RSC-ELEGIBILIDADE-2026-09-30`, preservando ingresso, período e declaração de veracidade.
-- [x] Nível pretendido RSC-III e tabela oficial **#6**.
-- [x] Quatro critérios preenchidos com 60 pontos no RSC-III e comprovantes PDF salvos.
-- [x] Quantidade acima do máximo rejeitada sem alterar o valor anterior.
-- [x] Relatório PDF anexado e processo enviado à CPPD.
-- [x] Comissão histórica **#7**, criada com um avaliador antes da correção da composição; novos fluxos exigem 1 interno + 3 externos.
-- [x] Avaliação **#7** enviada com 60 pontos e resultado automático `DEFERRED`.
-- [x] Comissão concluída e processo finalizado como `APPROVED`, com 60 pontos e parecer textual preservado.
-
-## 8. Próximas decisões, sem ampliar escopo
-
-Os itens de implementação e qualidade confirmados para esta etapa estão concluídos. Antes de novo desenvolvimento, confirmar com o orientador/CPPD se entram no escopo acadêmico: parecer consolidado e assinatura/hash, recursos do RSC, lista inicial de sete indicados, suspensão de prazos e geração automática dos anexos da Classe Titular.
+- Aplicação final concluída no repositório original e no banco local: 23 migrações aplicadas, sete usuários e cinco processos preservados. Build de produção Turbopack aprovado também na instalação original.

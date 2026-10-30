@@ -67,8 +67,8 @@ export async function generateIndividualEvaluationPdf(data: IndividualEvaluation
     const font = options.font ?? regular
     const lineHeight = size + 4
     const lines = wrap(value, font, size, pageWidth - margin * 2)
-    ensure(lines.length * lineHeight + (options.gap ?? 0))
     for (const line of lines) {
+      ensure(lineHeight)
       page.drawText(line, { x: margin, y, size, font, color: rgb(0.12, 0.16, 0.2) })
       y -= lineHeight
     }

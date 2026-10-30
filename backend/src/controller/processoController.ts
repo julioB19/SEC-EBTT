@@ -781,7 +781,7 @@ export class ProcessoController {
           sizeBytes: file.size,
         });
 
-        await this.deleteStoredFile(result.replacedFileUrl);
+        // A versão anterior permanece preservada no histórico documental.
         return HttpResponse.ok(
           res,
           "Documento anexado com sucesso",
@@ -851,7 +851,7 @@ export class ProcessoController {
         userId,
         documentId,
       );
-      await this.deleteStoredFile(result.removedFileUrl);
+      // Exclusão lógica preserva os arquivos e sua rastreabilidade.
       return HttpResponse.ok(
         res,
         "Documento removido com sucesso",

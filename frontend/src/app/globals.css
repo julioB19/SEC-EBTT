@@ -29,6 +29,7 @@
   /* superfícies */
   --surface-bg: var(--white);
   --surface-muted-bg: var(--white-soft);
+  --surface-bg-2: var(--surface-muted-bg);
   --surface-contrast-bg: var(--gray-900);
 
   /* navbar */

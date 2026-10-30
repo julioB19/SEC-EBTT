@@ -1574,6 +1574,12 @@ export default function ProcessoPontuacaoPage() {
             </Link>
           </div>
         </header>
+        <details className="rounded border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4 text-sm">
+          <summary className="cursor-pointer font-medium">Como informar a classificação Qualis na tabela de carreira</summary>
+          <p className="my-3">Para Progressão e Promoção, use a equivalência orientada pela CPPD para a Resolução 104/2013. Na tabela abaixo, encontre o Qualis atual e selecione o item correspondente da planilha.</p>
+          <table className="w-full text-left"><caption className="sr-only">Equivalência Qualis para avaliação de carreira</caption><thead><tr><th>Qualis atual</th><th>Item da planilha</th><th>Pontos</th></tr></thead><tbody>{[['A1','A1',30],['A2','A2',25],['A3','B1',22],['A4','B2',19],['B1','B3',16],['B2','B4',13],['B3','B5',10],['B4','C',7],['C ou sem Qualis','Sem Qualis',4]].map(([current, previous, points]) => <tr key={current}><td>{current}</td><td>{previous}</td><td>{points}</td></tr>)}</tbody></table>
+          <a className="mt-3 inline-block underline" href="https://sites.google.com/iffarroupilha.edu.br/cppd/orienta%C3%A7%C3%B5es-para-abertura-de-processos/progress%C3%A3o-promo%C3%A7%C3%A3o" target="_blank" rel="noreferrer">Consultar orientação oficial da CPPD</a>
+        </details>
         {loading && (
           <div className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl p-4 shadow-sm">
             <p className="text-sm text-[var(--text-secondary)]">
@@ -1616,8 +1622,7 @@ export default function ProcessoPontuacaoPage() {
                 <p className="text-[11px] text-[var(--text-muted)] max-w-xs">
                   A pontuação só pode ser alterada quando o processo está nos
                   status <span className="font-medium">RASCUNHO</span>,{" "}
-                  <span className="font-medium">RETORNADO</span> ou{" "}
-                  <span className="font-medium">REJEITADO</span>. No momento, os
+                  <span className="font-medium">RETORNADO</span>. No momento, os
                   campos estão somente para leitura.
                 </p>
               )}

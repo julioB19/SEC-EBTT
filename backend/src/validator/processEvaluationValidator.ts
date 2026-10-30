@@ -21,6 +21,7 @@ export const updateItemScoreSchema = Joi.object({
 
 export const finalizeEvaluationSchema = Joi.object({
   decision: Joi.string().valid("APPROVED", "REJECTED").required(),
+  requirementsMetAtISO: Joi.date().iso().optional(),
   evaluatorUserIds: Joi.array()
     .items(Joi.number().integer().positive())
     .optional(),
@@ -34,6 +35,8 @@ export const setEvaluatorsSchema = Joi.object({
 });
 
 export const generateParecerSchema = Joi.object({
+  requirementsMetAtISO: Joi.date().iso().optional(),
+  decision: Joi.string().valid("APPROVED", "REJECTED").optional(),
   evaluatorUserIds: Joi.array()
     .items(Joi.number().integer().positive())
     .optional(),

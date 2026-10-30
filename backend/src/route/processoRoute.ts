@@ -1,3 +1,5 @@
+import { RoleName } from "@prisma/client"
+import { requireSelectedRole } from "../middleware/cppdAccessMiddleware"
 import { Router } from "express";
 import { ProcessoController } from "../controller/processoController";
 import { ProcessoService } from "../service/processoService";
@@ -6,7 +8,8 @@ import { ScoringTableRepository } from "../repository/scoringTableRepository";
 import { UserRepository } from "../repository/userRepository";
 
 export function processoRoute() {
-  const router = Router();
+  const router = Router()
+  router.use(["/processos"], requireSelectedRole(RoleName.DOCENTE));
 
   const controller = new ProcessoController(
     new ProcessoService(

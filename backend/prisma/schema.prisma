@@ -418,13 +418,19 @@ model CareerProcess {
   classeDestino   String?       @db.VarChar(20)
   nivelDestino    String?       @db.VarChar(20)
 
-  user              User               @relation(fields: [userId], references: [idUser], onDelete: Restrict)
-  campusRef         Campus?            @relation(fields: [campusId], references: [idCampus], onDelete: SetNull)
-  processTypeConfig ProcessTypeConfig? @relation(fields: [processTypeId], references: [idProcessType], onDelete: SetNull)
-  table             ScoringTable?      @relation(fields: [scoringTableId], references: [idScoringTable], onDelete: Restrict)
-  finalPoints       Decimal?           @db.Decimal(10, 2)
-  evaluationOpinion String?            @db.Text
-  evaluatorUserIds  Json?
+  user               User                    @relation(fields: [userId], references: [idUser], onDelete: Restrict)
+  campusRef          Campus?                 @relation(fields: [campusId], references: [idCampus], onDelete: SetNull)
+  processTypeConfig  ProcessTypeConfig?      @relation(fields: [processTypeId], references: [idProcessType], onDelete: SetNull)
+  table              ScoringTable?           @relation(fields: [scoringTableId], references: [idScoringTable], onDelete: Restrict)
+  financialEffectsAt DateTime?
+  compliance         ProcessCompliance?
+  nominees           ProcessNominee[]
+  signedArtifacts    SignedProcessArtifact[]
+  audits             ProcessAudit[]
+  rscAppeals         RscAppeal[]
+  finalPoints        Decimal?                @db.Decimal(10, 2)
+  evaluationOpinion  String?                 @db.Text
+  evaluatorUserIds   Json?
 
   scores                ProcessScore[]
   ProcessStatusHistory  ProcessStatusHistory[]
@@ -540,17 +546,20 @@ model ProcessTypeDocumentRequirement {
 }
 
 model TeacherDegree {
-  idTeacherDegree Int       @id @default(autoincrement())
-  teacherId       Int
-  degreeType      String    @db.VarChar(80)
-  course          String?   @db.VarChar(180)
-  institution     String?   @db.VarChar(180)
-  conclusionDate  DateTime?
-  evidenceFileId  Int?
-  validatedAt     DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedDate     DateTime?
+  idTeacherDegree   Int           @id @default(autoincrement())
+  teacherId         Int
+  degreeType        String        @db.VarChar(80)
+  course            String?       @db.VarChar(180)
+  institution       String?       @db.VarChar(180)
+  conclusionDate    DateTime?
+  evidenceFileId    Int?
+  countryCode       String        @default("BR") @db.VarChar(2)
+  recognitionFileId Int?
+  recognitionFile   EvidenceFile? @relation("DegreeRecognition", fields: [recognitionFileId], references: [idEvidenceFile], onDelete: Restrict)
+  validatedAt       DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  deletedDate       DateTime?
 
   teacher              DocenteProfile               @relation(fields: [teacherId], references: [idDocente], onDelete: Cascade)
   evidenceFile         EvidenceFile?                @relation(fields: [evidenceFileId], references: [idEvidenceFile], onDelete: SetNull)
@@ -661,6 +670,8 @@ model FullProfessorProcedureEvent {
 }
 
 model DocumentTemplate {
+  bodyText           String?   @db.Text
+  createdById        Int?
   idDocumentTemplate Int       @id @default(autoincrement())
   code               String    @unique @db.VarChar(60)
   name               String    @db.VarChar(120)
@@ -832,18 +843,21 @@ model IndividualEvaluationScore {
 }
 
 model EvidenceFile {
-  idEvidenceFile Int       @id @default(autoincrement())
-  userId         Int
-  usageType      String?   @db.VarChar(60)
-  originalName   String    @db.VarChar(180)
-  storedName     String    @db.VarChar(180)
-  url            String    @db.VarChar(500)
-  mimeType       String?   @db.VarChar(60)
-  sizeBytes      BigInt?
-  uploadedAt     DateTime  @default(now())
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  deletedDate    DateTime?
+  degreeRecognitions   TeacherDegree[]         @relation("DegreeRecognition")
+  performanceDocuments ProcessCompliance[]
+  signedArtifacts      SignedProcessArtifact[]
+  idEvidenceFile       Int                     @id @default(autoincrement())
+  userId               Int
+  usageType            String?                 @db.VarChar(60)
+  originalName         String                  @db.VarChar(180)
+  storedName           String                  @db.VarChar(180)
+  url                  String                  @db.VarChar(500)
+  mimeType             String?                 @db.VarChar(60)
+  sizeBytes            BigInt?
+  uploadedAt           DateTime                @default(now())
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  deletedDate          DateTime?
 
   user                     User                         @relation(fields: [userId], references: [idUser], onDelete: Cascade)
   scores                   ProcessScore[]
@@ -874,4 +888,130 @@ model PasswordResetCode {
 
   @@index([userId, expiresAt])
   @@map("password_reset_code")
+}
+
+model ProcessCompliance {
+  deletedDate                  DateTime?
+  nomineesValidatedAt          DateTime?
+  processId                    Int           @id
+  claimedPerformancePoints     Decimal?      @db.Decimal(10, 2)
+  performanceFileId            Int?
+  performancePoints            Decimal?      @db.Decimal(10, 2)
+  performanceApprovedAt        DateTime?
+  performanceRequirementsMetAt DateTime?
+  doctorateValidatedAt         DateTime?
+  validatedById                Int?
+  performanceOpinion           String?       @db.Text
+  thesisOriginalityDeclaredAt  DateTime?
+  simecReference               String?       @db.VarChar(120)
+  simecSelectionReference      String?       @db.VarChar(500)
+  interlocutorUserId           Int?
+  updatedAt                    DateTime      @updatedAt
+  process                      CareerProcess @relation(fields: [processId], references: [idProcess], onDelete: Restrict)
+  performanceFile              EvidenceFile? @relation(fields: [performanceFileId], references: [idEvidenceFile], onDelete: Restrict)
+
+  @@map("process_compliance")
+}
+
+model ProcessNominee {
+  deletedDate              DateTime?
+  idNominee                Int                           @id @default(autoincrement())
+  processId                Int
+  name                     String                        @db.VarChar(120)
+  email                    String                        @db.VarChar(180)
+  phone                    String                        @db.VarChar(30)
+  origin                   SpecialCommissionMemberOrigin
+  membership               CommissionMembershipType
+  doctorateTitle           String                        @db.VarChar(180)
+  institution              String                        @db.VarChar(180)
+  federalInstitution       Boolean
+  careerLevel              String                        @db.VarChar(80)
+  knowledgeArea            String                        @db.VarChar(180)
+  relatedAreaJustification String?                       @db.VarChar(500)
+  priorConsentAt           DateTime
+  createdAt                DateTime                      @default(now())
+  process                  CareerProcess                 @relation(fields: [processId], references: [idProcess], onDelete: Restrict)
+
+  @@unique([processId, email])
+  @@map("process_nominee")
+}
+
+model AcademicCalendarPeriod {
+  deletedDate DateTime?
+  idPeriod    Int       @id @default(autoincrement())
+  campusId    Int?
+  kind        String    @db.VarChar(20)
+  description String    @db.VarChar(180)
+  startsOn    DateTime
+  endsOn      DateTime
+  createdById Int
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
+
+  @@index([campusId, startsOn, endsOn])
+  @@map("academic_calendar_period")
+}
+
+model SignedProcessArtifact {
+  deletedDate    DateTime?
+  idArtifact     Int           @id @default(autoincrement())
+  processId      Int
+  documentKind   String        @db.VarChar(80)
+  memberId       Int?
+  version        Int
+  evidenceFileId Int
+  signer         String        @db.VarChar(180)
+  provider       String        @db.VarChar(80)
+  signedAt       DateTime
+  contentSha256  String        @db.VarChar(64)
+  uploadedById   Int
+  uploadedAt     DateTime      @default(now())
+  validatedById  Int?
+  validatedAt    DateTime?
+  validationNote String?       @db.Text
+  rejectedAt     DateTime?
+  process        CareerProcess @relation(fields: [processId], references: [idProcess], onDelete: Restrict)
+  evidenceFile   EvidenceFile  @relation(fields: [evidenceFileId], references: [idEvidenceFile], onDelete: Restrict)
+
+  @@unique([processId, documentKind, memberId, version])
+  @@index([processId, documentKind, version])
+  @@map("signed_process_artifact")
+}
+
+model ProcessAudit {
+  deletedDate DateTime?
+  idAudit     Int           @id @default(autoincrement())
+  processId   Int
+  actorId     Int
+  action      String        @db.VarChar(80)
+  details     Json
+  occurredAt  DateTime      @default(now())
+  process     CareerProcess @relation(fields: [processId], references: [idProcess], onDelete: Restrict)
+
+  @@index([processId, occurredAt])
+  @@map("process_audit")
+}
+
+model RscAppeal {
+  deletedDate          DateTime?
+  idAppeal             Int           @id @default(autoincrement())
+  processId            Int
+  stage                String        @db.VarChar(20)
+  status               String        @default("SUBMITTED") @db.VarChar(30)
+  reason               String        @db.Text
+  submittedById        Int
+  submittedAt          DateTime      @default(now())
+  deadlineAt           DateTime
+  originalCommissionId Int?
+  newCommissionId      Int?
+  evidenceSnapshot     Json
+  decision             String?       @db.VarChar(20)
+  decisionText         String?       @db.Text
+  decidedById          Int?
+  decidedAt            DateTime?
+  externalReference    String?       @db.VarChar(180)
+  process              CareerProcess @relation(fields: [processId], references: [idProcess], onDelete: Restrict)
+
+  @@unique([processId, stage])
+  @@map("rsc_appeal")
 }

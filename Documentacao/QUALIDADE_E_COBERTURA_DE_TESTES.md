@@ -46,3 +46,14 @@ mysql://root:root123@localhost:3306/TCC_TEST
 Antes da primeira execução, inicie o MySQL com `npm run db:up` e execute `npm run test:db:setup`. O comando cria somente o banco de teste, aplica todas as migrations e carrega o seed oficial. Ele recusa explicitamente uma URL cujo banco seja `TCC`. Os testes usam usuários temporários únicos e não alteram os dados do banco principal.
 
 A URL pode ser substituída pela variável `TEST_DATABASE_URL` quando o ambiente de integração usar outro host ou credencial.
+
+## Verificação de 17/10/2026
+
+36 suítes e 220 testes aprovados. Cobertura integral: 81,37% de linhas/instruções, 94,14% de funções e 64,04% de ramos. Núcleo regulatório: 88,18%, 98,24% e 70,62%, respectivamente. Os limites não foram reduzidos.
+
+A verificação usou TEST_DATABASE_URL apontando para TCC_AUDIT em MySQL Docker na porta 3307. Foram acrescentados testes de segurança de arquivos, decisões 3/4, mínimo de carreira, interstício e data financeira, janela de preparação, sete indicados, diploma estrangeiro, modelos versionados, assinaturas e versões, recursos RSC, paginação do dossiê e mapeamento da planilha oficial com IDs recriados.
+
+
+## Rodada de navegador de 17/10/2026
+
+31 cenários aprovados após correções e retestes nos quatro perfis. Corrigidas datas civis, data financeira na prévia/conclusão do parecer, acesso à biblioteca pelo perfil e atualização imediata do diploma selecionado. Regressão: 220 testes em 36 suítes aprovados. Consulte o relatório de navegador para o alcance exato e as evidências.

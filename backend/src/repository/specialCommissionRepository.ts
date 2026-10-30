@@ -10,6 +10,8 @@ import {
   SpecialCommissionMemberRole,
   SpecialCommissionType
 } from "@prisma/client"
+import { BusinessRuleError } from "../service/processoService"
+import { addMonthsClamped } from "../util/careerDates"
 import { prisma } from "../infra/prismaClient"
 
 const commissionInclude = {
@@ -368,6 +370,7 @@ export class SpecialCommissionRepository {
     opinionText: string
     finalPoints: string | null
     changedById: number
+    financialEffectsAt?: Date | null
   }) {
     return prisma.$transaction(async tx => {
       const process = await tx.careerProcess.findUnique({
@@ -375,6 +378,11 @@ export class SpecialCommissionRepository {
         include: { processTypeConfig: true, rscDetail: true, fullProfessorDetail: true }
       })
       if (!process) return null
+      if (process.status !== ProcessStatus.UNDER_REVIEW) throw new BusinessRuleError("O processo mudou antes da decisão; recarregue")
+      if (process.fullProfessorDetail && params.decision === "APPROVED") {
+        const profile = await tx.docenteProfile.findUnique({ where: { userId: process.userId } })
+        if (!profile || profile.classLevel !== ClassLevel.C4 || addMonthsClamped(profile.start_interstice, 24) > new Date()) throw new BusinessRuleError("O vínculo funcional deve continuar elegível em C4 na decisão")
+      }
 
       const nextStatus =
         params.decision === "APPROVED"
@@ -386,10 +394,13 @@ export class SpecialCommissionRepository {
         data: {
           status: nextStatus,
           finalPoints: params.finalPoints,
-          evaluationOpinion: params.opinionText
+          evaluationOpinion: params.opinionText,
+          financialEffectsAt: params.financialEffectsAt
         }
       })
 
+      const appeal = await tx.rscAppeal.findFirst({ where: { processId: params.processId, stage: "CPPD", status: "SUBMITTED" } })
+      if (appeal) await tx.rscAppeal.update({ where: { idAppeal: appeal.idAppeal }, data: { status: "DECIDED", decision: params.decision, decisionText: params.opinionText, decidedAt: new Date(), decidedById: params.changedById } })
       if (process.rscDetail) {
         await tx.rscProcessDetail.update({
           where: { processId: params.processId },
@@ -402,7 +413,7 @@ export class SpecialCommissionRepository {
           where: { userId: process.userId },
           data: {
             classLevel: ClassLevel.D1,
-            start_interstice: process.fullProfessorDetail.finalReferenceDate ?? new Date()
+            start_interstice: params.financialEffectsAt ?? new Date()
           }
         })
       }
@@ -421,7 +432,7 @@ export class SpecialCommissionRepository {
       })
 
       return updated
-    })
+    }, { isolationLevel: "Serializable" })
   }
 
   async listAssignmentsForUser(userId: number) {

@@ -1,0 +1,147 @@
+[
+  {
+    "case": "Login inválido bloqueado e login válido",
+    "result": "aprovado"
+  },
+  {
+    "case": "Abertura Progressão B1→B2",
+    "result": "aprovado",
+    "processId": 64
+  },
+  {
+    "case": "Pontuação, anexo, reutilização e cálculo 160 pontos",
+    "result": "aprovado",
+    "processId": 64
+  },
+  {
+    "case": "Equivalência Qualis exibida",
+    "result": "aprovado"
+  },
+  {
+    "case": "Progressão enviada e edição bloqueada",
+    "result": "aprovado",
+    "processId": 64
+  },
+  {
+    "case": "Download do requerimento no navegador",
+    "result": "aprovado",
+    "file": "C:\\Users\\julio\\Downloads\\Requerimento_Progressao_Teste_Navegador_Progressao_20261017.pdf"
+  },
+  {
+    "case": "Docente bloqueado em administração",
+    "result": "aprovado"
+  },
+  {
+    "case": "CPPD avalia quatro itens e libera parecer",
+    "result": "aprovado",
+    "processId": 64
+  },
+  {
+    "case": "Datas do interstício na CPPD e no parecer",
+    "result": "corrigido e aprovado no reteste",
+    "details": "A conversão de data civil usava o fuso local e reduzia um dia; a data financeira da prévia também precisava seguir o cálculo oficial."
+  },
+  {
+    "case": "Ciclo completo de Progressão no navegador e data financeira 01/01/2026",
+    "result": "aprovado",
+    "processId": 64
+  },
+  {
+    "case": "Calendário rejeita intervalo inválido e salva período válido",
+    "result": "aprovado"
+  },
+  {
+    "case": "Modelo versão 2 preserva versão 1 como histórico",
+    "result": "aprovado"
+  },
+  {
+    "case": "Abertura Promoção B4→C1 e envio bloqueado abaixo do mínimo",
+    "result": "aprovado",
+    "processId": 65
+  },
+  {
+    "case": "Edição de rascunho de Promoção",
+    "result": "aprovado",
+    "processId": 65
+  },
+  {
+    "case": "RSC rejeita período fora dos cinco anos e abre no limite válido",
+    "result": "aprovado",
+    "processId": 66
+  },
+  {
+    "case": "Referências SIMEC e auditoria do RSC",
+    "result": "aprovado",
+    "processId": 66
+  },
+  {
+    "case": "RSC bloqueia 101 unidades em critério limitado a 100",
+    "result": "aprovado",
+    "processId": 66
+  },
+  {
+    "case": "Promoção comum não oferece C4→D1",
+    "result": "aprovado"
+  },
+  {
+    "case": "Abertura Classe Titular por tese com formulário próprio",
+    "result": "aprovado",
+    "processId": 67
+  },
+  {
+    "case": "Ineditismo registrado e sete indicados com validação de ciência",
+    "result": "aprovado",
+    "processId": 67
+  },
+  {
+    "case": "Envio de PDF de desempenho e acesso privado pelo processo",
+    "result": "aprovado",
+    "processId": 67
+  },
+  {
+    "case": "Biblioteca e seleção de diploma reutilizável",
+    "result": "aprovado; atualização imediata corrigida e retestada",
+    "processId": 67
+  },
+  {
+    "case": "Tela estreita e menu móvel sem rolagem horizontal",
+    "result": "aprovado"
+  },
+  {
+    "case": "Acesso à biblioteca pelo menu Meu perfil",
+    "result": "corrigido e aprovado no reteste",
+    "details": "Biblioteca existia em outra rota e faltava ligação a partir de Meu perfil."
+  },
+  {
+    "case": "Avaliador consulta parecer, evidências e resultado enviado sem poder editar",
+    "result": "aprovado",
+    "processId": 58,
+    "memberId": 124
+  },
+  {
+    "case": "Avaliador bloqueado no módulo Docente",
+    "result": "aprovado"
+  },
+  {
+    "case": "Conta com dois perfis: seleção e bloqueio da API Docente quando Avaliador está ativo",
+    "result": "aprovado"
+  },
+  {
+    "case": "Vigência de tabelas no Administrador e CPPD",
+    "result": "corrigido e aprovado nos retestes do Administrador e da CPPD",
+    "details": "A data de vigência também recuava um dia por conversão de fuso."
+  },
+  {
+    "case": "Administrador acessa tabelas e pesquisa usuários",
+    "result": "aprovado"
+  },
+  {
+    "case": "URL pública de comprovante existente devolve Not Found",
+    "result": "aprovado"
+  },
+  {
+    "case": "Consulta da avaliação finalizada preserva interstício e data financeira",
+    "result": "aprovado",
+    "processId": 64
+  }
+]

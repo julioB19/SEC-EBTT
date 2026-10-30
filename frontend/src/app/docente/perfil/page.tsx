@@ -1,4 +1,7 @@
 "use client"
+import Link from "next/link"
+import { primaryButtonClass, surfaceClass } from "@/components/ui/systemStyles"
+import TeacherDegreesPanel from "@/components/TeacherDegreesPanel"
 
 import { useEffect, useMemo, useState } from "react"
 
@@ -58,7 +61,6 @@ export default function DocentePerfilPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [me, setMe] = useState<ApiMe | null>(null)
-  const [debug, setDebug] = useState<any>(null)
 
   useEffect(() => {
     let alive = true
@@ -78,18 +80,15 @@ export default function DocentePerfilPage() {
 
         if (!r.ok) {
           setMe(null)
-          setDebug((payload as any)?._debug ?? payload)
           setError((payload as any)?.message ?? `Falha ao carregar perfil (${r.status})`)
           return
         }
 
         const data = (payload as any)?.data ?? (payload as any)
         setMe(data as ApiMe)
-        setDebug((payload as any)?._debug ?? null)
       } catch (e: any) {
         if (!alive) return
         setMe(null)
-        setDebug(e)
         setError(e?.message ?? "Erro desconhecido ao carregar perfil")
       } finally {
         if (!alive) return
@@ -106,71 +105,46 @@ export default function DocentePerfilPage() {
 
   const docente = useMemo(() => me?.docenteProfile ?? null, [me])
 
-  if (loading) {
-    return (
-      <div style={{ padding: 16 }}>
-        <h1>Meu perfil</h1>
-        <p>Carregando...</p>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div style={{ padding: 16 }}>
-        <h1>Meu perfil</h1>
-        <p style={{ marginTop: 8 }}><strong>Erro:</strong> {error}</p>
-
-        {debug ? (
-          <pre style={{ marginTop: 12, padding: 12, background: "#f5f5f5", overflow: "auto" }}>
-            {JSON.stringify(debug, null, 2)}
-          </pre>
-        ) : null}
-      </div>
-    )
-  }
+  const personal = me ? [
+    ["Nome", me.name], ["E-mail", me.email], ["CPF", me.cpf],
+    ["Telefone", me.phone], ["Cidade", me.city], ["UF", me.uf],
+    ["Perfis de acesso", me.roles.map(role => ({ DOCENTE: "Docente", CPPD_MEMBER: "Membro da CPPD", CPPD_CENTRAL: "CPPD Central", ADMIN: "Administrador", EXTERNAL_EVALUATOR: "Avaliador externo" })[role]).join(", ")]
+  ] : []
+  const functional = docente ? [
+    ["SIAPE", docente.siape], ["Nível", docente.classLevel],
+    ["Início do interstício", docente.startInterstice ? new Date(docente.startInterstice).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : null],
+    ["Escolaridade", docente.educationLevel], ["Aperfeiçoamento", docente.improvement],
+    ["Especialização", docente.specialization], ["Mestrado", docente.mastersDegree],
+    ["Doutorado", docente.doctorate], ["Lotação", docente.assignment],
+    ["Departamento", docente.department], ["Divisão", docente.division],
+    ["Cargo/Função", docente.role], ["Chefia imediata", docente.immediateSupervisor]
+  ] : []
 
   return (
-    <div style={{ padding: 16 }}>
-      <h1>Meu perfil</h1>
-
-      {!me ? (
-        <p>Nenhum dado retornado</p>
-      ) : (
+    <div className="mx-auto w-full max-w-6xl space-y-6">
+      <header className="space-y-3">
+        <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Meu perfil</h1>
+        <Link href="/docente" className={primaryButtonClass}>Voltar</Link>
+      </header>
+      {loading ? <p className="text-sm text-[var(--text-secondary)]">Carregando...</p> : error ? (
+        <p role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>
+      ) : !me ? <p className="text-sm text-[var(--text-secondary)]">Nenhum dado retornado.</p> : (
         <>
-          <div style={{ marginTop: 12 }}>
-            <p><strong>Nome:</strong> {me.name}</p>
-            <p><strong>Email:</strong> {me.email}</p>
-            <p><strong>CPF:</strong> {me.cpf}</p>
-            <p><strong>Telefone:</strong> {me.phone ?? "-"}</p>
-            <p><strong>Cidade:</strong> {me.city ?? "-"}</p>
-            <p><strong>UF:</strong> {me.uf ?? "-"}</p>
-            <p><strong>Roles:</strong> {Array.isArray(me.roles) ? me.roles.join(", ") : "-"}</p>
-          </div>
-
-          <div style={{ marginTop: 16 }}>
-            <h2 style={{ marginBottom: 8 }}>Docente</h2>
-
-            {!docente ? (
-              <p>Sem perfil de docente</p>
-            ) : (
-              <div>
-                <p><strong>SIAPE:</strong> {docente.siape}</p>
-                <p><strong>Nível:</strong> {docente.classLevel}</p>
-                <p><strong>Início do interstício:</strong> {docente.startInterstice}</p>
-                <p><strong>Escolaridade:</strong> {docente.educationLevel}</p>
-                <p><strong>Aperfeiçoamento:</strong> {docente.improvement ?? "-"}</p>
-                <p><strong>Especialização:</strong> {docente.specialization ?? "-"}</p>
-                <p><strong>Mestrado:</strong> {docente.mastersDegree ?? "-"}</p>
-                <p><strong>Doutorado:</strong> {docente.doctorate ?? "-"}</p>
-                <p><strong>Lotação:</strong> {docente.assignment ?? "-"}</p>
-                <p><strong>Departamento:</strong> {docente.department ?? "-"}</p>
-                <p><strong>Divisão:</strong> {docente.division ?? "-"}</p>
-                <p><strong>Cargo/Função:</strong> {docente.role ?? "-"}</p>
-                <p><strong>Chefia imediata:</strong> {docente.immediateSupervisor ?? "-"}</p>
-              </div>
+          <section className={`${surfaceClass} space-y-4 p-5`}>
+            <h2 className="text-base font-semibold">Dados pessoais</h2>
+            <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+              {personal.map(([label, value]) => <div key={label} className="min-w-0"><dt className="text-[var(--text-secondary)]">{label}</dt><dd className="mt-1 break-words font-medium">{value || "Não informado"}</dd></div>)}
+            </dl>
+          </section>
+          <section className={`${surfaceClass} space-y-4 p-5`}>
+            <h2 className="text-base font-semibold">Dados funcionais</h2>
+            {!docente ? <p className="text-sm text-[var(--text-secondary)]">Sem perfil de docente.</p> : (
+              <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                {functional.map(([label, value]) => <div key={label} className="min-w-0"><dt className="text-[var(--text-secondary)]">{label}</dt><dd className="mt-1 break-words font-medium">{value || "Não informado"}</dd></div>)}
+              </dl>
             )}
-          </div>
+          </section>
+          <TeacherDegreesPanel />
         </>
       )}
     </div>

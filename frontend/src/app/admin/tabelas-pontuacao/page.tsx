@@ -35,11 +35,11 @@ function statusBadgeClasses(status: ScoringTableStatus) {
   return "bg-amber-50 text-amber-700 border-amber-100"
 }
 
-function formatDate(value: string | null | undefined) {
+function formatDate(value: string | null | undefined, calendar = false) {
   if (!value) return "—"
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return "—"
-  return d.toLocaleDateString("pt-BR")
+  return d.toLocaleDateString("pt-BR", calendar ? { timeZone: "UTC" } : undefined)
 }
 
 function toDateInputValue(value: string | null | undefined) {
@@ -57,8 +57,8 @@ function toDateInputValue(value: string | null | undefined) {
 }
 
 function formatVigencia(startsOn: string | null | undefined, endsOn: string | null | undefined) {
-  const s = startsOn ? formatDate(startsOn) : null
-  const e = endsOn ? formatDate(endsOn) : null
+  const s = startsOn ? formatDate(startsOn, true) : null
+  const e = endsOn ? formatDate(endsOn, true) : null
 
   if (s && e) return `Vigência: ${s} até ${e}`
   if (s && !e) return `Vigência: a partir de ${s} (sem data final)`

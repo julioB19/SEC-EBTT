@@ -1,4 +1,5 @@
 import dayjs from "dayjs"
+import { latestRequirementDate, addMonthsClamped, formatCalendarDate } from "../util/careerDates"
 import "dayjs/locale/pt-br"
 import { ClassLevel, ProcessStatus, ProcessType } from "@prisma/client"
 import { BusinessRuleError, NotFoundError } from "./processoService"
@@ -11,6 +12,7 @@ import { ProcessEvaluationViewDto } from "../type/dto/processEvaluationViewDto"
 import { ParecerPreviewDto, DivergentItemDto } from "../type/dto/processEvaluationParecerDto"
 import {
   MissingDocenteProfileError,
+  StaleDocenteProfileError,
   MissingProcessScoreError,
   ProcessEvaluationRepository
 } from "../repository/processEvaluationRepository"
@@ -309,9 +311,13 @@ export class ProcessEvaluationService {
         ? decimalToNumber(refreshed.table.minRequiredPoints)
         : null
 
+    const requirementsAt = dto.requirementsMetAtISO ? new Date(dto.requirementsMetAtISO) : refreshed.submittedAt ?? refreshed.intersticeEnd
+    if (!Number.isFinite(requirementsAt.getTime()) || requirementsAt > new Date()) throw new BusinessRuleError("Informe uma data de cumprimento dos requisitos que já ocorreu")
+    const months = refreshed.classeOrigem === "A" && refreshed.nivelOrigem === "1" && refreshed.classeDestino === "B" && refreshed.nivelDestino === "1" ? 36 : 24
+    const financialEffectsAt = latestRequirementDate([refreshed.intersticeEnd, addMonthsClamped(refreshed.intersticeStart, months), requirementsAt])
     const suggestedOpinion =
       dto.overrideOpinion && dto.overrideOpinion.trim() !== ""
-        ? dto.overrideOpinion.trim()
+        ? this.withOfficialFinancialDate(dto.overrideOpinion.trim(), dto.decision ?? "APPROVED", financialEffectsAt)
         : this.buildDefaultOpinion({
             processType: refreshed.type,
             teacherName: refreshed.user.name,
@@ -325,7 +331,9 @@ export class ProcessEvaluationService {
             points: totalsCppd,
             minRequiredPoints,
             intersticeStart: refreshed.intersticeStart,
-            intersticeEnd: refreshed.intersticeEnd
+            intersticeEnd: refreshed.intersticeEnd,
+            financialEffectsAt,
+            decision: dto.decision
           })
 
     const evaluatorIdsRaw = (refreshed.evaluatorUserIds as any) ?? []
@@ -378,6 +386,20 @@ export class ProcessEvaluationService {
         ? decimalToNumber(processFull.table.minRequiredPoints)
         : null
 
+    if (dto.decision === "APPROVED" && totalsCppd < Math.max(120, minRequiredPoints ?? 120)) {
+      throw new BusinessRuleError("A pontuação mínima reconhecida pela CPPD não foi atingida")
+    }
+    if (dto.decision === "APPROVED" && processFull.classeOrigem === "C" && processFull.nivelOrigem === "4" && processFull.classeDestino === "D") {
+      throw new BusinessRuleError("A promoção à Classe Titular exige o processo e o rito próprios")
+    }
+
+    const requirementsMetAt = dto.requirementsMetAtISO ? new Date(dto.requirementsMetAtISO) : processFull.submittedAt ?? processFull.intersticeEnd
+    if (!Number.isFinite(requirementsMetAt.getTime()) || requirementsMetAt > new Date()) throw new BusinessRuleError("Informe uma data de cumprimento dos requisitos que já ocorreu")
+    const requiredMonths = processFull.classeOrigem === "A" && processFull.nivelOrigem === "1" && processFull.classeDestino === "B" && processFull.nivelDestino === "1" ? 36 : 24
+    const eligibilityAt = addMonthsClamped(processFull.intersticeStart, requiredMonths)
+    if (dto.decision === "APPROVED" && eligibilityAt > new Date()) throw new BusinessRuleError("A concessão exige o interstício mínimo completo; a preparação antecipada não permite deferimento antecipado")
+    const financialEffectsAt = dto.decision === "APPROVED" ? latestRequirementDate([processFull.intersticeEnd, eligibilityAt, requirementsMetAt]) : null
+
     const toStatus =
       dto.decision === "APPROVED"
         ? ProcessStatus.APPROVED
@@ -385,7 +407,7 @@ export class ProcessEvaluationService {
 
     const opinion =
       dto.overrideOpinion && dto.overrideOpinion.trim() !== ""
-        ? dto.overrideOpinion.trim()
+        ? this.withOfficialFinancialDate(dto.overrideOpinion.trim(), dto.decision, financialEffectsAt)
         : this.buildDefaultOpinion({
             processType: processFull.type,
             teacherName: processFull.user.name,
@@ -400,6 +422,7 @@ export class ProcessEvaluationService {
             minRequiredPoints,
             intersticeStart: processFull.intersticeStart,
             intersticeEnd: processFull.intersticeEnd,
+            financialEffectsAt,
             decision: dto.decision
           })
 
@@ -417,9 +440,12 @@ export class ProcessEvaluationService {
         targetLevel: toStatus === ProcessStatus.APPROVED
           ? this.toClassLevel(processFull.classeDestino, processFull.nivelDestino)
           : null,
-        intersticeEnd: processFull.intersticeEnd
+        intersticeEnd: processFull.intersticeEnd,
+        originLevel: this.toClassLevel(processFull.classeOrigem, processFull.nivelOrigem),
+        financialEffectsAt
       })
     } catch (error) {
+      if (error instanceof StaleDocenteProfileError) throw new BusinessRuleError("A classe atual do docente mudou; revise a origem do processo antes da decisão")
       if (!(error instanceof MissingDocenteProfileError)) throw error
       throw new BusinessRuleError("DocenteProfile não encontrado para atualizar progressão/promoção.")
     }
@@ -772,6 +798,13 @@ export class ProcessEvaluationService {
     return raw as ClassLevel
   }
 
+  private withOfficialFinancialDate(opinion: string, decision: CppdDecision, financialEffectsAt: Date | null) {
+    const canonical = opinion.replace(/, com efeitos financeiros a contar de \*\*[^*]+\*\*/g, "")
+      .replace(/\n\nData oficial de efeitos financeiros: [^\n]+\./g, "")
+    return decision === "APPROVED" && financialEffectsAt
+      ? `${canonical}\n\nData oficial de efeitos financeiros: ${formatCalendarDate(financialEffectsAt)}.` : canonical
+  }
+
   private buildDefaultOpinion(args: {
     processType: ProcessType
     teacherName: string
@@ -787,11 +820,12 @@ export class ProcessEvaluationService {
     intersticeStart: Date
     intersticeEnd: Date
     decision?: CppdDecision
+    financialEffectsAt?: Date | null
   }) {
     const tipo = args.processType === ProcessType.PROMOCAO ? "promoção" : "progressão"
 
-    const dataIni = dayjs(args.intersticeStart).format("DD/MM/YYYY")
-    const dataFim = dayjs(args.intersticeEnd).format("DD/MM/YYYY")
+    const dataIni = formatCalendarDate(args.intersticeStart)
+    const dataFim = formatCalendarDate(args.intersticeEnd)
 
     const siape =
       args.teacherSiape && String(args.teacherSiape).trim() !== ""
@@ -825,7 +859,7 @@ export class ProcessEvaluationService {
 
     const effectsText =
       decision === "APPROVED"
-        ? `, com efeitos financeiros a contar de **${dataFim}**`
+        ? `, com efeitos financeiros a contar de **${formatCalendarDate(args.financialEffectsAt ?? args.intersticeEnd)}**`
         : ""
 
     return (

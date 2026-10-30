@@ -78,7 +78,21 @@ export class ScoringTableRepository {
     endsOn?: Date | null
     status?: TableStatus
   }) {
-    return prisma.scoringTable.update({
+    return prisma.$transaction(async tx => {
+      if (data.status === "ACTIVE") {
+        const current = await tx.scoringTable.findUniqueOrThrow({ where: { idScoringTable: scoringTableId } })
+        const start = data.startsOn !== undefined ? data.startsOn : current.startsOn
+        const end = data.endsOn !== undefined ? data.endsOn : current.endsOn
+        const overlap = await tx.scoringTable.findFirst({ where: {
+          idScoringTable: { not: scoringTableId }, deletedDate: null, status: "ACTIVE", purpose: data.purpose ?? current.purpose,
+          AND: [
+            ...(end ? [{ OR: [{ startsOn: null }, { startsOn: { lte: end } }] }] : []),
+            ...(start ? [{ OR: [{ endsOn: null }, { endsOn: { gte: start } }] }] : [])
+          ]
+        } })
+        if (overlap) throw new Error("SCORING_TABLE_OVERLAP")
+      }
+      return tx.scoringTable.update({
       where: { idScoringTable: scoringTableId },
       data: {
         ...(data.name !== undefined ? { name: data.name } : {}),
@@ -91,6 +105,17 @@ export class ScoringTableRepository {
         ...(data.status !== undefined ? { status: data.status } : {})
       }
     })
+    }, { isolationLevel: "Serializable" })
+  }
+
+  async findOverlappingActiveTable(id: number, purpose: ScoringTablePurpose, startsOn: Date | null, endsOn: Date | null) {
+    return prisma.scoringTable.findFirst({ where: {
+      idScoringTable: { not: id }, deletedDate: null, status: "ACTIVE", purpose,
+      AND: [
+        ...(endsOn ? [{ OR: [{ startsOn: null }, { startsOn: { lte: endsOn } }] }] : []),
+        ...(startsOn ? [{ OR: [{ endsOn: null }, { endsOn: { gte: startsOn } }] }] : [])
+      ]
+    } })
   }
 
   async findManyAdmin(params: {

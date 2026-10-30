@@ -153,18 +153,38 @@ export class ScoringTableService {
       throw new BusinessRuleError("Status inválido.")
     }
 
+    if (current.status !== "DRAFT" && status === "DRAFT") {
+      throw new BusinessRuleError("Uma tabela finalizada não pode retornar a rascunho")
+    }
+    if (current.status !== "DRAFT" && [dto.purpose, dto.minRequiredPoints, dto.startsOn, dto.endsOn].some(value => value !== undefined)) {
+      throw new BusinessRuleError("As regras de uma tabela finalizada são imutáveis; crie uma nova versão")
+    }
     if (current.status === "INACTIVE" && status === "ACTIVE") {
       throw new BusinessRuleError("Tabela inativada não pode ser reativada.")
     }
 
-    const updated = await this.repo.updateTable(scoringTableId, {
+    if (status === "ACTIVE") {
+      const purpose = dto.purpose ?? current.purpose
+      const minimum = purpose === ScoringTablePurpose.RSC ? 60 : 120
+      if (Number(minRequiredPoints ?? current.minRequiredPoints ?? minimum) < minimum) {
+        throw new BusinessRuleError(`A tabela ativa exige pontuação mínima de ${minimum} pontos`)
+      }
+      const overlap = await this.repo.findOverlappingActiveTable(scoringTableId, purpose, finalStarts, finalEnds)
+      if (overlap) throw new BusinessRuleError("Já existe uma tabela ativa com vigência sobreposta para essa finalidade")
+    }
+
+    let updated
+    try { updated = await this.repo.updateTable(scoringTableId, {
       name: dto.name !== undefined ? String(dto.name).trim() : undefined,
       purpose: dto.purpose,
       minRequiredPoints,
       startsOn,
       endsOn,
       status
-    })
+    }) } catch (error: any) {
+      if (error?.message === "SCORING_TABLE_OVERLAP" || error?.code === "P2034") throw new BusinessRuleError("A vigência conflita com outra ativação; recarregue e revise as tabelas")
+      throw error
+    }
 
     return {
       idScoringTable: updated.idScoringTable,

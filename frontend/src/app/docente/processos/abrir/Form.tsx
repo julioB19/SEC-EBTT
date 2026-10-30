@@ -71,11 +71,11 @@ const PROGRESSAO_MOVES = [
 const PROMOCAO_MOVES = [
   { fromClass: "A", fromLevel: "1", toClass: "B", toLevel: "1", label: "B1" },
   { fromClass: "B", fromLevel: "4", toClass: "C", toLevel: "1", label: "C1" },
-  { fromClass: "C", fromLevel: "4", toClass: "D", toLevel: "1", label: "D1" }
+
 ]
 
 const ORIGENS_PROGRESSAO = new Set(["B1", "B2", "B3", "C1", "C2", "C3"])
-const ORIGENS_PROMOCAO = new Set(["A1", "B4", "C4"])
+const ORIGENS_PROMOCAO = new Set(["A1", "B4"])
 
 const FALLBACK_PROCESS_TYPES: ConfiguredProcessType[] = [
   {
