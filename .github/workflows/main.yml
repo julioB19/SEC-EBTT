@@ -44,6 +44,8 @@ jobs:
 
   backend-coverage:
     runs-on: ubuntu-latest
+    env:
+      CPF_ENCRYPTION_KEY: "ci-test-only-cpf-encryption-key-32-bytes"
     services:
       mysql:
         image: mysql:8.0
