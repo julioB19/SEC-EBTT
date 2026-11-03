@@ -1,5 +1,9 @@
 "use client"
 
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 
@@ -25,7 +29,7 @@ function inputClass() {
 export default function CppdUsuariosPage() {
   const [rows, setRows] = useState<DocenteRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [err, setErr] = useState<string | null>(null)
+  const [err, setErr] = useFeedbackState<string | null>(null, "error")
   const [q, setQ] = useState("")
 
   const filtered = useMemo(() => {
@@ -84,33 +88,24 @@ export default function CppdUsuariosPage() {
             </p>
           </div>
 
-          <Link
-            href="/cppd"
-            className="px-4 py-2 rounded-full border border-[var(--btn-secondary-border)]
-                       text-xs text-[var(--btn-secondary-text)]
-                       hover:bg-[var(--btn-secondary-hover-bg)] transition"
-          >
-            Voltar
-          </Link>
+          <></>
         </header>
 
         {/* ERRO */}
         {err && (
           <div className="bg-[var(--danger-bg)] border border-[var(--danger-border)] rounded-2xl p-6">
-            <p className="text-sm text-[var(--danger-text-strong)] whitespace-pre-wrap">
-              {err}
-            </p>
+
           </div>
         )}
 
         {/* BUSCA */}
         <section className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl p-4 shadow-sm space-y-2">
-          <input
+          <FormInput
             className={inputClass()}
             placeholder="Buscar por nome, email, CPF ou SIAPE..."
             value={q}
             onChange={e => setQ(e.target.value)}
-          />
+           type="search" aria-label="Buscar usuários por nome, e-mail, CPF ou SIAPE" />
         </section>
 
         {/* CONTEÚDO */}

@@ -1,3 +1,4 @@
+import { AccessError } from "../util/accessPolicy"
 import { UserService } from "../service/userService"
 import { HttpResponse, StatusCodeDescription } from "../util/httpResponse"
 import { createUserSchema } from "../validator/userValidator"
@@ -36,6 +37,7 @@ export class UserController {
       const response = await this.userService.login(dto)
       return HttpResponse.ok<LoginResponseWithRoles>(res, "Login successful", response)
     } catch (error: any) {
+      if (error instanceof AccessError) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, null)
       console.log("Request failed:", error?.message)
       if (error instanceof InvalidCredentials) {
         return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_CREDENTIALS, error.message, null)
@@ -83,6 +85,7 @@ export class UserController {
       const response = await this.userService.refreshToken(dto)
       return HttpResponse.ok<LoginResponseWithRoles>(res, "Refresh token successful", response)
     } catch (error: any) {
+      if (error instanceof AccessError) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, null)
       console.log("Request failed:", error?.message)
       if (error instanceof InvalidRefreshToken) {
         return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_REFRESH_TOKEN, error.message, null)
@@ -108,6 +111,7 @@ export class UserController {
       const response = await this.userService.selectRole(refreshToken, role)
       return HttpResponse.ok<LoginResponseWithRoles>(res, "Role selected", response)
     } catch (error: any) {
+      if (error instanceof AccessError) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, null)
       console.log("Request failed:", error?.message)
       if (error instanceof InvalidRefreshToken) {
         return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_REFRESH_TOKEN, error.message, null)
@@ -131,6 +135,7 @@ export class UserController {
       }
 
       const dto = {
+        campusId: value.campusId,
         name: value.name,
         email: value.email,
         phone: value.phone,
@@ -141,6 +146,7 @@ export class UserController {
         roles: value.roles,
         docenteProfile: value.docenteProfile
           ? {
+              campusId: value.docenteProfile.campusId,
               siape: value.docenteProfile.siape,
               classLevel: value.docenteProfile.classLevel,
               startInterstice: value.docenteProfile.startInterstice,
@@ -199,6 +205,7 @@ export class UserController {
         externalEvaluatorProfile: user.externalEvaluatorProfile
       })
     } catch (error: any) {
+      if (error instanceof AccessError) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, null)
       console.log("Request failed:", error?.message)
 
       if (error instanceof UserExists) {
@@ -232,6 +239,7 @@ export class UserController {
       const user = await this.userService.getUserById(userId)
       return HttpResponse.ok(res, "User found", user)
     } catch (error: any) {
+      if (error instanceof AccessError) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, null)
       if (error instanceof UserNotFound) {
         return HttpResponse.notFound(res, StatusCodeDescription.USER_NOT_FOUND, error.message, null)
       }
@@ -248,6 +256,7 @@ export class UserController {
       const me = await this.userService.getUserById(auth.userId)
       return HttpResponse.ok(res, "Perfil recuperado", me)
     } catch (error: any) {
+      if (error instanceof AccessError) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, null)
       if (error instanceof UserNotFound) {
         return HttpResponse.notFound(res, StatusCodeDescription.USER_NOT_FOUND, error.message, null)
       }
@@ -273,6 +282,7 @@ export class UserController {
       const updated = await this.userService.updateOwnProfile(auth.userId, req.body)
       return HttpResponse.ok(res, "Perfil atualizado", updated)
     } catch (error: any) {
+      if (error instanceof AccessError) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, null)
       if (error instanceof UserNotFound) {
         return HttpResponse.notFound(res, StatusCodeDescription.USER_NOT_FOUND, error.message, null)
       }
@@ -301,6 +311,7 @@ export class UserController {
       const updated = await this.userService.updateUser(userId, req.body)
       return HttpResponse.ok(res, "User updated", updated)
     } catch (error: any) {
+      if (error instanceof AccessError) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, null)
       if (error instanceof UserNotFound) {
         return HttpResponse.notFound(res, StatusCodeDescription.USER_NOT_FOUND, error.message, null)
       }
@@ -323,6 +334,7 @@ export class UserController {
       const deleted = await this.userService.deleteUserById(userId)
       return HttpResponse.ok(res, "User deleted", deleted)
     } catch (error: any) {
+      if (error instanceof AccessError) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, null)
       if (error instanceof UserNotFound) {
         return HttpResponse.notFound(res, StatusCodeDescription.USER_NOT_FOUND, error.message, null)
       }
@@ -346,6 +358,7 @@ export class UserController {
       const user = await this.userService.createUser(dto)
       return HttpResponse.created(res, "Docente registered", user)
     } catch (error: any) {
+      if (error instanceof AccessError) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, null)
       console.error("Erro em registerDocente:", error)
 
       if (error instanceof UserExists) {
@@ -378,6 +391,7 @@ export class UserController {
       const updated = await this.userService.updateOwnDocenteProfile(auth.userId, req.body)
       return HttpResponse.ok(res, "Perfil atualizado", updated)
     } catch (error: any) {
+      if (error instanceof AccessError) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, null)
       if (error instanceof UserNotFound) {
         return HttpResponse.notFound(res, StatusCodeDescription.USER_NOT_FOUND, error.message, null)
       }
@@ -421,6 +435,7 @@ export class UserController {
       const updated = await this.userService.updateDocenteLimitedByCppd(userId, req.body)
       return HttpResponse.ok(res, "Docente atualizado", updated)
     } catch (error: any) {
+      if (error instanceof AccessError) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, null)
       if (error instanceof UserNotFound) {
         return HttpResponse.notFound(res, StatusCodeDescription.USER_NOT_FOUND, error.message, null)
       }
@@ -453,6 +468,7 @@ export class UserController {
       const updated = await this.userService.updateDocenteByAdmin(userId, req.body)
       return HttpResponse.ok(res, "Docente atualizado", updated)
     } catch (error: any) {
+      if (error instanceof AccessError) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, null)
       if (error instanceof UserNotFound) {
         return HttpResponse.notFound(res, StatusCodeDescription.USER_NOT_FOUND, error.message, null)
       }
@@ -488,6 +504,7 @@ export class UserController {
       const deleted = await this.userService.deleteUserById(userId)
       return HttpResponse.ok(res, "Docente excluído", deleted)
     } catch (error: any) {
+      if (error instanceof AccessError) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, null)
       if (error instanceof UserNotFound) {
         return HttpResponse.notFound(res, StatusCodeDescription.USER_NOT_FOUND, error.message, null)
       }
@@ -522,6 +539,7 @@ export class UserController {
       const updated = await this.userService.setUserRoles(userId, roles)
       return HttpResponse.ok(res, "Roles atualizadas", updated)
     } catch (error: any) {
+      if (error instanceof AccessError) return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, null)
       if (error instanceof UserNotFound) {
         return HttpResponse.notFound(res, StatusCodeDescription.USER_NOT_FOUND, error.message, null)
       }

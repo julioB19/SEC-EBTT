@@ -1,6 +1,13 @@
 "use client"
+import { FormSelect } from "@/components/ui/FormControls"
 
-import { useState } from "react"
+import BackButton from "@/components/ui/BackButton"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+import ActionButton from "@/components/ui/ActionButton"
+
+import { useEffect, useState } from "react"
+import { validCpf } from "@/utils/inputValidation"
 import { useRouter } from "next/navigation"
 import Modal from "@/components/Modal"
 import { translateBackendError } from "@/utils/translateBackendError"
@@ -15,7 +22,7 @@ function onlyDigits(input: string) {
 
 function validateCPFBasic(v: string) {
   const digits = onlyDigits(v)
-  return digits.length === 11
+  return validCpf(digits)
 }
 
 function validatePhoneBasic(v: string) {
@@ -73,6 +80,9 @@ type ModalState = {
 export default function RegisterProfessorPage() {
   const router = useRouter()
 
+  const [campusId, setCampusId] = useState("")
+  const [campuses, setCampuses] = useState<{ idCampus: number; name: string }[]>([])
+  useEffect(() => { void fetch("/api/acesso/campuses", { cache: "no-store" }).then(response => response.json()).then(json => { if (Array.isArray(json.data)) { setCampuses(json.data); if (json.data.length === 1) setCampusId(String(json.data[0].idCampus)) } }).catch(() => {}) }, [])
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [cpf, setCpf] = useState("")
@@ -147,7 +157,7 @@ export default function RegisterProfessorPage() {
     if (!validateCPFBasic(cpf)) {
       openModal({
         title: "CPF inválido",
-        message: "Informe um CPF com 11 dígitos numéricos.",
+        message: "Informe um CPF válido com 11 dígitos, incluindo os dígitos verificadores.",
         variant: "error"
       })
       return
@@ -178,6 +188,7 @@ export default function RegisterProfessorPage() {
       city,
       uf,
       docenteProfile: {
+          campusId: Number(campusId),
         siape,
         classLevel,
         startInterstice: new Date(startInterstice),
@@ -289,9 +300,11 @@ export default function RegisterProfessorPage() {
             p-6 space-y-4
           "
         >
+          <label className="block text-sm">Campus<FormSelect aria-label="Campus" className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-white px-3 py-2 text-sm" value={campusId} onChange={event => setCampusId(event.target.value)} required><option value="">Selecione o campus</option>{campuses.map(campus => <option key={campus.idCampus} value={campus.idCampus}>{campus.name}</option>)}</FormSelect></label>
           <h1 className="text-2xl font-semibold mb-2 text-[var(--text-primary)]">
             Cadastro de Docente
           </h1>
+<BackButton />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
@@ -304,93 +317,93 @@ export default function RegisterProfessorPage() {
               <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                 Nome completo *
               </label>
-              <input
+              <FormInput
                 className={inputClass}
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="Seu nome"
-              />
+               aria-label="Nome completo *" />
             </div>
 
             <div>
               <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                 E-mail *
               </label>
-              <input
+              <FormInput
                 type="email"
                 className={inputClass}
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="seu@email.com"
-              />
+               fieldKind={"email"}  aria-label="E-mail *" />
             </div>
 
             <div>
               <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                 CPF *
               </label>
-              <input
+              <FormInput
                 className={inputClass}
                 value={cpf}
                 onChange={e => setCpf(e.target.value)}
                 placeholder="000.000.000-00"
-              />
+               fieldKind={"cpf"}  aria-label="CPF *" />
             </div>
 
             <div>
               <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                 Senha *
               </label>
-              <input
+              <FormInput
                 type="password"
                 className={inputClass}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 placeholder="mínimo 8 caracteres"
-              />
+               aria-label="Senha *" />
             </div>
 
             <div>
               <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                 Telefone *
               </label>
-              <input
+              <FormInput
                 className={inputClass}
                 value={phone}
                 onChange={onPhoneChange}
                 placeholder="(11) 91234-5678"
                 inputMode="tel"
-              />
+               fieldKind={"phone"}  aria-label="Telefone *" />
             </div>
 
             <div>
               <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                 Cidade *
               </label>
-              <input
+              <FormInput
                 className={inputClass}
                 value={city}
                 onChange={e => setCity(e.target.value)}
                 placeholder="Ex.: Santa Maria"
-              />
+               aria-label="Cidade *" />
             </div>
 
             <div>
               <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                 UF *
               </label>
-              <select
+              <FormSelect
                 className={inputClass}
                 value={uf}
                 onChange={e => setUf(e.target.value)}
-              >
+               aria-label="UF *" >
                 <option value="">Selecione...</option>
                 {UF_OPTIONS.map(sigla => (
                   <option key={sigla} value={sigla}>
                     {sigla}
                   </option>
                 ))}
-              </select>
+              </FormSelect>
             </div>
 
             <div className="md:col-span-2 mt-4">
@@ -403,54 +416,54 @@ export default function RegisterProfessorPage() {
               <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                 SIAPE *
               </label>
-              <input
+              <FormInput
                 className={inputClass}
                 value={siape}
                 onChange={e => setSiape(e.target.value)}
                 placeholder="SIAPE"
-              />
+               fieldKind={"siape"}  aria-label="SIAPE *" />
             </div>
 
             <div>
               <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                 Classe / Nível *
               </label>
-              <select
+              <FormSelect
                 className={inputClass}
                 value={classLevel}
                 onChange={e => setClassLevel(e.target.value)}
-              >
+               aria-label="Classe / Nível *" >
                 <option value="">Selecione...</option>
                 {CLASS_LEVEL_OPTIONS.map(opt => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
                 ))}
-              </select>
+              </FormSelect>
             </div>
 
             <div>
               <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                 Início do Interstício *
               </label>
-              <input
+              <FormInput
                 type="date"
                 className={inputClass}
                 value={startInterstice}
                 onChange={e => setStartInterstice(e.target.value)}
-              />
+               aria-label="Início do Interstício *" />
             </div>
 
             <div>
               <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                 Escolaridade *
               </label>
-              <input
+              <FormInput
                 className={inputClass}
                 value={educationLevel}
                 onChange={e => setEducationLevel(e.target.value)}
                 placeholder="Graduação, Mestrado, Doutorado..."
-              />
+               aria-label="Escolaridade *" />
             </div>
 
             <div className="md:col-span-2 mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -458,106 +471,106 @@ export default function RegisterProfessorPage() {
                 <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                   Aperfeiçoamento
                 </label>
-                <input
+                <FormInput
                   className={inputClass}
                   value={improvement}
                   onChange={e => setImprovement(e.target.value)}
-                />
+                 aria-label="Aperfeiçoamento" />
               </div>
 
               <div>
                 <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                   Especialização
                 </label>
-                <input
+                <FormInput
                   className={inputClass}
                   value={specialization}
                   onChange={e => setSpecialization(e.target.value)}
-                />
+                 aria-label="Especialização" />
               </div>
 
               <div>
                 <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                   Mestrado
                 </label>
-                <input
+                <FormInput
                   className={inputClass}
                   value={mastersDegree}
                   onChange={e => setMastersDegree(e.target.value)}
-                />
+                 aria-label="Mestrado" />
               </div>
 
               <div>
                 <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                   Doutorado
                 </label>
-                <input
+                <FormInput
                   className={inputClass}
                   value={doctorate}
                   onChange={e => setDoctorate(e.target.value)}
-                />
+                 aria-label="Doutorado" />
               </div>
 
               <div>
                 <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                   Lotação / Atuação
                 </label>
-                <input
+                <FormInput
                   className={inputClass}
                   value={assignment}
                   onChange={e => setAssignment(e.target.value)}
                   placeholder="Ex.: Campus X"
-                />
+                 aria-label="Lotação / Atuação" />
               </div>
 
               <div>
                 <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                   Departamento
                 </label>
-                <input
+                <FormInput
                   className={inputClass}
                   value={department}
                   onChange={e => setDepartment(e.target.value)}
-                />
+                 aria-label="Departamento" />
               </div>
 
               <div>
                 <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                   Divisão
                 </label>
-                <input
+                <FormInput
                   className={inputClass}
                   value={division}
                   onChange={e => setDivision(e.target.value)}
-                />
+                 aria-label="Divisão" />
               </div>
 
               <div>
                 <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                   Função
                 </label>
-                <input
+                <FormInput
                   className={inputClass}
                   value={role}
                   onChange={e => setRole(e.target.value)}
-                />
+                 aria-label="Função" />
               </div>
 
               <div>
                 <label className="block text-sm mb-1 text-[var(--text-secondary)]">
                   Chefia imediata
                 </label>
-                <input
+                <FormInput
                   className={inputClass}
                   value={immediateSupervisor}
                   onChange={e => setImmediateSupervisor(e.target.value)}
-                />
+                 aria-label="Chefia imediata" />
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-3 mt-6">
-            <button
+            <ActionButton
               type="submit"
               disabled={loading}
               className="
@@ -567,9 +580,9 @@ export default function RegisterProfessorPage() {
                 hover:bg-[var(--btn-primary-hover-bg)]
                 disabled:opacity-50
               "
-            >
+             disabledReason={(loading) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
               {loading ? "Enviando..." : "Cadastrar"}
-            </button>
+            </ActionButton>
 
             <button
               type="button"

@@ -1,5 +1,8 @@
 "use client"
 
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+
 import { useEffect, useMemo, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
@@ -267,7 +270,7 @@ export default function CppdAvaliacaoVisualizarPage() {
   const processId = Number(params.id)
 
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
 
   const [view, setView] = useState<ProcessEvaluationViewDto | null>(null)
   const [details, setDetails] = useState<CppdProcessDetailsDto | null>(null)
@@ -534,19 +537,10 @@ export default function CppdAvaliacaoVisualizarPage() {
     return (
       <main className="min-h-[60vh]">
         <div className="px-4 py-8 space-y-4">
-          <p className="text-[var(--state-danger-text)] text-sm whitespace-pre-wrap">
-            {error ?? "Falha ao carregar visualização."}
-          </p>
+          <h1 className="text-2xl font-semibold">Consulta da avaliação</h1>
+          <p className="text-sm text-[var(--text-secondary)]">Não foi possível exibir esta avaliação. Confira a situação do processo e tente novamente.</p>
 
-          <Link
-            href="/cppd/processos?view=evaluated"
-            className="inline-flex items-center rounded-full px-4 py-2 text-xs font-semibold
-                       border border-[var(--btn-secondary-border)]
-                       text-[var(--btn-secondary-text)]
-                       hover:bg-[var(--btn-secondary-hover-bg)] transition"
-          >
-            Voltar para processos
-          </Link>
+          <></>
         </div>
       </main>
     )
@@ -771,14 +765,7 @@ export default function CppdAvaliacaoVisualizarPage() {
           </div>
 
           <div className="flex flex-col items-end gap-2">
-            <Link
-              href="/cppd/processos?view=evaluated"
-              className="px-4 py-2 rounded-full border border-[var(--btn-secondary-border)]
-                         text-xs text-[var(--btn-secondary-text)]
-                         hover:bg-[var(--btn-secondary-hover-bg)] transition"
-            >
-              Voltar para processos
-            </Link>
+            <></>
           </div>
         </header>
 

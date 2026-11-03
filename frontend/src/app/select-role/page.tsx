@@ -1,5 +1,10 @@
 "use client"
 
+import BackButton from "@/components/ui/BackButton"
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import ActionButton from "@/components/ui/ActionButton"
+
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 
@@ -8,7 +13,7 @@ type Role = "DOCENTE" | "CPPD_MEMBER" | "CPPD_CENTRAL" | "ADMIN" | "EXTERNAL_EVA
 export default function SelectRolePage() {
   const router = useRouter()
   const [roles, setRoles] = useState<Role[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -48,7 +53,8 @@ export default function SelectRolePage() {
     setLoading(true)
     setError(null)
 
-    const r = await fetch("/api/auth/select-role", {
+    try {
+const r = await fetch("/api/auth/select-role", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -76,7 +82,11 @@ export default function SelectRolePage() {
     } else {
       router.replace("/admin")
     }
-  }
+
+} catch {
+setError("Não foi possível selecionar o módulo. Verifique sua conexão e tente novamente.")
+} finally { setLoading(false) }
+}
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--surface-muted)] p-4">
@@ -90,17 +100,16 @@ export default function SelectRolePage() {
         "
       >
         <h1 className="text-2xl font-semibold mb-2 text-[var(--text-primary)]">Escolha o módulo</h1>
+<BackButton />
         <p className="text-sm text-[var(--text-secondary)] mb-4">Selecione com qual papel você quer entrar agora.</p>
 
         {error && (
-          <p className="text-sm mb-3 text-[var(--danger-text-strong)] bg-[var(--danger-bg)] border border-[var(--danger-border)] rounded-xl px-3 py-2">
-            {error}
-          </p>
+          null
         )}
 
         <div className="grid gap-3">
           {roles.map(r => (
-            <button
+            <ActionButton
               key={r}
               disabled={loading}
               onClick={() => select(r)}
@@ -113,9 +122,9 @@ export default function SelectRolePage() {
                 disabled:opacity-50
                 transition
               "
-            >
+             disabledReason={(loading) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
               <div className="font-medium">{label[r]}</div>
-            </button>
+            </ActionButton>
           ))}
         </div>
       </div>

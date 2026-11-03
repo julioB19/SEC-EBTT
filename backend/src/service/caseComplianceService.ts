@@ -64,14 +64,18 @@ export class CaseComplianceService {
     const process = await this.context(processId, actor)
     const reviewer = cppd.has(actor.role)
     const applicant = actor.role === RoleName.DOCENTE && process.userId === actor.userId
+    const auditEvents = applicant || reviewer ? process.audits : []
+    const actorIds = [...new Set(auditEvents.map(event => event.actorId))]
+    const auditActors = actorIds.length ? await prisma.user.findMany({ where: { idUser: { in: actorIds } }, select: { idUser: true, name: true } }) : []
+    const actorsById = new Map(auditActors.map(user => [user.idUser, user]))
     return {
       processId, category: process.processTypeConfig?.category, status: process.status,
       evaluationMode: process.fullProfessorDetail?.evaluationMode, financialEffectsAt: process.financialEffectsAt, compliance: process.compliance,
-      members: process.specialCommissions.filter(value => value.status !== "CANCELED").slice(0, 1).flatMap(value => value.members.map(member => ({ id: member.idSpecialCommissionMember, name: member.person.name, result: member.individualEvaluations[0]?.result }))),
+      members: process.specialCommissions.filter(value => value.status !== "CANCELED").slice(0, 1).flatMap(value => value.members.map(member => ({ id: member.idSpecialCommissionMember, name: member.person.name, result: member.individualEvaluations[0]?.result, evaluationStatus: member.individualEvaluations[0]?.status ?? null }))),
       doctorate: process.fullProfessorDetail?.doctorateDegree ? { id: process.fullProfessorDetail.doctorateDegree.idTeacherDegree, course: process.fullProfessorDetail.doctorateDegree.course, countryCode: process.fullProfessorDetail.doctorateDegree.countryCode } : null,
       nominees: applicant || reviewer ? process.nominees : [],
       signatures: process.signedArtifacts.map(({ evidenceFile, ...artifact }) => ({ ...artifact, fileName: evidenceFile.originalName })),
-      appeals: applicant || reviewer ? process.rscAppeals : [], audits: applicant || reviewer ? process.audits : [],
+      appeals: applicant || reviewer ? process.rscAppeals : [], audits: auditEvents.map(event => ({ ...event, actor: actorsById.get(event.actorId) ?? null })),
       canEdit: applicant && ["DRAFT", "RETURNED"].includes(process.status), canReview: reviewer && !finalStatuses.has(process.status),
       documents: process.processTypeConfig?.category === "CAREER" ? [] : process.processTypeConfig?.category === "FULL_PROFESSOR"
         ? ["APPLICATION", "PERFORMANCE", "NOMINEES", "CPPD_ELIGIBILITY_OPINION", "PRESIDENT_OPINION", "MEMORIAL_DEFENSE_MINUTES", "THESIS_DEFENSE_MINUTES", "CONSOLIDATED_OPINION", "THESIS_ORIGINALITY"]

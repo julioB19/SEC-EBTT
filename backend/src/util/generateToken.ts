@@ -1,8 +1,6 @@
 import jwt, { type SignOptions } from "jsonwebtoken"
 import { RoleName } from "@prisma/client"
 
-const accessExpiresIn = process.env.JWT_ACCESS_EXPIRATION as SignOptions["expiresIn"]
-const refreshExpiresIn = process.env.JWT_REFRESH_EXPIRATION as SignOptions["expiresIn"]
 
 export function generateAccessToken(
   roles: RoleName[],
@@ -12,7 +10,7 @@ export function generateAccessToken(
   const payload = { sub: userId, roles, selectedRole }
 
   return jwt.sign(payload, String(process.env.JWT_ACCESS_SECRET), {
-    expiresIn: accessExpiresIn
+    expiresIn: process.env.JWT_ACCESS_EXPIRATION as SignOptions["expiresIn"]
   })
 }
 
@@ -23,6 +21,6 @@ export function generateRefreshToken(
   const payload = { userId, selectedRole }
 
   return jwt.sign(payload, String(process.env.JWT_REFRESH_SECRET), {
-    expiresIn: refreshExpiresIn
+    expiresIn: process.env.JWT_REFRESH_EXPIRATION as SignOptions["expiresIn"]
   })
 }

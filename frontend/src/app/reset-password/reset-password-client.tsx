@@ -1,5 +1,11 @@
 "use client"
 
+import BackButton from "@/components/ui/BackButton"
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+import ActionButton from "@/components/ui/ActionButton"
+
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 
@@ -38,7 +44,7 @@ export default function ResetPasswordClient() {
 
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
 
   useEffect(() => {
     const qCpf = sp.get("cpf")
@@ -88,6 +94,7 @@ export default function ResetPasswordClient() {
       <h1 className="text-2xl font-semibold text-[var(--text-primary)] mb-6 text-center">
         SEC-EBTT
       </h1>
+<BackButton />
 
       <form
         onSubmit={onSubmit}
@@ -105,7 +112,7 @@ export default function ResetPasswordClient() {
 
         <div className="space-y-1">
           <label className="block text-sm text-[var(--text-secondary)]">CPF</label>
-          <input
+          <FormInput
             value={cpf}
             onChange={e => setCpf(formatCPF(e.target.value))}
             placeholder="000.000.000-00"
@@ -119,14 +126,14 @@ export default function ResetPasswordClient() {
               outline-none
               focus:ring-2 focus:ring-[var(--brand)]
             "
-          />
+           fieldKind={"cpf"}  aria-label="CPF" />
         </div>
 
         <div className="space-y-1">
           <label className="block text-sm text-[var(--text-secondary)]">
             Código (6 dígitos)
           </label>
-          <input
+          <FormInput
             value={code}
             onChange={e => setCode(onlyDigits(e.target.value).slice(0, 6))}
             placeholder="123456"
@@ -140,12 +147,12 @@ export default function ResetPasswordClient() {
               outline-none
               focus:ring-2 focus:ring-[var(--brand)]
             "
-          />
+           aria-label="Código (6 dígitos)"  fieldKind="code" />
         </div>
 
         <div className="space-y-1">
           <label className="block text-sm text-[var(--text-secondary)]">Nova senha</label>
-          <input
+          <FormInput
             type="password"
             value={newPassword}
             onChange={e => setNewPassword(e.target.value)}
@@ -159,14 +166,14 @@ export default function ResetPasswordClient() {
               outline-none
               focus:ring-2 focus:ring-[var(--brand)]
             "
-          />
+           aria-label="Nova senha" />
         </div>
 
         <div className="space-y-1">
           <label className="block text-sm text-[var(--text-secondary)]">
             Confirmar nova senha
           </label>
-          <input
+          <FormInput
             type="password"
             value={confirmPassword}
             onChange={e => setConfirmPassword(e.target.value)}
@@ -180,13 +187,11 @@ export default function ResetPasswordClient() {
               outline-none
               focus:ring-2 focus:ring-[var(--brand)]
             "
-          />
+           aria-label="Confirmar nova senha" />
         </div>
 
         {error && (
-          <p className="text-red-600 text-sm bg-red-50 border border-red-200 p-2 rounded-xl">
-            {error}
-          </p>
+          null
         )}
 
         {msg && (
@@ -195,7 +200,7 @@ export default function ResetPasswordClient() {
           </p>
         )}
 
-        <button
+        <ActionButton
           type="submit"
           disabled={loading}
           className="
@@ -205,9 +210,9 @@ export default function ResetPasswordClient() {
             hover:bg-[var(--btn-primary-hover-bg)]
             disabled:opacity-50
           "
-        >
+         disabledReason={(loading) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
           {loading ? "Salvando..." : "Alterar senha"}
-        </button>
+        </ActionButton>
 
         <div className="pt-2 text-center">
           <a

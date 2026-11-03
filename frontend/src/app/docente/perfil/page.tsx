@@ -1,4 +1,7 @@
 "use client"
+
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
 import Link from "next/link"
 import { primaryButtonClass, surfaceClass } from "@/components/ui/systemStyles"
 import TeacherDegreesPanel from "@/components/TeacherDegreesPanel"
@@ -59,7 +62,7 @@ function safeJsonParse(text: string) {
 
 export default function DocentePerfilPage() {
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
   const [me, setMe] = useState<ApiMe | null>(null)
 
   useEffect(() => {
@@ -124,10 +127,10 @@ export default function DocentePerfilPage() {
     <div className="mx-auto w-full max-w-6xl space-y-6">
       <header className="space-y-3">
         <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Meu perfil</h1>
-        <Link href="/docente" className={primaryButtonClass}>Voltar</Link>
+        <></>
       </header>
       {loading ? <p className="text-sm text-[var(--text-secondary)]">Carregando...</p> : error ? (
-        <p role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>
+        null
       ) : !me ? <p className="text-sm text-[var(--text-secondary)]">Nenhum dado retornado.</p> : (
         <>
           <section className={`${surfaceClass} space-y-4 p-5`}>

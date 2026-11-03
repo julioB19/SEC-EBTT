@@ -1,6 +1,7 @@
 import { RequestHandler } from "express"
 import { RoleName } from "@prisma/client"
 import { HttpResponse, StatusCodeDescription } from "../util/httpResponse"
+import { evaluatorOrigin } from "../middleware/evaluatorAccessMiddleware"
 import { BusinessRuleError, NotFoundError } from "../service/processoService"
 import { SpecialCommissionService } from "../service/specialCommissionService"
 import {
@@ -19,9 +20,11 @@ export class SpecialCommissionController {
     const selectedRole = req.user?.selectedRole as RoleName | undefined
     const hasRequiredRole = requiredRole === RoleName.CPPD_MEMBER
       ? selectedRole === RoleName.CPPD_MEMBER || selectedRole === RoleName.CPPD_CENTRAL
-      : selectedRole === requiredRole
+      : requiredRole === RoleName.EXTERNAL_EVALUATOR
+        ? selectedRole === RoleName.EXTERNAL_EVALUATOR || selectedRole === RoleName.DOCENTE
+        : selectedRole === requiredRole
     if (!userId || Number.isNaN(userId) || !hasRequiredRole) return null
-    return { userId }
+    return { userId, origin: evaluatorOrigin(selectedRole!) }
   }
 
   private getPositiveId(raw: string | undefined) {
@@ -131,7 +134,7 @@ export class SpecialCommissionController {
       return HttpResponse.ok(
         res,
         "External evaluator assignments loaded",
-        await this.service.listAssignments(auth.userId)
+        (await this.service.listAssignments(auth.userId)).filter(member => member.origin === auth.origin)
       )
     } catch (error) {
       this.handleError(res, error)
@@ -151,7 +154,7 @@ export class SpecialCommissionController {
         memberId,
         req.body as RespondSpecialCommissionInvitationDto
       )
-      return HttpResponse.ok(res, "Special commission invitation answered", result)
+      return HttpResponse.ok(res, "Special commission invitation answered", result.filter(member => member.origin === auth.origin))
     } catch (error) {
       this.handleError(res, error)
     }

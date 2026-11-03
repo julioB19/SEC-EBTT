@@ -22,6 +22,8 @@ export function DocenteNavLinks() {
           Consultar processos
         </Link>
 
+        <Link href="/avaliador" className={desktopLinkClass}>Minhas avaliações</Link>
+
         <Link
           href="/docente/processos/abrir"
           className="rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-wide
@@ -66,6 +68,8 @@ export function DocenteNavLinks() {
           >
             Consultar processos
           </Link>
+
+          <Link href="/avaliador" className="block px-4 py-2.5 text-sm" onClick={() => setOpen(false)}>Minhas avaliações</Link>
 
           <Link
             href="/docente/processos/abrir"

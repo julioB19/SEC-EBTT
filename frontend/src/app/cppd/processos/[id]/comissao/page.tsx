@@ -1,4 +1,13 @@
 "use client"
+
+import ProcessSteps from "@/components/ProcessSteps"
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+import ActionButton from "@/components/ui/ActionButton"
+import { FormSelect } from "@/components/ui/FormControls"
+import { FormTextarea } from "@/components/ui/FormControls"
+import { formatProcessTypeLabel } from "@/utils/processTypeLabels"
 import CaseCompliancePanel from "@/components/CaseCompliancePanel";
 
 import Link from "next/link"
@@ -83,6 +92,20 @@ interface ApiResponse<T> {
 const inputClass =
   "mt-1 w-full rounded-md border border-[var(--border-subtle)] bg-[var(--surface-bg)] px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--btn-primary-bg)]"
 
+function memberRoleLabel(role: MemberRole) {
+  return { PRESIDENT: "Presidente", MEMBER: "Membro", PRIMARY: "Titular", SUBSTITUTE: "Suplente" }[role]
+}
+
+function processStageLabel(status: string) {
+  const labels: Record<string, string> = {
+    DRAFT: "Rascunho", DOCUMENTATION_PENDING: "Documentação pendente", SUBMITTED: "Submetido",
+    UNDER_REVIEW: "Em análise", AWAITING_EVALUATOR_ACCEPTANCE: "Aguardando aceite dos avaliadores",
+    AWAITING_ORDINANCE: "Aguardando portaria", IN_EVALUATION: "Em avaliação", RETURNED: "Devolvido",
+    APPROVED: "Deferido", REJECTED: "Indeferido", FINALIZED: "Finalizado"
+  }
+  return labels[status] ?? "Em andamento"
+}
+
 function acceptanceLabel(status: AcceptanceStatus) {
   if (status === "ACCEPTED") return "Convite aceito"
   if (status === "DECLINED") return "Convite recusado"
@@ -118,14 +141,15 @@ export default function SpecialCommissionPage() {
   const [data, setData] = useState<CommissionData | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
+  const [message, setMessage] = useFeedbackState<string | null>(null, "auto")
   const [ordinance, setOrdinance] = useState("")
   const [ordinanceDate, setOrdinanceDate] = useState("")
   const [memberEmail, setMemberEmail] = useState("")
   const [memberOrigin, setMemberOrigin] = useState<"INTERNAL" | "EXTERNAL">("EXTERNAL")
   const [memberRole, setMemberRole] = useState<MemberRole>("MEMBER")
   const [decisionOpinion, setDecisionOpinion] = useState("")
+  const [decisionError, setDecisionError] = useState<string | null>(null)
   const [pendingDecision, setPendingDecision] = useState<"APPROVED" | "REJECTED" | null>(null)
 
   const applyResponse = useCallback((payload: ApiResponse<CommissionData> | null) => {
@@ -159,7 +183,7 @@ export default function SpecialCommissionPage() {
     if (Number.isInteger(processId) && processId > 0) load()
   }, [load, processId])
 
-  async function mutate(url: string, init: RequestInit, successMessage: string) {
+  async function mutate(url: string, init: RequestInit, successMessage: string, onFailure?: (message: string) => void) {
     setBusy(true)
     setError(null)
     setMessage(null)
@@ -171,13 +195,17 @@ export default function SpecialCommissionPage() {
       })
       const payload = (await response.json().catch(() => null)) as ApiResponse<CommissionData> | null
       if (!response.ok || !applyResponse(payload)) {
-        setError(payload?.message ?? "Não foi possível concluir a operação.")
+        const failureMessage = payload?.message ?? "Não foi possível concluir a operação."
+        setError(failureMessage)
+        onFailure?.(failureMessage)
         return false
       }
       setMessage(successMessage)
       return true
     } catch {
-      setError("Não foi possível concluir a operação.")
+      const failureMessage = "Não foi possível concluir a operação. Verifique sua conexão e tente novamente."
+      setError(failureMessage)
+      onFailure?.(failureMessage)
       return false
     } finally {
       setBusy(false)
@@ -226,11 +254,16 @@ export default function SpecialCommissionPage() {
     )
   }
 
+  function requestDecision(decision: "APPROVED" | "REJECTED") {
+    setDecisionError(null)
+    setPendingDecision(decision)
+  }
+
   async function finalizeDecision() {
-    if (!pendingDecision) return
+    if (!pendingDecision || busy) return
+    setDecisionError(null)
     if (!decisionOpinion.trim()) {
-      setError("Informe o parecer consolidado da CPPD.")
-      setPendingDecision(null)
+      setDecisionError("Informe o parecer consolidado da CPPD.")
       return
     }
     const decision = pendingDecision
@@ -242,10 +275,13 @@ export default function SpecialCommissionPage() {
       },
       decision === "APPROVED"
         ? "Decisão de deferimento registrada."
-        : "Decisão de indeferimento registrada."
+        : "Decisão de indeferimento registrada.",
+      setDecisionError
     )
-    if (saved) setDecisionOpinion("")
-    setPendingDecision(null)
+    if (saved) {
+      setDecisionOpinion("")
+      setPendingDecision(null)
+    }
   }
 
   if (loading) {
@@ -256,9 +292,7 @@ export default function SpecialCommissionPage() {
     return (
       <div className="px-4 py-8">
         <p className="text-sm text-[var(--state-danger-text)]">{error ?? "Comissão indisponível."}</p>
-        <Link href="/cppd/processos" className="mt-4 inline-block text-sm font-semibold underline">
-          Voltar para processos
-        </Link>
+        <></>
       </div>
     )
   }
@@ -277,8 +311,9 @@ export default function SpecialCommissionPage() {
         }
         confirmText={pendingDecision === "APPROVED" ? "Deferir" : "Indeferir"}
         loading={busy}
+        error={decisionError}
         onConfirm={finalizeDecision}
-        onCancel={() => setPendingDecision(null)}
+        onCancel={() => { if (!busy) setPendingDecision(null) }}
       />
       <div className="mx-auto max-w-6xl space-y-5 px-4 py-6 md:px-6 lg:px-8">
         <header className="flex flex-wrap items-start justify-between gap-3">
@@ -288,16 +323,25 @@ export default function SpecialCommissionPage() {
             </Link>
             <h1 className="mt-1 text-2xl font-semibold text-[var(--text-primary)]">Comissão especial</h1>
             <p className="text-sm text-[var(--text-secondary)]">
-              Processo #{data.process.idProcess} · {data.process.processTypeName} · {data.process.teacherName}
+              Processo #{data.process.idProcess} · {formatProcessTypeLabel(undefined, data.process.processTypeName)} · {data.process.teacherName}
             </p>
           </div>
           <span className="rounded-full border border-[var(--border-subtle)] px-3 py-1 text-xs font-semibold">
             {data.commission ? commissionStatusLabel(data.commission.status) : "Não criada"}
           </span>
         </header>
+<ProcessSteps steps={data.commission?.status === "DRAFT" || !data.commission ? [
+ { title: "Registrar a portaria", description: "Informe o ato que institui a comissão e sua data." },
+ { title: "Compor a comissão", description: "Adicione os membros elegíveis e acompanhe seus aceites." },
+ { title: "Ativar a avaliação", description: "Após todos os aceites, ative a comissão no final da tela." }
+] : [
+ { title: "Consultar os pareceres", description: "Expanda os cards para revisar os resultados e a fundamentação de cada avaliador." },
+ { title: "Conferir os documentos", description: "Gere os PDFs disponíveis, receba as versões assinadas e registre sua conferência." },
+ { title: "Concluir a etapa", description: "Use o último bloco para concluir a comissão ou registrar a decisão da CPPD, conforme a situação." }
+]} />
 
-        {error && <p className="text-sm text-[var(--state-danger-text)]">{error}</p>}
-        {message && <p className="text-sm text-[var(--state-success-text)]">{message}</p>}
+        {error && null}
+        {message && null}
 
         <section className="border-y border-[var(--border-subtle)] py-5">
           <div className="grid gap-3 text-sm sm:grid-cols-3">
@@ -311,7 +355,7 @@ export default function SpecialCommissionPage() {
             </div>
             <div>
               <span className="block text-xs text-[var(--text-secondary)]">Etapa</span>
-              {data.process.status}
+              {processStageLabel(data.process.status)}
             </div>
           </div>
         </section>
@@ -326,31 +370,31 @@ export default function SpecialCommissionPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-sm text-[var(--text-primary)]">
               Número da portaria
-              <input
+              <FormInput
                 className={inputClass}
                 value={ordinance}
                 onChange={event => setOrdinance(event.target.value)}
                 disabled={!editable || busy}
-              />
+               disabledReason={(!editable) ? "Portaria e composição só podem ser alteradas enquanto a comissão estiver em rascunho." : (busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Número da portaria" />
             </label>
             <label className="text-sm text-[var(--text-primary)]">
               Data da portaria
-              <input
+              <FormInput
                 type="date"
                 className={inputClass}
                 value={ordinanceDate}
                 onChange={event => setOrdinanceDate(event.target.value)}
                 disabled={!editable || busy}
-              />
+               disabledReason={(!editable) ? "Portaria e composição só podem ser alteradas enquanto a comissão estiver em rascunho." : (busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Data da portaria" />
             </label>
           </div>
           {editable && (
-            <button
+            <ActionButton
               disabled={busy}
               className="rounded-md bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-50"
-            >
+             disabledReason={(busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
               Salvar dados
-            </button>
+            </ActionButton>
           )}
         </form>
 
@@ -358,7 +402,7 @@ export default function SpecialCommissionPage() {
           <div>
             <h2 className="text-base font-semibold text-[var(--text-primary)]">Membros</h2>
             <p className="text-sm text-[var(--text-secondary)]">
-              O e-mail deve pertencer a um avaliador externo ativo.
+              Informe uma conta ativa: docente para membro interno ou avaliador externo aprovado para membro externo. A comissão deve ter um interno e três externos.
             </p>
           </div>
 
@@ -366,18 +410,18 @@ export default function SpecialCommissionPage() {
             <form onSubmit={addMember} className="grid items-end gap-3 sm:grid-cols-[1fr_150px_190px_auto]">
               <label className="text-sm text-[var(--text-primary)]">
                 E-mail do avaliador
-                <input
+                <FormInput
                   type="email"
                   required
                   className={inputClass}
                   value={memberEmail}
                   onChange={event => setMemberEmail(event.target.value)}
                   disabled={busy}
-                />
+                 fieldKind={"email"} disabledReason={(busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="E-mail do avaliador" />
               </label>
               <label className="text-sm text-[var(--text-primary)]">
                 Origem
-                <select
+                <FormSelect
                   className={inputClass}
                   value={memberOrigin}
                   onChange={event => {
@@ -387,86 +431,91 @@ export default function SpecialCommissionPage() {
                       setMemberRole(origin === "INTERNAL" ? "PRESIDENT" : "MEMBER")
                     }
                   }}
-                  disabled={busy || data.process.processTypeCategory !== "FULL_PROFESSOR"}
-                >
+                  disabled={busy}
+                 disabledReason={(busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Origem" >
                   <option value="EXTERNAL">Externo</option>
                   <option value="INTERNAL">Interno</option>
-                </select>
+                </FormSelect>
               </label>
               <label className="text-sm text-[var(--text-primary)]">
                 Função
-                <select
+                <FormSelect
                   className={inputClass}
                   value={memberRole}
                   onChange={event => setMemberRole(event.target.value as MemberRole)}
                   disabled={busy}
-                >
+                 disabledReason={(busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Função" >
                   <option value="PRESIDENT">Presidente</option>
                   <option value="MEMBER">Membro</option>
                   <option value="PRIMARY">Titular</option>
                   <option value="SUBSTITUTE">Suplente</option>
-                </select>
+                </FormSelect>
               </label>
-              <button
+              <ActionButton
                 disabled={busy}
                 className="h-10 rounded-md bg-[var(--btn-primary-bg)] px-4 text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-50"
-              >
+               disabledReason={(busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                 Adicionar
-              </button>
+              </ActionButton>
             </form>
           )}
 
           {data.commission?.members.length ? (
-            <div className="divide-y divide-[var(--border-subtle)] border-y border-[var(--border-subtle)]">
+            <div className="space-y-3">
               {data.commission.members.map(member => (
-                <div
+                <details
                   key={member.idSpecialCommissionMember}
-                  className="flex flex-wrap items-center justify-between gap-3 py-4"
+                  className="group rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]"
                 >
-                  <div>
-                    <p className="text-sm font-semibold text-[var(--text-primary)]">{member.name}</p>
-                    <p className="text-xs text-[var(--text-secondary)]">
-                      {member.email} · {member.origin === "INTERNAL" ? "Interno" : "Externo"} · {member.role}
-                    </p>
-                    {member.acceptanceStatus === "ACCEPTED" && data.commission?.status !== "DRAFT" && (
-                      <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                        {evaluationStatusLabel(member.evaluation?.status)}
-                        {member.evaluation?.status === "SUBMITTED" && (
-                          <>
-                            {` · ${resultLabel(member.evaluation.result)}`}
-                            {member.evaluation.recognizedPoints !== null &&
-                              ` · ${member.evaluation.recognizedPoints.toFixed(2).replace(".", ",")} pontos`}
-                          </>
-                        )}
-                      </p>
-                    )}
+                  <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 rounded-2xl p-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--input-border-focus)] [&::-webkit-details-marker]:hidden">
+                    <span className="min-w-0 space-y-1">
+                      <span className="block break-words text-sm font-semibold text-[var(--text-primary)]">{member.name}</span>
+                      <span className="block text-xs text-[var(--text-secondary)]">
+                        {member.origin === "INTERNAL" ? "Interno" : "Externo"} · {memberRoleLabel(member.role)} · {acceptanceLabel(member.acceptanceStatus)}
+                      </span>
+                      {member.acceptanceStatus === "ACCEPTED" && data.commission?.status !== "DRAFT" && (
+                        <span className="block text-xs text-[var(--text-secondary)]">
+                          {evaluationStatusLabel(member.evaluation?.status)}
+                          {member.evaluation?.status === "SUBMITTED" && (
+                            <>
+                              {` · ${resultLabel(member.evaluation.result)}`}
+                              {member.evaluation.recognizedPoints !== null &&
+                                ` · ${member.evaluation.recognizedPoints.toFixed(2).replace(".", ",")} pontos`}
+                            </>
+                          )}
+                        </span>
+                      )}
+                    </span>
+                    <span className="inline-flex shrink-0 items-center gap-2 text-xs font-medium text-[var(--text-secondary)]">
+                      <span className="group-open:hidden">Ver detalhes</span>
+                      <span className="hidden group-open:inline">Ocultar detalhes</span>
+                      <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m5 7.5 5 5 5-5"/></svg>
+                    </span>
+                  </summary>
+                  <div className="space-y-2 border-t border-[var(--border-subtle)] p-4 text-sm">
+                    <p className="break-words text-[var(--text-secondary)]">E-mail: {member.email || "Não informado"}</p>
                     {member.conflictDeclarationAt && (
-                      <p className="mt-1 text-xs text-[var(--state-success-text)]">
+                      <p className="text-xs text-[var(--state-success-text)]">
                         Ausência de conflito declarada em {new Date(member.conflictDeclarationAt).toLocaleString("pt-BR")}
                       </p>
                     )}
                     {member.acceptanceStatus === "DECLINED" && member.responseReason && (
-                      <p className="mt-1 text-xs text-[var(--state-danger-text)]">
+                      <p className="text-xs text-[var(--state-danger-text)]">
                         Motivo da recusa: {member.responseReason}
                       </p>
                     )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-medium text-[var(--text-secondary)]">
-                      {acceptanceLabel(member.acceptanceStatus)}
-                    </span>
                     {editable && (
-                      <button
+                      <ActionButton
                         type="button"
                         onClick={() => removeMember(member.idSpecialCommissionMember)}
                         disabled={busy}
                         className="text-xs font-semibold text-[var(--state-danger-text)] hover:underline disabled:opacity-50"
-                      >
+                       disabledReason={(busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                         Remover
-                      </button>
+                      </ActionButton>
                     )}
                   </div>
-                </div>
+                </details>
               ))}
             </div>
           ) : (
@@ -497,21 +546,31 @@ export default function SpecialCommissionPage() {
               </div>
 
               {data.commission.consolidation.opinions.length > 0 ? (
-                <div className="divide-y divide-[var(--border-subtle)] border-y border-[var(--border-subtle)]">
+                <div className="space-y-3">
                   {data.commission.consolidation.opinions.map(opinion => (
-                    <article key={opinion.memberId} className="space-y-2 py-4">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <h3 className="text-sm font-semibold text-[var(--text-primary)]">{opinion.evaluatorName}</h3>
-                        <span className="text-xs font-semibold text-[var(--text-secondary)]">
-                          {resultLabel(opinion.result)}
-                          {opinion.recognizedPoints !== null &&
-                            ` · ${opinion.recognizedPoints.toFixed(2).replace(".", ",")} pontos`}
+                    <details key={opinion.memberId} className="group rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]">
+                      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 rounded-2xl p-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--input-border-focus)] [&::-webkit-details-marker]:hidden">
+                        <span className="min-w-0 space-y-1">
+                          <span className="block break-words text-sm font-semibold text-[var(--text-primary)]">{opinion.evaluatorName}</span>
+                          <span className="block text-xs font-semibold text-[var(--text-secondary)]">
+                            {resultLabel(opinion.result)}
+                            {opinion.recognizedPoints !== null &&
+                              ` · ${opinion.recognizedPoints.toFixed(2).replace(".", ",")} pontos`}
+                          </span>
                         </span>
+                        <span className="inline-flex shrink-0 items-center gap-2 text-xs font-medium text-[var(--text-secondary)]">
+                          <span className="group-open:hidden">Ver parecer</span>
+                          <span className="hidden group-open:inline">Ocultar parecer</span>
+                          <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m5 7.5 5 5 5-5"/></svg>
+                        </span>
+                      </summary>
+                      <div className="border-t border-[var(--border-subtle)] p-4">
+                        <h3 className="mb-2 text-sm font-semibold text-[var(--text-primary)]">Parecer individual</h3>
+                        <p className="whitespace-pre-wrap break-words text-sm leading-6 text-[var(--text-secondary)]">
+                          {opinion.opinionText || "Parecer não informado."}
+                        </p>
                       </div>
-                      <p className="whitespace-pre-wrap text-sm leading-6 text-[var(--text-secondary)]">
-                        {opinion.opinionText || "Parecer não informado."}
-                      </p>
-                    </article>
+                    </details>
                   ))}
                 </div>
               ) : (
@@ -520,80 +579,6 @@ export default function SpecialCommissionPage() {
                 </p>
               )}
 
-              {data.commission.status === "ACTIVE" && (
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => changeStatus("COMPLETED")}
-                    disabled={busy || !data.commission.consolidation.allSubmitted}
-                    title={
-                      data.commission.consolidation.allSubmitted
-                        ? "Concluir comissão"
-                        : "Aguarde o envio de todas as avaliações"
-                    }
-                    className="rounded-md bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-semibold text-[var(--btn-primary-text)] disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Concluir comissão
-                  </button>
-                </div>
-              )}
-
-              {data.commission.status === "COMPLETED" && data.process.status === "UNDER_REVIEW" && (
-                <div className="space-y-4 border-t border-[var(--border-subtle)] pt-5">
-                  <div>
-                    <h3 className="text-sm font-semibold text-[var(--text-primary)]">Decisão da CPPD</h3>
-                    <p className="text-sm text-[var(--text-secondary)]">
-                      Registre a conclusão institucional baseada nos pareceres individuais.
-                    </p>
-                  </div>
-                  <label className="block text-sm font-medium text-[var(--text-primary)]">
-                    Parecer consolidado
-                    <textarea
-                      value={decisionOpinion}
-                      maxLength={20000}
-                      onChange={event => setDecisionOpinion(event.target.value)}
-                      disabled={busy}
-                      className={`${inputClass} min-h-36 resize-y`}
-                    />
-                  </label>
-                  <div className="flex flex-wrap justify-end gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setPendingDecision("REJECTED")}
-                      disabled={busy || !decisionOpinion.trim()}
-                      className="rounded-md border border-[var(--btn-secondary-border)] px-4 py-2 text-sm font-semibold text-[var(--btn-secondary-text)] disabled:opacity-50"
-                    >
-                      Indeferir
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPendingDecision("APPROVED")}
-                      disabled={busy || !decisionOpinion.trim()}
-                      className="rounded-md bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-50"
-                    >
-                      Deferir
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {data.commission.status === "COMPLETED" && data.process.status !== "UNDER_REVIEW" && (
-                <div className="border-t border-[var(--border-subtle)] pt-5">
-                  <h3 className="text-sm font-semibold text-[var(--text-primary)]">Decisão da CPPD</h3>
-                  <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                    {data.process.status === "APPROVED"
-                      ? "Processo deferido."
-                      : "Processo indeferido."}
-                    {data.process.finalPoints !== null &&
-                      ` Pontuação consolidada: ${data.process.finalPoints.toFixed(2).replace(".", ",")}.`}
-                  </p>
-                  {data.process.evaluationOpinion && (
-                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--text-secondary)]">
-                      {data.process.evaluationOpinion}
-                    </p>
-                  )}
-                </div>
-              )}
             </section>
           )}
 
@@ -604,23 +589,109 @@ export default function SpecialCommissionPage() {
 
         {data.commission?.status === "DRAFT" && (
           <div className="flex flex-wrap justify-end gap-3 border-t border-[var(--border-subtle)] pt-5">
-            <button
+            <ActionButton
               type="button"
               onClick={() => changeStatus("CANCELED")}
               disabled={busy}
               className="rounded-md border border-[var(--btn-secondary-border)] px-4 py-2 text-sm font-semibold text-[var(--btn-secondary-text)] disabled:opacity-50"
-            >
+             disabledReason={(busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
               Cancelar comissão
-            </button>
-            <button
+            </ActionButton>
+            <ActionButton
               type="button"
               onClick={() => changeStatus("ACTIVE")}
               disabled={busy}
               className="rounded-md bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-50"
-            >
+             disabledReason={(busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
               Ativar comissão
-            </button>
+            </ActionButton>
           </div>
+        )}
+        {data.commission?.status === "ACTIVE" && (
+          <section aria-labelledby="commission-completion-title" className="flex flex-col gap-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 space-y-2">
+              <h2 id="commission-completion-title" className="text-base font-semibold text-[var(--text-primary)]">Conclusão da comissão</h2>
+              <p className="max-w-2xl text-sm text-[var(--text-secondary)]">
+                Após conferir os pareceres, conclua esta etapa para encaminhar o processo à análise da CPPD.
+              </p>
+              <p id="commission-completion-hint" className="text-xs text-[var(--text-secondary)]">
+                {busy
+                  ? "Aguarde a operação em andamento terminar."
+                  : data.commission.consolidation.allSubmitted
+                    ? "Todos os pareceres foram enviados. Ao concluir, as avaliações individuais deixam de aceitar alterações."
+                    : `Aguardando ${data.commission.consolidation.pendingCount} de ${data.commission.consolidation.totalMembers} pareceres. O botão será liberado após o envio de todas as avaliações.`}
+              </p>
+            </div>
+            <span className="inline-flex shrink-0 self-start sm:self-center" title={busy ? "Aguarde a operação em andamento terminar." : !data.commission.consolidation.allSubmitted ? "Aguarde o envio de todas as avaliações." : undefined}>
+              <ActionButton
+                type="button"
+                onClick={() => changeStatus("COMPLETED")}
+                disabled={busy || !data.commission.consolidation.allSubmitted}
+                aria-describedby="commission-completion-hint"
+                className="rounded-full bg-[var(--btn-primary-bg)] px-5 py-2 text-sm font-semibold text-[var(--btn-primary-text)] disabled:pointer-events-none disabled:opacity-50"
+               disabledReason={(busy) ? "Aguarde a operação em andamento terminar." : (!data.commission.consolidation.allSubmitted) ? "Aguarde o envio dos quatro pareceres individuais da comissão." : "Este controle está indisponível na etapa atual."} >
+                Concluir comissão
+              </ActionButton>
+            </span>
+          </section>
+        )}
+
+        {data.commission?.status === "COMPLETED" && data.process.status === "UNDER_REVIEW" && (
+          <section aria-labelledby="cppd-decision-title" className="space-y-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5">
+            <div>
+              <h2 id="cppd-decision-title" className="text-base font-semibold text-[var(--text-primary)]">Decisão da CPPD</h2>
+              <p className="text-sm text-[var(--text-secondary)]">
+                Registre a conclusão institucional baseada nos pareceres individuais.
+              </p>
+            </div>
+            {decisionError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{decisionError}</p>}
+            <label className="block text-sm font-medium text-[var(--text-primary)]">
+              Parecer consolidado
+              <FormTextarea
+                value={decisionOpinion}
+                maxLength={20000}
+                onChange={event => setDecisionOpinion(event.target.value)}
+                disabled={busy}
+                className={`${inputClass} min-h-36 resize-y`}
+               disabledReason={(busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Parecer consolidado" />
+            </label>
+            <div className="flex flex-wrap justify-end gap-3">
+              <ActionButton
+                type="button"
+                onClick={() => requestDecision("REJECTED")}
+                disabled={busy || !decisionOpinion.trim()}
+                className="rounded-md border border-[var(--btn-secondary-border)] px-4 py-2 text-sm font-semibold text-[var(--btn-secondary-text)] disabled:opacity-50"
+               disabledReason={(busy) ? "Aguarde a operação em andamento terminar." : (!decisionOpinion.trim()) ? "Preencha o parecer consolidado da CPPD antes de registrar a decisão." : "Este controle está indisponível na etapa atual."} >
+                Indeferir
+              </ActionButton>
+              <ActionButton
+                type="button"
+                onClick={() => requestDecision("APPROVED")}
+                disabled={busy || !decisionOpinion.trim()}
+                className="rounded-md bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-50"
+               disabledReason={(busy) ? "Aguarde a operação em andamento terminar." : (!decisionOpinion.trim()) ? "Preencha o parecer consolidado da CPPD antes de registrar a decisão." : "Este controle está indisponível na etapa atual."} >
+                Deferir
+              </ActionButton>
+            </div>
+          </section>
+        )}
+
+        {data.commission?.status === "COMPLETED" && data.process.status !== "UNDER_REVIEW" && (
+          <section aria-labelledby="cppd-decision-title" className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5">
+            <h2 id="cppd-decision-title" className="text-base font-semibold text-[var(--text-primary)]">Decisão da CPPD</h2>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              {data.process.status === "APPROVED"
+                ? "Processo deferido."
+                : "Processo indeferido."}
+              {data.process.finalPoints !== null &&
+                ` Pontuação consolidada: ${data.process.finalPoints.toFixed(2).replace(".", ",")}.`}
+            </p>
+            {data.process.evaluationOpinion && (
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--text-secondary)]">
+                {data.process.evaluationOpinion}
+              </p>
+            )}
+          </section>
         )}
       </div>
     </main>

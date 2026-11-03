@@ -1,4 +1,11 @@
 "use client"
+import { FormTextarea } from "@/components/ui/FormControls"
+
+import ProcessSteps from "@/components/ProcessSteps"
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+import ActionButton from "@/components/ui/ActionButton"
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
@@ -225,8 +232,8 @@ export default function CppdAvaliacaoPage() {
   const [loading, setLoading] = useState(true)
   const [savingItem, setSavingItem] = useState(false)
   const [generatingParecer, setGeneratingParecer] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [infoMessage, setInfoMessage] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
+  const [infoMessage, setInfoMessage] = useFeedbackState<string | null>(null, "auto")
 
   const [view, setView] = useState<ProcessEvaluationViewDto | null>(null)
   const [itemState, setItemState] = useState<ItemStateMap>({})
@@ -781,7 +788,9 @@ export default function CppdAvaliacaoPage() {
     return (
       <main className="min-h-[60vh]">
         <div className="px-4 py-8 space-y-4">
-          <p className="text-[var(--state-danger-text)] text-sm">{error}</p>
+          <h1 className="text-2xl font-semibold">Avaliação da CPPD</h1>
+          <p className="text-sm text-[var(--text-secondary)]">A avaliação ainda não está disponível. Confira a situação do processo e aguarde o envio pelo docente.</p>
+
           <button
             type="button"
             onClick={() => router.refresh()}
@@ -950,7 +959,7 @@ export default function CppdAvaliacaoPage() {
 
                   <div>
                     <label className="block text-[11px] text-[var(--text-secondary)] mb-1">Avaliação da CPPD</label>
-                    <input
+                    <FormInput
                       type="text"
                       value={localState.evaluatorPointsInput}
                       onChange={e => handleChangeEvaluatorPoints(item.idScoringItem, e.target.value)}
@@ -959,7 +968,7 @@ export default function CppdAvaliacaoPage() {
                                  text-right text-[var(--text-primary)]
                                  focus:outline-none focus:border-[var(--border-strong)]"
                       placeholder="0,00"
-                    />
+                     aria-label="Avaliação da CPPD" />
                   </div>
 
                   {cppdPointsInline !== null && !Number.isNaN(cppdPointsInline) && (
@@ -974,7 +983,7 @@ export default function CppdAvaliacaoPage() {
 
                 <div className="flex-1">
                   <label className="block text-[11px] text-[var(--text-secondary)] mb-1">Comentário (opcional)</label>
-                  <textarea
+                  <FormTextarea
                     rows={3}
                     value={localState.evaluatorCommentInput}
                     onChange={e => handleChangeEvaluatorComment(item.idScoringItem, e.target.value)}
@@ -983,7 +992,7 @@ export default function CppdAvaliacaoPage() {
                                text-[var(--text-primary)]
                                focus:outline-none focus:border-[var(--border-strong)]"
                     placeholder="Use este espaço para registrar observações sobre este item."
-                  />
+                   aria-label="Comentário (opcional)" />
                 </div>
               </div>
 
@@ -997,7 +1006,7 @@ export default function CppdAvaliacaoPage() {
                 >
                   Cancelar
                 </button>
-                <button
+                <ActionButton
                   type="button"
                   className="px-4 py-1.5 rounded-full text-[11px] font-semibold
                              bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
@@ -1005,9 +1014,9 @@ export default function CppdAvaliacaoPage() {
                              disabled:opacity-60 disabled:cursor-not-allowed"
                   onClick={() => handleSaveItem(item.idScoringItem)}
                   disabled={savingItem}
-                >
+                 disabledReason={(savingItem) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                   {savingItem ? "Salvando..." : "Salvar"}
-                </button>
+                </ActionButton>
               </div>
             </div>
           )}
@@ -1094,27 +1103,22 @@ export default function CppdAvaliacaoPage() {
               </span>
             </div>
             <div className="flex gap-2">
-              <Link
-                href="/cppd"
-                className="px-4 py-2 rounded-full border border-[var(--btn-secondary-border)]
-                           text-xs text-[var(--btn-secondary-text)]
-                           hover:bg-[var(--btn-secondary-hover-bg)] transition"
-              >
-                Voltar
-              </Link>
+              <></>
             </div>
           </div>
         </header>
+<ProcessSteps steps={[{"title":"Conferir os comprovantes","description":"Abra os documentos apresentados pelo docente e confira as atividades."},{"title":"Reconhecer a pontuação","description":"Analise os itens preenchidos, registre a pontuação e justifique as divergências."},{"title":"Preparar o parecer","description":"Após concluir todos os itens, gere a prévia para revisar a decisão."}]} />
 
         {(infoMessage || error) && (
           <div className="space-y-1">
-            {infoMessage && <p className="text-xs text-[var(--state-success-text)]">{infoMessage}</p>}
-            {error && <p className="text-xs text-[var(--state-danger-text)]">{error}</p>}
+            {infoMessage && null}
+            {error && null}
           </div>
         )}
 
         <section className="flex flex-col md:flex-row gap-4 md:items-start">
           <div className="w-full md:w-1/2 space-y-4">
+<h2 className="text-base font-semibold">1. Conferir e avaliar os itens</h2>
             {treeRoots.length === 0 && (
               <div className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl p-4 shadow-sm text-sm text-[var(--text-secondary)]">
                 Nenhum item preenchido pelo docente para avaliação.
@@ -1126,7 +1130,7 @@ export default function CppdAvaliacaoPage() {
             <div className="mt-3 bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl p-4 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-[11px] text-[var(--text-secondary)]">Pontuação total</div>
+                  <h2 className="text-base font-semibold text-[var(--text-primary)]">2. Revisar a pontuação total</h2>
 
                   <div className="mt-1 flex flex-wrap items-center gap-2">
                     <span
@@ -1159,7 +1163,7 @@ export default function CppdAvaliacaoPage() {
                 </div>
 
                 <div className="flex justify-end">
-                  <button
+                  <ActionButton
                     type="button"
                     onClick={handleGenerateParecer}
                     disabled={!evaluationProgress.allEvaluated || activeItemId !== null || generatingParecer}
@@ -1167,9 +1171,9 @@ export default function CppdAvaliacaoPage() {
                                bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                                hover:bg-[var(--btn-primary-hover-bg)]
                                disabled:opacity-60 disabled:cursor-not-allowed transition"
-                  >
-                    {generatingParecer ? "Gerando..." : "Gerar parecer"}
-                  </button>
+                   disabledReason={(!evaluationProgress.allEvaluated) ? "Conclua a análise de todos os itens de pontuação antes de gerar o parecer." : (activeItemId !== null) ? "Salve ou cancele a edição do item em andamento antes de continuar." : (generatingParecer) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
+                    {generatingParecer ? "Gerando..." : "3. Gerar parecer"}
+                  </ActionButton>
                 </div>
               </div>
             </div>

@@ -1,5 +1,8 @@
 "use client"
 
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -177,7 +180,7 @@ function buildTree(nodes: Node[], items: Item[]): TreeNode[] {
     }
   })
 
-  
+
   const cmpNode = (a: TreeNode, b: TreeNode) => {
     const cA = normalizeUpper(a.code)
     const cB = normalizeUpper(b.code)
@@ -226,7 +229,7 @@ export default function CppdScoringTableVigentePage() {
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
   const [data, setData] = useState<VigenteData | null>(null)
 
   function redirectToLogin() {
@@ -426,18 +429,10 @@ export default function CppdScoringTableVigentePage() {
           </header>
 
           <div className="bg-[var(--danger-bg)] border border-[var(--danger-border)] rounded-2xl p-6 space-y-2">
-            <p className="text-sm text-[var(--danger-text-strong)] whitespace-pre-wrap">{error}</p>
+
           </div>
 
-          <Link
-            href="/cppd"
-            className="inline-flex items-center rounded-full px-4 py-2 text-xs font-semibold
-                       border border-[var(--btn-secondary-border)]
-                       text-[var(--btn-secondary-text)]
-                       hover:bg-[var(--btn-secondary-hover-bg)] transition"
-          >
-            Voltar
-          </Link>
+          <></>
         </div>
       </main>
     )
@@ -464,15 +459,7 @@ export default function CppdScoringTableVigentePage() {
             </p>
           </div>
 
-          <Link
-            href="/cppd"
-            className="inline-flex items-center rounded-full px-4 py-2 text-xs font-semibold
-                       border border-[var(--btn-secondary-border)]
-                       text-[var(--btn-secondary-text)]
-                       hover:bg-[var(--btn-secondary-hover-bg)] transition"
-          >
-            Voltar
-          </Link>
+          <></>
         </div>
       </main>
     )
@@ -492,14 +479,7 @@ export default function CppdScoringTableVigentePage() {
           </div>
 
           <div className="flex flex-col items-end gap-2">
-            <Link
-              href="/cppd"
-              className="px-4 py-2 rounded-full border border-[var(--btn-secondary-border)]
-                         text-xs text-[var(--btn-secondary-text)]
-                         hover:bg-[var(--btn-secondary-hover-bg)] transition"
-            >
-              Voltar
-            </Link>
+            <></>
           </div>
         </header>
 

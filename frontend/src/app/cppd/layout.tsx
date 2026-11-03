@@ -1,3 +1,4 @@
+import BackButton from "@/components/ui/BackButton"
 import type { ReactNode } from "react"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
@@ -57,6 +58,7 @@ export default async function CppdLayout({ children }: { children: ReactNode }) 
       {/* CONTEÚDO */}
       <main className="flex-1 w-full">
         <div className="w-full px-4 sm:px-6 py-6">
+          <BackButton />
           {children}
         </div>
       </main>

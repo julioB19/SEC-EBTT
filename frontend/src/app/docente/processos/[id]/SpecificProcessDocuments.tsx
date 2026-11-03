@@ -1,5 +1,9 @@
 "use client"
 
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+import ActionButton from "@/components/ui/ActionButton"
+
 import { useEffect, useState } from "react"
 
 export type ProcessEvidenceFile = {
@@ -178,7 +182,7 @@ export default function SpecificProcessDocuments<TProcess>({
         <FileLink file={currentFile} />
         {editable && (
           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-            <input
+            <FormInput
               type="file"
               accept=".pdf,application/pdf"
               onChange={event => {
@@ -187,14 +191,14 @@ export default function SpecificProcessDocuments<TProcess>({
               }}
               className="min-w-0 flex-1 text-sm text-[var(--text-secondary)] file:mr-3 file:rounded-md file:border file:border-[var(--btn-secondary-border)] file:bg-[var(--surface-bg)] file:px-3 file:py-2 file:text-xs file:font-medium file:text-[var(--btn-secondary-text)]"
             />
-            <button
+            <ActionButton
               type="button"
               onClick={() => uploadDocument(kind)}
               disabled={uploading !== null || !files[kind]}
               className="shrink-0 rounded-md bg-[var(--btn-primary-bg)] px-3 py-2 text-xs font-medium text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover-bg)] disabled:opacity-50"
-            >
+             disabledReason={(uploading !== null) ? "Aguarde a operação em andamento terminar." : (!files[kind]) ? "Selecione o arquivo que deseja anexar antes de continuar." : "Este controle está indisponível na etapa atual."} >
               {uploading === kind ? "Enviando..." : currentFile ? "Substituir" : "Anexar"}
-            </button>
+            </ActionButton>
           </div>
         )}
       </div>
@@ -252,31 +256,31 @@ export default function SpecificProcessDocuments<TProcess>({
             <div className="grid md:grid-cols-3 gap-3">
               <label className="flex flex-col gap-1 text-xs text-[var(--text-secondary)]">
                 Curso
-                <input
+                <FormInput
                   value={course}
                   onChange={event => setCourse(event.target.value)}
                   disabled={!editable}
                   className="rounded-md border border-[var(--input-border)] bg-[var(--input-bg)] p-2 text-sm text-[var(--text-primary)] disabled:opacity-70"
-                />
+                 disabledReason={(!editable) ? "Os dados só podem ser alterados enquanto o processo estiver em rascunho ou devolvido." : "Este controle está indisponível na etapa atual."}  aria-label="Curso" />
               </label>
               <label className="flex flex-col gap-1 text-xs text-[var(--text-secondary)]">
                 Instituição
-                <input
+                <FormInput
                   value={institution}
                   onChange={event => setInstitution(event.target.value)}
                   disabled={!editable}
                   className="rounded-md border border-[var(--input-border)] bg-[var(--input-bg)] p-2 text-sm text-[var(--text-primary)] disabled:opacity-70"
-                />
+                 disabledReason={(!editable) ? "Os dados só podem ser alterados enquanto o processo estiver em rascunho ou devolvido." : "Este controle está indisponível na etapa atual."}  aria-label="Instituição" />
               </label>
               <label className="flex flex-col gap-1 text-xs text-[var(--text-secondary)]">
                 Conclusão
-                <input
+                <FormInput
                   type="date"
                   value={conclusionDate}
                   onChange={event => setConclusionDate(event.target.value)}
                   disabled={!editable}
                   className="rounded-md border border-[var(--input-border)] bg-[var(--input-bg)] p-2 text-sm text-[var(--text-primary)] disabled:opacity-70"
-                />
+                 disabledReason={(!editable) ? "Os dados só podem ser alterados enquanto o processo estiver em rascunho ou devolvido." : "Este controle está indisponível na etapa atual."}  aria-label="Conclusão" />
               </label>
             </div>
             <UploadControl

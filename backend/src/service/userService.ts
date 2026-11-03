@@ -1,3 +1,5 @@
+import { CampusEmailPolicyService } from "./campusEmailPolicyService"
+import { AccessError, activeRoles } from "../util/accessPolicy"
 import bcrypt from "bcryptjs"
 import { RoleName, ClassLevel } from "@prisma/client"
 import {
@@ -37,7 +39,7 @@ function toDateOrUndefined(value: any): Date | undefined {
 }
 
 export class UserService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(private readonly userRepository: UserRepository, private readonly emailPolicy = new CampusEmailPolicyService()) {}
 
   async login(dto: LoginDto): Promise<LoginResponseWithRoles> {
     const cleanCpf = onlyDigits(dto.cpf)
@@ -48,7 +50,12 @@ export class UserService {
     const ok = await bcrypt.compare(dto.password, user.passwordHash)
     if (!ok) throw new InvalidCredentials()
 
-    const roles: RoleName[] = user.roles?.map((r: any) => r.role?.name).filter(Boolean) ?? []
+    return this.issueSession(user)
+  }
+
+  issueSession(user: Parameters<typeof activeRoles>[0] & { idUser: number }): LoginResponseWithRoles {
+    const roles = activeRoles(user)
+    if (!roles.length) throw new InvalidCredentials()
     const hasMultiple = roles.length > 1
     const selectedRole = hasMultiple ? null : (roles[0] ?? null)
 
@@ -77,9 +84,10 @@ export class UserService {
     }
 
     const user = await this.userRepository.findById(decoded.userId)
-    if (!user) throw new InvalidRefreshToken()
+    if (!user || !user.active || user.deletedDate) throw new InvalidRefreshToken()
 
-    const roles: RoleName[] = user.roles?.map((r: any) => r.role?.name).filter(Boolean) ?? []
+    const roles = activeRoles(user)
+    if (!roles.length) throw new InvalidRefreshToken()
     const hasMultiple = roles.length > 1
 
     const selectedRole: RoleName | null =
@@ -114,9 +122,10 @@ export class UserService {
     }
 
     const user = await this.userRepository.findById(decoded.userId)
-    if (!user) throw new InvalidRefreshToken()
+    if (!user || !user.active || user.deletedDate) throw new InvalidRefreshToken()
 
-    const roles: RoleName[] = user.roles?.map((r: any) => r.role?.name).filter(Boolean) ?? []
+    const roles = activeRoles(user)
+    if (!roles.length) throw new InvalidRefreshToken()
     if (!roles.includes(role)) throw new InvalidRefreshToken()
 
     return {
@@ -132,6 +141,9 @@ export class UserService {
   }
 
   async createUser(dto: CreateUserDto): Promise<UserResponseDto> {
+    if (dto.roles.includes(RoleName.EXTERNAL_EVALUATOR)) throw new AccessError("Para cadastrar avaliadores externos, utilize Convites de acesso")
+    const targetCampus = await this.emailPolicy.resolveCampus(dto.email, dto.campusId ?? dto.docenteProfile?.campusId)
+    dto.email = await this.emailPolicy.requireAllowed(dto.email, targetCampus.idCampus)
     const cleanCpf = dto.cpf ? onlyDigits(dto.cpf) : null
     const normalizedEmail = dto.email.trim().toLowerCase()
     const [existingByCpf, existingByEmail] = await Promise.all([
@@ -149,12 +161,10 @@ export class UserService {
       throw new Error('DocenteProfile é obrigatório quando roles inclui "DOCENTE"')
     }
 
-    const isExternalEvaluator = dto.roles.includes(RoleName.EXTERNAL_EVALUATOR)
-    const canCompleteCredentialsByEmail = dto.roles.length === 1 && isExternalEvaluator
-    if (!cleanCpf && !canCompleteCredentialsByEmail) {
+    if (!cleanCpf) {
       throw new Error("CPF é obrigatório para este tipo de usuário")
     }
-    if (!dto.password && !canCompleteCredentialsByEmail) {
+    if (!dto.password) {
       throw new Error("Senha provisória é obrigatória para este tipo de usuário")
     }
 
@@ -163,6 +173,7 @@ export class UserService {
     try {
       const created = await this.userRepository.createWithRolesAndDocente({
         name: dto.name,
+        campusId: targetCampus.idCampus,
         email: normalizedEmail,
         phone: dto.phone ?? null,
         city: dto.city ?? null,
@@ -172,6 +183,7 @@ export class UserService {
         roles: dto.roles,
         docenteProfile: dto.docenteProfile
           ? {
+              campusId: targetCampus.idCampus,
               siape: dto.docenteProfile.siape,
               classLevel: dto.docenteProfile.classLevel,
               startInterstice:
@@ -186,12 +198,6 @@ export class UserService {
               division: dto.docenteProfile.division ?? null,
               role: dto.docenteProfile.role ?? null,
               immediateSupervisor: dto.docenteProfile.immediateSupervisor ?? null
-            }
-          : undefined,
-        externalEvaluatorProfile: isExternalEvaluator
-          ? {
-              title: dto.externalEvaluatorProfile?.title ?? null,
-              institution: dto.externalEvaluatorProfile?.institution ?? null
             }
           : undefined
       })
@@ -219,6 +225,10 @@ export class UserService {
   async updateUser(userId: number, dto: UpdateUserDto): Promise<UserResponseDto> {
     const current = await this.userRepository.findById(userId)
     if (!current) throw new UserNotFound()
+    if (dto.roles?.includes(RoleName.EXTERNAL_EVALUATOR) && (!current.externalEvaluator?.active || current.externalEvaluator.deletedDate)) {
+      throw new AccessError("O avaliador externo precisa concluir o convite e ser aprovado antes de receber este perfil")
+    }
+    if (dto.campusId !== undefined || (dto.email && dto.email.trim().toLowerCase() !== current.email.toLowerCase())) dto.email = await this.emailPolicy.requireAllowed(dto.email ?? current.email, dto.campusId ?? current.campusId ?? current.docente?.campusId)
 
     const wantsDocente = dto.roles?.includes("DOCENTE" as RoleName) ?? false
     const hasDocente = Boolean(current.docente)
@@ -243,6 +253,7 @@ export class UserService {
 
     const updated = await this.userRepository.updateWithRolesAndDocente(userId, {
       name: dto.name,
+      campusId: dto.campusId,
       email: dto.email,
       phone: dto.phone ?? undefined,
       city: dto.city ?? undefined,
@@ -289,6 +300,7 @@ export class UserService {
   async updateOwnDocenteProfile(authUserId: number, dto: UpdateMyDocenteProfileDto): Promise<UserResponseDto> {
     const current = await this.userRepository.findById(authUserId)
     if (!current) throw new UserNotFound()
+    if (dto.email && dto.email.trim().toLowerCase() !== current.email.toLowerCase()) dto.email = await this.emailPolicy.requireAllowed(dto.email, current.campusId ?? current.docente?.campusId)
 
     const updated = await this.userRepository.updateWithRolesAndDocente(authUserId, {
       name: dto.name,
@@ -324,6 +336,7 @@ export class UserService {
   async updateOwnProfile(authUserId: number, dto: UpdateMyDocenteProfileDto): Promise<UserResponseDto> {
     const current = await this.userRepository.findById(authUserId)
     if (!current) throw new UserNotFound()
+    if (dto.email && dto.email.trim().toLowerCase() !== current.email.toLowerCase()) dto.email = await this.emailPolicy.requireAllowed(dto.email, current.campusId ?? current.docente?.campusId)
 
     if (!current.docente && dto.docenteProfile) {
       throw new Error("Apenas DOCENTE pode editar docenteProfile")
@@ -368,6 +381,7 @@ export class UserService {
   async updateDocenteLimitedByCppd(userId: number, dto: UpdateDocenteByCppdDto): Promise<UserResponseDto> {
     const current = await this.userRepository.findById(userId)
     if (!current) throw new UserNotFound()
+    if (dto.email && dto.email.trim().toLowerCase() !== current.email.toLowerCase()) dto.email = await this.emailPolicy.requireAllowed(dto.email, current.campusId ?? current.docente?.campusId)
     if (!current.docente) throw new UserNotFound()
 
     const updated = await this.userRepository.updateWithRolesAndDocente(userId, {
@@ -394,6 +408,9 @@ export class UserService {
   async setUserRoles(userId: number, roles: RoleName[]): Promise<UserResponseDto> {
     const current = await this.userRepository.findById(userId)
     if (!current) throw new UserNotFound()
+    if (roles.includes(RoleName.EXTERNAL_EVALUATOR) && (!current.externalEvaluator?.active || current.externalEvaluator.deletedDate)) {
+      throw new AccessError("O avaliador externo precisa concluir o convite e ser aprovado antes de receber este perfil")
+    }
 
     const updated = await this.userRepository.updateWithRolesAndDocente(userId, {
       roles

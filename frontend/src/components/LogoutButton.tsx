@@ -1,5 +1,8 @@
 "use client"
 
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import ActionButton from "@/components/ui/ActionButton"
+
 import { useState } from "react"
 
 export function LogoutButton() {
@@ -21,7 +24,7 @@ export function LogoutButton() {
   }
 
   return (
-    <button
+    <ActionButton
       type="button"
       onClick={onClick}
       disabled={loading}
@@ -34,8 +37,8 @@ export function LogoutButton() {
         transition
       "
       title="Sair"
-    >
+     disabledReason={(loading) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
       {loading ? "Saindo..." : "Sair"}
-    </button>
+    </ActionButton>
   )
 }

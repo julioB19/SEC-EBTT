@@ -12,6 +12,13 @@ describe("API HTTP - cadastro e manutenção de usuários", () => {
 
   beforeAll(async () => {
     process.env.DATABASE_URL = TEST_DATABASE_URL
+    const { prisma: fixtureDb } = await import("../../src/infra/prismaClient")
+    const fixtureCampus = await fixtureDb.campus.findFirstOrThrow({ where: { acronym: "SM" } })
+    await fixtureDb.campusEmailDomain.upsert({
+      where: { campusId_domain: { campusId: fixtureCampus.idCampus, domain: "iffar.edu.br" } },
+      create: { campusId: fixtureCampus.idCampus, domain: "iffar.edu.br", includeSubdomains: true },
+      update: { active: true, includeSubdomains: true }
+    })
     process.env.JWT_ACCESS_SECRET = "integration-access-secret"
     process.env.JWT_REFRESH_SECRET = "integration-refresh-secret"
     process.env.JWT_ACCESS_EXPIRATION = "1h"
@@ -44,6 +51,12 @@ describe("API HTTP - cadastro e manutenção de usuários", () => {
     const headers: Record<string, string> = {}
     if (options.token) headers.Authorization = `Bearer ${options.token}`
     if (options.body !== undefined) headers["Content-Type"] = "application/json"
+    // Os cadastros internos devem selecionar o campus, como no formulário real.
+    if (path === "/users" && options.method === "POST" && options.body) {
+      const { prisma } = await import("../../src/infra/prismaClient")
+      const campus = await prisma.campus.findFirstOrThrow({ where: { acronym: "SM" } })
+      options = { ...options, body: { campusId: campus.idCampus, ...(options.body as Record<string, unknown>) } }
+    }
     const response = await fetch(`${baseUrl}${path}`, {
       method: options.method ?? "GET",
       headers,
@@ -62,15 +75,18 @@ describe("API HTTP - cadastro e manutenção de usuários", () => {
   it("permite ao docente registrar-se e ao administrador removê-lo", async () => {
     const runId = `${Date.now()}`.slice(-8)
     const cpf = validCpf(Number(runId) + 601)
+    const campuses = await request("/access/campus-policy/campuses", { token: adminToken })
+    const registrationCampusId = campuses.data.data.find((campus: any) => campus.acronym === "SM").idCampus
     const body = {
       name: "Docente Cadastro Público",
-      email: `cadastro.publico.${runId}@example.com`,
+      email: `cadastro.publico.${runId}@iffar.edu.br`,
       cpf,
       phone: "55999994444",
       city: "Jaguari",
       uf: "RS",
       password: "Integration@123456",
       docenteProfile: {
+        campusId: registrationCampusId,
         siape: `86${runId.slice(-5)}601`,
         classLevel: "B1",
         startInterstice: "2025-01-01",
@@ -103,7 +119,7 @@ describe("API HTTP - cadastro e manutenção de usuários", () => {
     const runId = `${Date.now()}`.slice(-8)
     const cpf = validCpf(Number(runId) + 701)
     const password = "Integration@123456"
-    const email = `usuario.gerenciado.${runId}@example.com`
+    const email = `usuario.gerenciado.${runId}@iffar.edu.br`
     const created = await request("/users", {
       method: "POST",
       token: adminToken,
@@ -175,7 +191,7 @@ describe("API HTTP - cadastro e manutenção de usuários", () => {
     })
 
     const teacherLogin = await login(cpf, password)
-    const ownEmail = `perfil.proprio.${runId}@example.com`
+    const ownEmail = `perfil.proprio.${runId}@iffar.edu.br`
     const ownUpdated = await request("/users/me", {
       method: "PUT",
       token: teacherLogin.accessToken,
@@ -207,7 +223,7 @@ describe("API HTTP - cadastro e manutenção de usuários", () => {
     expect(cppdView.status).toBe(200)
     expect(cppdView.data.data.idUser).toBe(userId)
 
-    const cppdEmail = `perfil.cppd.${runId}@example.com`
+    const cppdEmail = `perfil.cppd.${runId}@iffar.edu.br`
     const cpfUpdated = validCpf(Number(runId) + 702)
     const cppdUpdated = await request(`/docentes/${userId}/cppd`, {
       method: "PUT",
@@ -228,23 +244,18 @@ describe("API HTTP - cadastro e manutenção de usuários", () => {
     const rolesUpdated = await request(`/users/${userId}/roles`, {
       method: "PATCH",
       token: adminToken,
-      body: { roles: ["DOCENTE", "EXTERNAL_EVALUATOR"] },
+      body: { roles: ["DOCENTE", "CPPD_MEMBER"] },
     })
     expect(rolesUpdated.status).toBe(200)
     expect(rolesUpdated.data.data.roles).toEqual(
-      expect.arrayContaining(["DOCENTE", "EXTERNAL_EVALUATOR"]),
+      expect.arrayContaining(["DOCENTE", "CPPD_MEMBER"]),
     )
-    expect(rolesUpdated.data.data.externalEvaluatorProfile).toMatchObject({ active: true })
 
     const adminDocenteUpdated = await request(`/docentes/${userId}/admin`, {
       method: "PUT",
       token: adminToken,
       body: {
         active: true,
-        externalEvaluatorProfile: {
-          title: "Doutor",
-          institution: "Instituição Atualizada",
-        },
         docenteProfile: {
           classLevel: "B2",
           startInterstice: "2026-01-01",
@@ -254,7 +265,6 @@ describe("API HTTP - cadastro e manutenção de usuários", () => {
     expect(adminDocenteUpdated.status).toBe(200)
     expect(adminDocenteUpdated.data.data).toMatchObject({
       docenteProfile: { classLevel: "B2" },
-      externalEvaluatorProfile: { title: "Doutor", institution: "Instituição Atualizada" },
     })
 
     const multiRoleLogin = await login(cpfUpdated, password)

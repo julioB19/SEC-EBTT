@@ -1,5 +1,10 @@
 "use client"
 
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+import ActionButton from "@/components/ui/ActionButton"
+
 import { useEffect, useMemo, useState, use } from "react"
 import { useRouter } from "next/navigation"
 import ConfirmModal from "@/components/ui/ConfirmModal"
@@ -80,8 +85,8 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
   const [inviting, setInviting] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  const [err, setErr] = useState<string | null>(null)
-  const [ok, setOk] = useState<string | null>(null)
+  const [err, setErr] = useFeedbackState<string | null>(null, "error")
+  const [ok, setOk] = useFeedbackState<string | null>(null, "success")
 
   const [user, setUser] = useState<UserDetail | null>(null)
 
@@ -331,22 +336,14 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
         <header className="space-y-3">
           <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Editar usuário</h1>
 
-          <button
-            type="button"
-            onClick={() => router.push("/admin/usuarios")}
-            className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
-                               bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
-                               hover:bg-[var(--btn-primary-hover-bg)] transition-[background] disabled:opacity-60"
-          >
-            Voltar
-          </button>
+
         </header>
 
         {loading && <p className="text-sm text-[var(--text-secondary)]">Carregando...</p>}
 
-        {err && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{err}</div>}
+        {err && null}
         {ok && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">{ok}</div>
+          null
         )}
 
         {!loading && user && (
@@ -361,62 +358,62 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     Nome
                   </label>
-                  <input className={inputClass()} value={name} onChange={e => setName(e.target.value)} />
+                  <FormInput className={inputClass()} value={name} onChange={e => setName(e.target.value)}  aria-label="Nome" />
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     Email
                   </label>
-                  <input className={inputClass()} value={email} onChange={e => setEmail(e.target.value)} />
+                  <FormInput className={inputClass()} value={email} onChange={e => setEmail(e.target.value)}  fieldKind={"email"}  aria-label="Email" />
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     CPF
                   </label>
-                  <input className={inputClass()} value={cpf} onChange={e => setCpf(e.target.value)} />
+                  <FormInput className={inputClass()} value={cpf} onChange={e => setCpf(e.target.value)}  fieldKind={"cpf"}  aria-label="CPF" />
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     Telefone
                   </label>
-                  <input className={inputClass()} value={phone} onChange={e => setPhone(e.target.value)} />
+                  <FormInput className={inputClass()} value={phone} onChange={e => setPhone(e.target.value)}  fieldKind={"phone"}  aria-label="Telefone" />
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     Cidade
                   </label>
-                  <input className={inputClass()} value={city} onChange={e => setCity(e.target.value)} />
+                  <FormInput className={inputClass()} value={city} onChange={e => setCity(e.target.value)}  aria-label="Cidade" />
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     UF
                   </label>
-                  <input
+                  <FormInput
                     className={inputClass()}
                     value={uf}
                     onChange={e => setUf(e.target.value.toUpperCase())}
                     maxLength={2}
-                  />
+                   fieldKind={"uf"}  aria-label="UF" />
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
-                <button
+                <ActionButton
                   type="button"
                   onClick={onResendInvite}
                   disabled={inviting}
                   className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
                                border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition disabled:opacity-60"
-                >
+                 disabledReason={(inviting) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                   {inviting ? "Enviando link..." : cpf.trim() ? "Redefinir senha" : "Reenviar convite"}
-                </button>
+                </ActionButton>
 
-                <button
+                <ActionButton
                   type="button"
                   onClick={onSave}
                   disabled={saving || (hasDocente && needsRequiredDocenteFields)}
@@ -428,9 +425,9 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
                       ? "Preencha SIAPE, Classe/Nível, Início do interstício e Nível de formação"
                       : ""
                   }
-                >
+                 disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : ((hasDocente && needsRequiredDocenteFields)) ? "Preencha SIAPE, classe e nível, início do interstício e formação do docente." : "Este controle está indisponível na etapa atual."} >
                   {saving ? "Salvando..." : "Salvar"}
-                </button>
+                </ActionButton>
               </div>
             </section>
 
@@ -439,39 +436,39 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
 
               <div className="grid sm:grid-cols-2 gap-3 text-sm">
                 <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={roles.includes("ADMIN")} onChange={() => toggleRole("ADMIN")} />
+                  <FormInput type="checkbox" checked={roles.includes("ADMIN")} onChange={() => toggleRole("ADMIN")}  aria-label="ADMIN" />
                   ADMIN
                 </label>
 
                 <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={roles.includes("DOCENTE")} onChange={() => toggleRole("DOCENTE")} />
+                  <FormInput type="checkbox" checked={roles.includes("DOCENTE")} onChange={() => toggleRole("DOCENTE")}  aria-label="DOCENTE" />
                   DOCENTE
                 </label>
 
                 <label className="flex items-center gap-2">
-                  <input
+                  <FormInput
                     type="checkbox"
                     checked={roles.includes("CPPD_MEMBER")}
                     onChange={() => toggleRole("CPPD_MEMBER")}
-                  />
+                   aria-label="MEMBRO DA CPPD" />
                   MEMBRO DA CPPD
                 </label>
 
                 <label className="flex items-center gap-2">
-                  <input
+                  <FormInput
                     type="checkbox"
                     checked={roles.includes("CPPD_CENTRAL")}
                     onChange={() => toggleRole("CPPD_CENTRAL")}
-                  />
+                   aria-label="CPPD CENTRAL" />
                   CPPD CENTRAL
                 </label>
 
                 <label className="flex items-center gap-2">
-                  <input
+                  <FormInput
                     type="checkbox"
                     checked={roles.includes("EXTERNAL_EVALUATOR")}
                     onChange={() => toggleRole("EXTERNAL_EVALUATOR")}
-                  />
+                   aria-label="AVALIADOR EXTERNO" />
                   AVALIADOR EXTERNO
                 </label>
               </div>
@@ -486,22 +483,22 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Titulação
                     </label>
-                    <input
+                    <FormInput
                       className={inputClass()}
                       value={evaluatorTitle}
                       onChange={e => setEvaluatorTitle(e.target.value)}
-                    />
+                     aria-label="Titulação" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Instituição
                     </label>
-                    <input
+                    <FormInput
                       className={inputClass()}
                       value={evaluatorInstitution}
                       onChange={e => setEvaluatorInstitution(e.target.value)}
-                    />
+                     aria-label="Instituição" />
                   </div>
                 </div>
               </section>
@@ -521,116 +518,116 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       SIAPE *
                     </label>
-                    <input className={inputClass()} value={siape} onChange={e => setSiape(e.target.value)} />
+                    <FormInput className={inputClass()} value={siape} onChange={e => setSiape(e.target.value)}  fieldKind={"siape"}  aria-label="SIAPE *" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Classe/Nível *
                     </label>
-                    <input className={inputClass()} value={classLevel} onChange={e => setClassLevel(e.target.value)} />
+                    <FormInput className={inputClass()} value={classLevel} onChange={e => setClassLevel(e.target.value)}  aria-label="Classe/Nível *" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Início do interstício *
                     </label>
-                    <input
+                    <FormInput
                       className={inputClass()}
                       type="date"
                       value={startInterstice}
                       onChange={e => setStartInterstice(e.target.value)}
-                    />
+                     aria-label="Início do interstício *" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Nível de formação *
                     </label>
-                    <input
+                    <FormInput
                       className={inputClass()}
                       value={educationLevel}
                       onChange={e => setEducationLevel(e.target.value)}
-                    />
+                     aria-label="Nível de formação *" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Aperfeiçoamento
                     </label>
-                    <input
+                    <FormInput
                       className={inputClass()}
                       value={improvement}
                       onChange={e => setImprovement(e.target.value)}
-                    />
+                     aria-label="Aperfeiçoamento" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Especialização
                     </label>
-                    <input
+                    <FormInput
                       className={inputClass()}
                       value={specialization}
                       onChange={e => setSpecialization(e.target.value)}
-                    />
+                     aria-label="Especialização" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Mestrado
                     </label>
-                    <input
+                    <FormInput
                       className={inputClass()}
                       value={mastersDegree}
                       onChange={e => setMastersDegree(e.target.value)}
-                    />
+                     aria-label="Mestrado" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Doutorado
                     </label>
-                    <input className={inputClass()} value={doctorate} onChange={e => setDoctorate(e.target.value)} />
+                    <FormInput className={inputClass()} value={doctorate} onChange={e => setDoctorate(e.target.value)}  aria-label="Doutorado" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Lotação
                     </label>
-                    <input className={inputClass()} value={assignment} onChange={e => setAssignment(e.target.value)} />
+                    <FormInput className={inputClass()} value={assignment} onChange={e => setAssignment(e.target.value)}  aria-label="Lotação" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Departamento
                     </label>
-                    <input className={inputClass()} value={department} onChange={e => setDepartment(e.target.value)} />
+                    <FormInput className={inputClass()} value={department} onChange={e => setDepartment(e.target.value)}  aria-label="Departamento" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Divisão
                     </label>
-                    <input className={inputClass()} value={division} onChange={e => setDivision(e.target.value)} />
+                    <FormInput className={inputClass()} value={division} onChange={e => setDivision(e.target.value)}  aria-label="Divisão" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Cargo/Função
                     </label>
-                    <input className={inputClass()} value={roleText} onChange={e => setRoleText(e.target.value)} />
+                    <FormInput className={inputClass()} value={roleText} onChange={e => setRoleText(e.target.value)}  aria-label="Cargo/Função" />
                   </div>
 
                   <div className="sm:col-span-2">
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Chefia imediata
                     </label>
-                    <input
+                    <FormInput
                       className={inputClass()}
                       value={immediateSupervisor}
                       onChange={e => setImmediateSupervisor(e.target.value)}
-                    />
+                     aria-label="Chefia imediata" />
                   </div>
                 </div>
               </section>
@@ -645,16 +642,16 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
               </div>
 
               <div className="flex justify-end">
-                <button
+                <ActionButton
                   type="button"
                   onClick={() => setConfirmDeleteOpen(true)}
                   disabled={deleting}
                   className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
                              border border-red-200 bg-white text-red-700
                              hover:bg-red-100 transition disabled:opacity-60"
-                >
+                 disabledReason={(deleting) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                   {deleting ? "Excluindo..." : "Deletar usuário"}
-                </button>
+                </ActionButton>
               </div>
             </section>
 

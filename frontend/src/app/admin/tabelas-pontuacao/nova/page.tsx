@@ -1,5 +1,11 @@
 "use client"
 
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import ActionButton from "@/components/ui/ActionButton"
+import FormInput from "@/components/ui/FormInput"
+import { FormSelect } from "@/components/ui/FormControls"
+
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -50,8 +56,8 @@ export default function NovaTabelaPontuacaoPage() {
   const [startsOn, setStartsOn] = useState("")
   const [endsOn, setEndsOn] = useState("")
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [infoMessage, setInfoMessage] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
+  const [infoMessage, setInfoMessage] = useFeedbackState<string | null>(null, "auto")
 
   async function fetchApi<T>(url: string, init?: RequestInit) {
     const res = await fetch(url, {
@@ -133,16 +139,9 @@ export default function NovaTabelaPontuacaoPage() {
           </div>
 
           <div className="flex items-center justify-between">
-            <Link
-              href="/admin/tabelas-pontuacao"
-              className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
-                         bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
-                         hover:bg-[var(--btn-primary-hover-bg)] transition-[background]"
-            >
-              Voltar
-            </Link>
+            <></>
 
-            <button
+            <ActionButton
               type="button"
               onClick={handleCreate}
               disabled={loading}
@@ -150,23 +149,19 @@ export default function NovaTabelaPontuacaoPage() {
                          bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                          hover:bg-[var(--btn-primary-hover-bg)] transition-[background]
                          disabled:opacity-60 disabled:cursor-not-allowed"
-            >
+             disabledReason={(loading) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
               {loading ? "Criando..." : "Criar"}
-            </button>
+            </ActionButton>
           </div>
         </header>
 
         {(infoMessage || error) && (
           <div className="space-y-2">
             {infoMessage && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
-                {infoMessage}
-              </div>
+              null
             )}
             {error && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                {error}
-              </div>
+              null
             )}
           </div>
         )}
@@ -174,14 +169,14 @@ export default function NovaTabelaPontuacaoPage() {
         <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 space-y-4">
           <div className="space-y-1">
             <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Nome</label>
-            <input
+            <FormInput
               className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
                          px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="Ex: Tabela EBTT 2025"
               disabled={loading}
-            />
+             disabledReason={(loading) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Nome" />
           </div>
 
           <div className="grid sm:grid-cols-2 gap-3">
@@ -189,7 +184,7 @@ export default function NovaTabelaPontuacaoPage() {
               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                 Finalidade
               </label>
-              <select
+              <FormSelect
                 className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
                            px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
                 value={purpose}
@@ -203,19 +198,19 @@ export default function NovaTabelaPontuacaoPage() {
                   }
                 }}
                 disabled={loading}
-              >
+               disabledReason={(loading) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Finalidade" >
                 <option value="PROGRESSION_PROMOTION">Progressão e promoção</option>
                 <option value="RSC">RSC</option>
                 <option value="FULL_PROFESSOR_EVALUATION">Classe Titular</option>
                 <option value="OTHER">Outra finalidade</option>
-              </select>
+              </FormSelect>
             </div>
 
             <div className="space-y-1">
               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                 Pontuação mínima
               </label>
-              <input
+              <FormInput
                 type="number"
                 min="0"
                 step="0.01"
@@ -225,7 +220,7 @@ export default function NovaTabelaPontuacaoPage() {
                 onChange={e => setMinRequiredPoints(e.target.value)}
                 placeholder="Ex: 60"
                 disabled={loading}
-              />
+               disabledReason={(loading) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Pontuação mínima" />
             </div>
           </div>
 
@@ -234,7 +229,7 @@ export default function NovaTabelaPontuacaoPage() {
               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                 Início de vigência (opcional)
               </label>
-              <input
+              <FormInput
                 type="date"
                 className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
                            px-3 py-2 text-sm text-[var(--text-primary)] outline-none
@@ -242,14 +237,14 @@ export default function NovaTabelaPontuacaoPage() {
                 value={startsOn}
                 onChange={e => setStartsOn(e.target.value)}
                 disabled={loading}
-              />
+               disabledReason={(loading) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Início de vigência (opcional)" />
             </div>
 
             <div className="space-y-1">
               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                 Fim de vigência (opcional)
               </label>
-              <input
+              <FormInput
                 type="date"
                 className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
                            px-3 py-2 text-sm text-[var(--text-primary)] outline-none
@@ -257,12 +252,12 @@ export default function NovaTabelaPontuacaoPage() {
                 value={endsOn}
                 onChange={e => setEndsOn(e.target.value)}
                 disabled={loading}
-              />
+               disabledReason={(loading) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Fim de vigência (opcional)" />
             </div>
           </div>
 
           <div className="flex justify-end pt-2">
-            <button
+            <ActionButton
               type="button"
               onClick={handleCreate}
               disabled={loading}
@@ -270,9 +265,9 @@ export default function NovaTabelaPontuacaoPage() {
                          bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                          hover:bg-[var(--btn-primary-hover-bg)] transition-[background]
                          disabled:opacity-60 disabled:cursor-not-allowed"
-            >
+             disabledReason={(loading) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
               {loading ? "Criando..." : "Criar tabela"}
-            </button>
+            </ActionButton>
           </div>
         </section>
       </div>

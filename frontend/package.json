@@ -4,10 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "test": "tsc --noEmit",
+    "test": "npm run typecheck && npm run check:ux && npm run test:interaction",
     "typecheck": "tsc --noEmit",
     "build": "next build --turbopack",
-    "start": "next start"
+    "start": "next start",
+    "test:interaction": "node --test test/*.test.cjs",
+    "check:ux": "node scripts/check-ui-patterns.cjs"
   },
   "dependencies": {
     "next": "15.5.7",
@@ -21,6 +23,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "jsdom": "^26.1.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

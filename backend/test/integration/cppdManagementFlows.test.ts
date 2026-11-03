@@ -11,6 +11,13 @@ describe("API HTTP - administração da CPPD", () => {
 
   beforeAll(async () => {
     process.env.DATABASE_URL = TEST_DATABASE_URL
+    const { prisma: fixtureDb } = await import("../../src/infra/prismaClient")
+    const fixtureCampus = await fixtureDb.campus.findFirstOrThrow({ where: { acronym: "SM" } })
+    await fixtureDb.campusEmailDomain.upsert({
+      where: { campusId_domain: { campusId: fixtureCampus.idCampus, domain: "iffar.edu.br" } },
+      create: { campusId: fixtureCampus.idCampus, domain: "iffar.edu.br", includeSubdomains: true },
+      update: { active: true, includeSubdomains: true }
+    })
     process.env.JWT_ACCESS_SECRET = "integration-access-secret"
     process.env.JWT_REFRESH_SECRET = "integration-refresh-secret"
     process.env.JWT_ACCESS_EXPIRATION = "1h"
@@ -47,6 +54,12 @@ describe("API HTTP - administração da CPPD", () => {
     const headers: Record<string, string> = {}
     if (options.token) headers.Authorization = `Bearer ${options.token}`
     if (options.body !== undefined) headers["Content-Type"] = "application/json"
+    // Os cadastros internos devem selecionar o campus, como no formulário real.
+    if (path === "/users" && options.method === "POST" && options.body) {
+      const { prisma } = await import("../../src/infra/prismaClient")
+      const campus = await prisma.campus.findFirstOrThrow({ where: { acronym: "SM" } })
+      options = { ...options, body: { campusId: campus.idCampus, ...(options.body as Record<string, unknown>) } }
+    }
     const response = await fetch(`${baseUrl}${path}`, {
       method: options.method ?? "GET",
       headers,
@@ -66,7 +79,7 @@ describe("API HTTP - administração da CPPD", () => {
       token: adminToken,
       body: {
         name: "Membro CPPD Gestão Integração",
-        email: `membro.cppd.gestao.${runId}@example.com`,
+        email: `membro.cppd.gestao.${runId}@iffar.edu.br`,
         cpf: memberCpf,
         password: "Integration@123456",
         roles: ["CPPD_MEMBER"],
@@ -81,7 +94,7 @@ describe("API HTTP - administração da CPPD", () => {
       body: {
         name: `Campus Integração ${runId}`,
         acronym,
-        cppdEmail: `cppd.${runId}@example.com`,
+        cppdEmail: `cppd.${runId}@iffar.edu.br`,
         active: true,
       },
     })
@@ -218,7 +231,7 @@ describe("API HTTP - administração da CPPD", () => {
       token: adminToken,
       body: {
         name: `Campus Integração Atualizado ${runId}`,
-        cppdEmail: `cppd.atualizada.${runId}@example.com`,
+        cppdEmail: `cppd.atualizada.${runId}@iffar.edu.br`,
         active: false,
       },
     })

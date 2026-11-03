@@ -131,6 +131,8 @@ enum IndividualEvaluationResult {
 }
 
 model User {
+  campusId Int?
+  campus Campus? @relation(fields: [campusId], references: [idCampus], onDelete: SetNull)
   idUser       Int       @id @default(autoincrement())
   name         String    @db.VarChar(120)
   email        String    @unique @db.VarChar(180)
@@ -147,6 +149,7 @@ model User {
   deletedDate  DateTime?
   updatedAt    DateTime  @updatedAt
 
+  googleIdentities             GoogleIdentity[]
   person                       Person?                       @relation(fields: [personId], references: [idPerson], onDelete: SetNull)
   roles                        UserRole[]
   docente                      DocenteProfile?
@@ -188,6 +191,10 @@ model UserRole {
 }
 
 model Campus {
+  users User[]
+  emailDomains CampusEmailDomain[]
+  accessInvitations AccessInvitation[]
+  accessAttempts AccessAttempt[]
   idCampus    Int       @id @default(autoincrement())
   name        String    @db.VarChar(120)
   acronym     String?   @unique @db.VarChar(20)
@@ -226,6 +233,9 @@ model Person {
 }
 
 model ExternalEvaluatorProfile {
+  siape               String? @db.VarChar(30)
+  evaluationCity      String? @db.VarChar(120)
+  workUnit            String? @db.VarChar(180)
   idExternalEvaluator Int       @id @default(autoincrement())
   userId              Int       @unique
   title               String?   @db.VarChar(120)
@@ -1014,4 +1024,104 @@ model RscAppeal {
 
   @@unique([processId, stage])
   @@map("rsc_appeal")
+}
+
+model GoogleIdentity {
+  id           String    @id @default(cuid())
+  provider     String    @default("GOOGLE") @db.VarChar(20)
+  subject      String    @db.VarChar(255)
+  email        String    @db.VarChar(180)
+  userId       Int
+  createdAt    DateTime  @default(now())
+  deletedDate  DateTime?
+  user         User      @relation(fields: [userId], references: [idUser], onDelete: Restrict)
+
+  @@unique([provider, subject])
+  @@unique([provider, userId])
+  @@map("google_identity")
+}
+
+enum AccessInvitationStatus {
+  PENDING
+  REVIEW
+  ACCEPTED
+  CANCELLED
+}
+
+model AccessInvitation {
+  campusId Int?
+  campus Campus? @relation(fields: [campusId], references: [idCampus], onDelete: SetNull)
+  id                    String                 @id @default(cuid())
+  email                 String                 @unique @db.VarChar(180)
+  name                  String                 @db.VarChar(120)
+  roles                 Json
+  institutionalExternal Boolean                @default(false)
+  status                AccessInvitationStatus @default(PENDING)
+  tokenHash             String?                @unique @db.VarChar(64)
+  expiresAt             DateTime
+  createdById           Int
+  userId                Int?
+  reviewedById          Int?
+  reviewedAt            DateTime?
+  deliveryError         String?                @db.VarChar(255)
+  deliveredAt           DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  deletedDate           DateTime?
+  attempts              AccessAttempt[]
+
+  @@index([status, createdAt])
+  @@map("access_invitation")
+}
+
+model AccessAttempt {
+  campusId Int?
+  campus Campus? @relation(fields: [campusId], references: [idCampus], onDelete: SetNull)
+  id                String            @id @default(cuid())
+  secretHash        String            @unique @db.VarChar(64)
+  email             String            @db.VarChar(180)
+  nonce             String            @db.VarChar(64)
+  invitationId      String?
+  userId            Int?
+  googleSubject     String?           @db.VarChar(255)
+  googleEmail       String?           @db.VarChar(180)
+  emailVerifiedAt   DateTime?
+  codeHash          String?           @db.VarChar(64)
+  codeAttempts      Int               @default(0)
+  codeSentAt        DateTime?
+  purpose           String            @default("LOGIN") @db.VarChar(20)
+  expiresAt         DateTime
+  consumedAt        DateTime?
+  createdAt         DateTime          @default(now())
+  deletedDate       DateTime?
+  invitation        AccessInvitation? @relation(fields: [invitationId], references: [id], onDelete: Restrict)
+
+  @@index([expiresAt])
+  @@map("access_attempt")
+}
+
+model AccessRateLimit {
+  key         String    @id @db.VarChar(64)
+  count       Int       @default(0)
+  expiresAt   DateTime
+  deletedDate DateTime?
+
+  @@map("access_rate_limit")
+}
+
+model CampusEmailDomain {
+  id String @id @default(cuid())
+  campusId Int
+  domain String @db.VarChar(253)
+  includeSubdomains Boolean @default(true)
+  active Boolean @default(true)
+  createdById Int?
+  updatedById Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedDate DateTime?
+  campus Campus @relation(fields: [campusId], references: [idCampus], onDelete: Restrict)
+  @@unique([campusId, domain])
+  @@index([campusId, active])
+  @@map("campus_email_domain")
 }

@@ -1,0 +1,1132 @@
+{
+  "counts": {
+    "pages": 46,
+    "inputs": 238,
+    "selects": 42,
+    "textareas": 14,
+    "blockedControls": 189,
+    "processGuides": 6
+  },
+  "sourceIssues": [],
+  "routeCoverage": [
+    {
+      "route": "/accept-invitation",
+      "states": 1
+    },
+    {
+      "route": "/acesso",
+      "states": 1
+    },
+    {
+      "route": "/admin/campi-comissoes",
+      "states": 1
+    },
+    {
+      "route": "/admin/conformidade",
+      "states": 1
+    },
+    {
+      "route": "/admin/convites",
+      "states": 1
+    },
+    {
+      "route": "/admin/emails-institucionais",
+      "states": 1
+    },
+    {
+      "route": "/admin",
+      "states": 1
+    },
+    {
+      "route": "/admin/tabelas-pontuacao/nova",
+      "states": 1
+    },
+    {
+      "route": "/admin/tabelas-pontuacao/nova/[tableId]/builder",
+      "states": 1
+    },
+    {
+      "route": "/admin/tabelas-pontuacao",
+      "states": 1
+    },
+    {
+      "route": "/admin/tabelas-pontuacao/[tableId]/mapeamento",
+      "states": 1
+    },
+    {
+      "route": "/admin/usuarios/novo",
+      "states": 1
+    },
+    {
+      "route": "/admin/usuarios",
+      "states": 1
+    },
+    {
+      "route": "/admin/usuarios/[userId]",
+      "states": 1
+    },
+    {
+      "route": "/avaliador/avaliacoes/[memberId]",
+      "states": 1
+    },
+    {
+      "route": "/avaliador",
+      "states": 1
+    },
+    {
+      "route": "/cppd/comissoes",
+      "states": 2
+    },
+    {
+      "route": "/cppd/conformidade",
+      "states": 2
+    },
+    {
+      "route": "/cppd/convites",
+      "states": 1
+    },
+    {
+      "route": "/cppd/docentes",
+      "states": 1
+    },
+    {
+      "route": "/cppd/docentes/[userId]",
+      "states": 1
+    },
+    {
+      "route": "/cppd/emails-institucionais",
+      "states": 2
+    },
+    {
+      "route": "/cppd",
+      "states": 1
+    },
+    {
+      "route": "/cppd/processos",
+      "states": 1
+    },
+    {
+      "route": "/cppd/processos/[id]/avaliacao",
+      "states": 1
+    },
+    {
+      "route": "/cppd/processos/[id]/avaliacao/visualizar",
+      "states": 1
+    },
+    {
+      "route": "/cppd/processos/[id]/comissao",
+      "states": 2
+    },
+    {
+      "route": "/cppd/processos/[id]/parecer",
+      "states": 1
+    },
+    {
+      "route": "/cppd/tabelas",
+      "states": 1
+    },
+    {
+      "route": "/cppd/usuarios",
+      "states": 1
+    },
+    {
+      "route": "/cppd/usuarios/[userId]",
+      "states": 1
+    },
+    {
+      "route": "/dashboard",
+      "states": 1
+    },
+    {
+      "route": "/docente",
+      "states": 1
+    },
+    {
+      "route": "/docente/perfil",
+      "states": 1
+    },
+    {
+      "route": "/docente/processos/abrir",
+      "states": 3
+    },
+    {
+      "route": "/docente/processos",
+      "states": 1
+    },
+    {
+      "route": "/docente/processos/[id]",
+      "states": 2
+    },
+    {
+      "route": "/docente/processos/[id]/pontuacao",
+      "states": 2
+    },
+    {
+      "route": "/forbidden",
+      "states": 1
+    },
+    {
+      "route": "/forgot-password",
+      "states": 1
+    },
+    {
+      "route": "/login",
+      "states": 1
+    },
+    {
+      "route": "/",
+      "states": 1
+    },
+    {
+      "route": "/perfil",
+      "states": 2
+    },
+    {
+      "route": "/register-professor",
+      "states": 1
+    },
+    {
+      "route": "/reset-password",
+      "states": 1
+    },
+    {
+      "route": "/select-role",
+      "states": 1
+    }
+  ],
+  "unvisited": [],
+  "manualStates": 55,
+  "manualIssues": [],
+  "observations": [
+    {
+      "actualPath": "/cppd/processos",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Processos"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/processos",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/cppd/usuarios",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "genericBlockedHints": [],
+      "headings": [
+        "Docentes"
+      ],
+      "inputs": 1,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/usuarios",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/cppd/usuarios/4",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Editar docente",
+        "Dados do usuário",
+        "Perfil docente"
+      ],
+      "inputs": 21,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/usuarios/4",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/cppd/docentes",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Docentes"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/docentes",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/cppd/docentes/4",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Editar docente"
+      ],
+      "inputs": 4,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/docentes/4",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/cppd/convites",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Convites de acesso",
+        "Novo convite",
+        "Cadastros e convites"
+      ],
+      "inputs": 4,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/convites",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/cppd/emails-institucionais",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "E-mails institucionais por campus"
+      ],
+      "inputs": 1,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/emails-institucionais",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/cppd/tabelas",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Tabela de pontuação vigente"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/tabelas",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/cppd/conformidade",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [
+        "Não foi possível concluirSelecione Administrador ou CPPD CentralErroEntendi"
+      ],
+      "headings": [
+        "Não foi possível concluir"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/conformidade",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/cppd/processos/15/comissao",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "genericBlockedHints": [],
+      "headings": [
+        "Comissão especial",
+        "Como proceder",
+        "Portaria",
+        "Membros",
+        "Consolidação das avaliações",
+        "Documentos e requisitos do processo",
+        "Decisão da CPPD"
+      ],
+      "inputs": 3,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/processos/15/comissao",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/cppd/processos/16/avaliacao",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [
+        "Não foi possível concluirEste processo ainda não está disponível para avaliação da CPPD. Ele precisa estar enviado ou em análise.ErroEntendi"
+      ],
+      "genericBlockedHints": [],
+      "headings": [
+        "Avaliação da CPPD",
+        "Não foi possível concluir"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/processos/16/avaliacao",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/cppd/processos/16/avaliacao/visualizar",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [
+        "Não foi possível concluirEste processo ainda não está disponível para consulta da CPPD. Aguarde o envio pelo docente.ErroEntendi"
+      ],
+      "genericBlockedHints": [],
+      "headings": [
+        "Consulta da avaliação",
+        "Não foi possível concluir"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/processos/16/avaliacao/visualizar",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/cppd/processos/16/parecer",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [
+        "Não foi possível concluirEste processo ainda não está disponível para avaliação da CPPD. Ele precisa estar enviado ou em análise.ErroEntendi"
+      ],
+      "genericBlockedHints": [],
+      "headings": [
+        "Parecer da CPPD",
+        "Não foi possível concluir"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/processos/16/parecer",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/cppd/processos/16/comissao",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [
+        "Não foi possível concluirEste tipo de processo não utiliza comissão especialErroEntendi"
+      ],
+      "headings": [
+        "Não foi possível concluir"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/processos/16/comissao",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/forbidden",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Acesso negado"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/comissoes",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/cppd",
+      "backButtons": 0,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Módulo CPPD",
+        "Processos",
+        "Tabela de pontuação vigente",
+        "Docentes"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/perfil",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Editar perfil",
+        "Dados básicos"
+      ],
+      "inputs": 6,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/perfil",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/dashboard",
+      "backButtons": 0,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Dashboard"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/dashboard",
+      "role": "CPPD_MEMBER"
+    },
+    {
+      "actualPath": "/admin",
+      "backButtons": 0,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Módulo Administrador",
+        "Usuários",
+        "Tabelas de Pontuação"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/admin",
+      "role": "ADMIN"
+    },
+    {
+      "actualPath": "/admin/usuarios",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "genericBlockedHints": [],
+      "headings": [
+        "Usuários"
+      ],
+      "inputs": 2,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/admin/usuarios",
+      "role": "ADMIN"
+    },
+    {
+      "actualPath": "/admin/usuarios/novo",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Novo usuário",
+        "Dados",
+        "Permissões"
+      ],
+      "inputs": 12,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/admin/usuarios/novo",
+      "role": "ADMIN"
+    },
+    {
+      "actualPath": "/admin/usuarios/4",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Editar usuário",
+        "Dados",
+        "Tipo de usuário",
+        "Perfil docente",
+        "ATENÇÃO"
+      ],
+      "inputs": 24,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/admin/usuarios/4",
+      "role": "ADMIN"
+    },
+    {
+      "actualPath": "/admin/convites",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Convites de acesso",
+        "Novo convite",
+        "Cadastros e convites"
+      ],
+      "inputs": 9,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/admin/convites",
+      "role": "ADMIN"
+    },
+    {
+      "actualPath": "/admin/campi-comissoes",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "genericBlockedHints": [],
+      "headings": [
+        "Campi e comissões CPPD",
+        "Dados da comissão",
+        "Membros"
+      ],
+      "inputs": 6,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/admin/campi-comissoes",
+      "role": "ADMIN"
+    },
+    {
+      "actualPath": "/admin/conformidade",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Calendário e documentos dos processos",
+        "Feriados, férias e recessos",
+        "Versões dos modelos",
+        "Documentos obrigatórios por processo"
+      ],
+      "inputs": 12,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/admin/conformidade",
+      "role": "ADMIN"
+    },
+    {
+      "actualPath": "/admin/emails-institucionais",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "E-mails institucionais por campus"
+      ],
+      "inputs": 1,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/admin/emails-institucionais",
+      "role": "ADMIN"
+    },
+    {
+      "actualPath": "/admin/tabelas-pontuacao",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "genericBlockedHints": [],
+      "headings": [
+        "Tabelas de pontuação",
+        "Tabela EBTT 2025",
+        "Tabela oficial RSC IFFar 2025",
+        "Teste",
+        "Teste",
+        "Tabela RSC temporária para testes"
+      ],
+      "inputs": 2,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/admin/tabelas-pontuacao",
+      "role": "ADMIN"
+    },
+    {
+      "actualPath": "/admin/tabelas-pontuacao/nova",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Criar Tabela de Pontuação"
+      ],
+      "inputs": 5,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/admin/tabelas-pontuacao/nova",
+      "role": "ADMIN"
+    },
+    {
+      "actualPath": "/admin/tabelas-pontuacao/nova/2/builder",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "genericBlockedHints": [],
+      "headings": [
+        "Editor da tabela de pontuação"
+      ],
+      "inputs": 1,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/admin/tabelas-pontuacao/nova/2/builder",
+      "role": "ADMIN"
+    },
+    {
+      "actualPath": "/admin/tabelas-pontuacao/1/mapeamento",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Campos da planilha de pontuação"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/admin/tabelas-pontuacao/1/mapeamento",
+      "role": "ADMIN"
+    },
+    {
+      "actualPath": "/cppd/comissoes",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Campi e comissões CPPD",
+        "Dados da comissão",
+        "Membros"
+      ],
+      "inputs": 6,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/comissoes",
+      "role": "CPPD_CENTRAL"
+    },
+    {
+      "actualPath": "/cppd/conformidade",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Calendário e documentos dos processos",
+        "Feriados, férias e recessos",
+        "Versões dos modelos",
+        "Documentos obrigatórios por processo"
+      ],
+      "inputs": 12,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/conformidade",
+      "role": "CPPD_CENTRAL"
+    },
+    {
+      "actualPath": "/cppd/emails-institucionais",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "E-mails institucionais por campus"
+      ],
+      "inputs": 1,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/cppd/emails-institucionais",
+      "role": "CPPD_CENTRAL"
+    },
+    {
+      "actualPath": "/docente",
+      "backButtons": 0,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Módulo do Docente",
+        "Meus processos",
+        "Abrir novo processo"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/docente",
+      "role": "DOCENTE"
+    },
+    {
+      "actualPath": "/docente/perfil",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Meu perfil",
+        "Dados pessoais",
+        "Dados funcionais",
+        "Titulações e diplomas"
+      ],
+      "inputs": 7,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/docente/perfil",
+      "role": "DOCENTE"
+    },
+    {
+      "actualPath": "/docente/processos",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Meus Processos"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/docente/processos",
+      "role": "DOCENTE"
+    },
+    {
+      "actualPath": "/docente/processos/abrir",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Abrir novo processo",
+        "Como proceder",
+        "1. Revisar seus dados",
+        "2. Preencher os dados do processo",
+        "Movimentação na carreira",
+        "3. Criar o rascunho"
+      ],
+      "inputs": 13,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/docente/processos/abrir",
+      "role": "DOCENTE"
+    },
+    {
+      "actualPath": "/docente/processos/15",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Detalhes do Processo #15",
+        "Como proceder",
+        "Informações gerais",
+        "Documentos e requisitos do processo",
+        "Documentação específica"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/docente/processos/15",
+      "role": "DOCENTE"
+    },
+    {
+      "actualPath": "/docente/processos/15/pontuacao",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Pontuação do Processo #15",
+        "Como proceder"
+      ],
+      "inputs": 83,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/docente/processos/15/pontuacao",
+      "role": "DOCENTE"
+    },
+    {
+      "actualPath": "/docente/processos/16",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Detalhes do Processo #16",
+        "Como proceder",
+        "Informações gerais",
+        "Documentos e requisitos do processo"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/docente/processos/16",
+      "role": "DOCENTE"
+    },
+    {
+      "actualPath": "/docente/processos/16/pontuacao",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Pontuação do Processo #16",
+        "Como proceder"
+      ],
+      "inputs": 24,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/docente/processos/16/pontuacao",
+      "role": "DOCENTE"
+    },
+    {
+      "actualPath": "/docente/processos/abrir",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Abrir novo processo",
+        "Como proceder",
+        "1. Revisar seus dados",
+        "2. Preencher os dados do processo",
+        "Dados do RSC",
+        "3. Criar o rascunho"
+      ],
+      "inputs": 15,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/docente/processos/abrir",
+      "role": "DOCENTE:RSC"
+    },
+    {
+      "actualPath": "/docente/processos/abrir",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Abrir novo processo",
+        "Como proceder",
+        "1. Revisar seus dados",
+        "2. Preencher os dados do processo",
+        "Dados da Classe Titular",
+        "3. Criar o rascunho"
+      ],
+      "inputs": 10,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/docente/processos/abrir",
+      "role": "DOCENTE:TITULAR"
+    },
+    {
+      "actualPath": "/avaliador",
+      "backButtons": 0,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Minhas avaliações",
+        "RSC",
+        "RSC",
+        "RSC"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/avaliador",
+      "role": "EXTERNAL_EVALUATOR"
+    },
+    {
+      "actualPath": "/avaliador/avaliacoes/9",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Meu parecer",
+        "1. Preencher e enviar a avaliação",
+        "2. Baixar e assinar meu parecer",
+        "3. Enviar meu parecer assinado"
+      ],
+      "inputs": 13,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/avaliador/avaliacoes/9",
+      "role": "EXTERNAL_EVALUATOR"
+    },
+    {
+      "actualPath": "/",
+      "backButtons": 0,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "SEC-EBTT",
+        "Bem-vindo"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/",
+      "role": "PUBLIC"
+    },
+    {
+      "actualPath": "/login",
+      "backButtons": 0,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "SEC-EBTT",
+        "Entrar"
+      ],
+      "inputs": 2,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/login",
+      "role": "PUBLIC"
+    },
+    {
+      "actualPath": "/forgot-password",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "SEC-EBTT",
+        "Esqueci minha senha"
+      ],
+      "inputs": 1,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/forgot-password",
+      "role": "PUBLIC"
+    },
+    {
+      "actualPath": "/reset-password",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "SEC-EBTT",
+        "Redefinir senha"
+      ],
+      "inputs": 4,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/reset-password",
+      "role": "PUBLIC"
+    },
+    {
+      "actualPath": "/register-professor",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Cadastro de Docente",
+        "Dados pessoais",
+        "Perfil do Docente"
+      ],
+      "inputs": 21,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/register-professor",
+      "role": "PUBLIC"
+    },
+    {
+      "actualPath": "/accept-invitation",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Concluir cadastro"
+      ],
+      "inputs": 5,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/accept-invitation",
+      "role": "PUBLIC"
+    },
+    {
+      "actualPath": "/acesso",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Acesso autorizado"
+      ],
+      "inputs": 2,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/acesso",
+      "role": "PUBLIC"
+    },
+    {
+      "actualPath": "/login",
+      "backButtons": 0,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "SEC-EBTT",
+        "Entrar"
+      ],
+      "inputs": 2,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/select-role",
+      "role": "PUBLIC"
+    },
+    {
+      "actualPath": "/forbidden",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "headings": [
+        "Acesso negado"
+      ],
+      "inputs": 0,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/forbidden",
+      "role": "PUBLIC"
+    },
+    {
+      "actualPath": "/perfil",
+      "backButtons": 1,
+      "blockedWithoutHint": [],
+      "dialogs": [],
+      "genericBlockedHints": [],
+      "headings": [
+        "Editar perfil",
+        "Dados básicos"
+      ],
+      "inputs": 6,
+      "loading": false,
+      "runtimeError": false,
+      "unlabeled": [],
+      "requestedPath": "/perfil",
+      "role": "ADMIN"
+    }
+  ]
+}

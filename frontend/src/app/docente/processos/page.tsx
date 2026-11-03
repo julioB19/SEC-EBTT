@@ -1,7 +1,12 @@
 "use client"
 
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import { formatProcessTypeLabel } from "@/utils/processTypeLabels"
+
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { primaryButtonClass } from "@/components/ui/systemStyles"
 
 type ProcessStatus =
   | "DRAFT"
@@ -107,18 +112,14 @@ function statusLabel(status: ProcessStatus) {
 }
 
 function processTypeLabel(process: Processo) {
-  if (process.processTypeCode === "PROGRESSION") return "Progressão"
-  if (process.processTypeCode === "PROMOTION") return "Promoção"
-  if (process.processTypeCode === "RSC") return "RSC"
-  if (process.processTypeCode === "FULL_PROFESSOR") return "Professor Titular"
-  return process.processTypeName
+  return formatProcessTypeLabel(process.processTypeCode, process.processTypeName)
 }
 
 
 export default function MeusProcessosPage() {
   const [processos, setProcessos] = useState<Processo[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
 
   useEffect(() => {
     async function load() {
@@ -163,6 +164,12 @@ export default function MeusProcessosPage() {
               Acompanhe aqui todas as suas solicitações de carreira.
             </p>
           </div>
+          <Link
+            href="/docente/processos/abrir"
+            className={`${primaryButtonClass} shrink-0`}
+          >
+            Abrir novo processo
+          </Link>
         </header>
 
         {loading && (
@@ -174,9 +181,7 @@ export default function MeusProcessosPage() {
         )}
 
         {!loading && error && (
-          <div className="rounded-2xl border border-[var(--border-strong)] bg-[var(--state-danger-bg)] p-4 text-sm text-[var(--state-danger-text)]">
-            {error}
-          </div>
+          null
         )}
 
         {!loading && !error && processos.length === 0 && (

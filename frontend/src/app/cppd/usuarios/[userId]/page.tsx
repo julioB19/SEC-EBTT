@@ -1,5 +1,11 @@
 "use client"
 
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import ConfirmModal from "@/components/ConfirmModal"
+import FormInput from "@/components/ui/FormInput"
+import ActionButton from "@/components/ui/ActionButton"
+
 import { useEffect, useMemo, useState, use } from "react"
 import { useRouter } from "next/navigation"
 
@@ -77,12 +83,13 @@ export default function CppdEditDocentePage({ params }: { params: Promise<{ user
   const resolvedParams = use(params)
   const userId = Number(resolvedParams.userId)
 
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [inviting, setInviting] = useState(false)
 
-  const [err, setErr] = useState<string | null>(null)
-  const [ok, setOk] = useState<string | null>(null)
+  const [err, setErr] = useFeedbackState<string | null>(null, "error")
+  const [ok, setOk] = useFeedbackState<string | null>(null, "success")
 
   const [user, setUser] = useState<UserDetail | null>(null)
 
@@ -207,14 +214,10 @@ export default function CppdEditDocentePage({ params }: { params: Promise<{ user
 
     const cpfDigits = cleanCpf
     if (!cpfDigits) {
-      setErr("CPF indisponível para enviar invite")
+      setErr("CPF indisponível para enviar a recuperação de acesso")
       return
     }
 
-    const confirmed = window.confirm(
-      "Isso vai enviar um link/código de redefinição de senha para o usuário (fluxo de invite). Deseja continuar?"
-    )
-    if (!confirmed) return
 
     setInviting(true)
 
@@ -229,13 +232,13 @@ export default function CppdEditDocentePage({ params }: { params: Promise<{ user
       const res = (await r.json().catch(() => null)) as ApiResponse<any> | null
       if (!res || !r.ok || res.status === "error") {
         const details = res?.details ? ` (${String(res.details).slice(0, 500)})` : ""
-        setErr((res?.message || "Falha ao enviar invite") + details)
+        setErr((res?.message || "Falha ao enviar a recuperação de acesso") + details)
         return
       }
 
-      setOk("Invite de redefinição de senha enviado com sucesso")
+      setOk("Link de redefinição de senha enviado com sucesso")
     } catch (e: any) {
-      setErr(e?.message || "Erro ao enviar invite")
+      setErr(e?.message || "Erro ao enviar a recuperação de acesso")
     } finally {
       setInviting(false)
     }
@@ -243,6 +246,7 @@ export default function CppdEditDocentePage({ params }: { params: Promise<{ user
 
   return (
     <main className="min-h-[60vh]">
+      <ConfirmModal open={resetConfirmOpen} title="Enviar recuperação de acesso?" description="O usuário receberá um link ou código para redefinir a própria senha." loading={inviting} onCancel={() => setResetConfirmOpen(false)} onConfirm={async () => { await onInviteResetPassword(); setResetConfirmOpen(false) }} />
       <div className="px-4 md:px-6 lg:px-8 py-6 space-y-6">
         <header className="flex flex-wrap gap-3 justify-between items-center">
           <div className="space-y-1">
@@ -254,15 +258,7 @@ export default function CppdEditDocentePage({ params }: { params: Promise<{ user
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => router.push("/cppd/usuarios")}
-            className="px-4 py-2 rounded-full border border-[var(--btn-secondary-border)]
-                       text-xs text-[var(--btn-secondary-text)]
-                       hover:bg-[var(--btn-secondary-hover-bg)] transition"
-          >
-            Voltar
-          </button>
+
         </header>
 
         {loading && (
@@ -273,14 +269,12 @@ export default function CppdEditDocentePage({ params }: { params: Promise<{ user
 
         {err && (
           <div className="bg-[var(--danger-bg)] border border-[var(--danger-border)] rounded-2xl p-6">
-            <p className="text-sm text-[var(--danger-text-strong)] whitespace-pre-wrap">{err}</p>
+
           </div>
         )}
 
         {ok && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
-            {ok}
-          </div>
+          null
         )}
 
         {!loading && user && (
@@ -293,90 +287,90 @@ export default function CppdEditDocentePage({ params }: { params: Promise<{ user
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     Nome (somente leitura)
                   </label>
-                  <input className={inputClass(true)} value={name} disabled />
+                  <FormInput className={inputClass(true)} value={name} disabled  disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Nome (somente leitura)" />
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     Email (editável)
                   </label>
-                  <input className={inputClass()} value={email} onChange={e => setEmail(e.target.value)} />
+                  <FormInput className={inputClass()} value={email} onChange={e => setEmail(e.target.value)}  fieldKind={"email"}  aria-label="Email (editável)" />
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     CPF (somente leitura)
                   </label>
-                  <input className={inputClass(true)} value={cpf} disabled />
+                  <FormInput className={inputClass(true)} value={cpf} disabled  fieldKind={"cpf"} disabledReason={"O CPF identifica a conta e não pode ser alterado."}  aria-label="CPF (somente leitura)" />
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     Telefone (somente leitura)
                   </label>
-                  <input className={inputClass(true)} value={phone} disabled />
+                  <FormInput className={inputClass(true)} value={phone} disabled  fieldKind={"phone"} disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Telefone (somente leitura)" />
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     Cidade (somente leitura)
                   </label>
-                  <input className={inputClass(true)} value={city} disabled />
+                  <FormInput className={inputClass(true)} value={city} disabled  disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Cidade (somente leitura)" />
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     UF (somente leitura)
                   </label>
-                  <input className={inputClass(true)} value={uf} disabled />
+                  <FormInput className={inputClass(true)} value={uf} disabled  fieldKind={"uf"} disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="UF (somente leitura)" />
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     Status (somente leitura)
                   </label>
-                  <input
+                  <FormInput
                     className={inputClass(true)}
                     value={active === null ? "—" : active ? "Ativo" : "Inativo"}
                     disabled
-                  />
+                   disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Status (somente leitura)" />
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     Roles (somente leitura)
                   </label>
-                  <input
+                  <FormInput
                     className={inputClass(true)}
                     value={roles.length ? roles.map(roleLabel).join(", ") : "—"}
                     disabled
-                  />
+                   disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Roles (somente leitura)" />
                 </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
-                <button
+                <ActionButton
                   type="button"
-                  onClick={onInviteResetPassword}
+                  onClick={() => setResetConfirmOpen(true)}
                   disabled={inviting || loading || !cleanCpf}
                   className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
                              border border-[var(--border-subtle)] bg-[var(--surface-bg)] text-[var(--text-primary)]
                              hover:bg-[var(--surface-hover-bg)] transition-[background] disabled:opacity-60"
                   title={!cleanCpf ? "CPF não disponível" : "Enviar invite para redefinir senha"}
-                >
+                 disabledReason={(inviting) ? "Aguarde a operação em andamento terminar." : (loading) ? "Aguarde a operação em andamento terminar." : (!cleanCpf) ? "O CPF não está disponível para enviar o link de acesso." : "Este controle está indisponível na etapa atual."} >
                   {inviting ? "Enviando invite..." : "Redefinir senha"}
-                </button>
+                </ActionButton>
 
-                <button
+                <ActionButton
                   type="button"
                   onClick={onSave}
                   disabled={saving}
                   className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
                              bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                              hover:bg-[var(--btn-primary-hover-bg)] transition-[background] disabled:opacity-60"
-                >
+                 disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                   {saving ? "Salvando..." : "Salvar"}
-                </button>
+                </ActionButton>
               </div>
             </section>
 
@@ -391,91 +385,91 @@ export default function CppdEditDocentePage({ params }: { params: Promise<{ user
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       SIAPE (somente leitura)
                     </label>
-                    <input className={inputClass(true)} value={siape} disabled />
+                    <FormInput className={inputClass(true)} value={siape} disabled  fieldKind={"siape"} disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="SIAPE (somente leitura)" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Classe/Nível (somente leitura)
                     </label>
-                    <input className={inputClass(true)} value={classLevel} disabled />
+                    <FormInput className={inputClass(true)} value={classLevel} disabled  disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Classe/Nível (somente leitura)" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Início do interstício (somente leitura)
                     </label>
-                    <input className={inputClass(true)} value={startInterstice} disabled />
+                    <FormInput className={inputClass(true)} value={startInterstice} disabled  disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Início do interstício (somente leitura)" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Nível de formação (somente leitura)
                     </label>
-                    <input className={inputClass(true)} value={educationLevel} disabled />
+                    <FormInput className={inputClass(true)} value={educationLevel} disabled  disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Nível de formação (somente leitura)" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Aperfeiçoamento (somente leitura)
                     </label>
-                    <input className={inputClass(true)} value={improvement} disabled />
+                    <FormInput className={inputClass(true)} value={improvement} disabled  disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Aperfeiçoamento (somente leitura)" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Especialização (somente leitura)
                     </label>
-                    <input className={inputClass(true)} value={specialization} disabled />
+                    <FormInput className={inputClass(true)} value={specialization} disabled  disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Especialização (somente leitura)" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Mestrado (somente leitura)
                     </label>
-                    <input className={inputClass(true)} value={mastersDegree} disabled />
+                    <FormInput className={inputClass(true)} value={mastersDegree} disabled  disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Mestrado (somente leitura)" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Doutorado (somente leitura)
                     </label>
-                    <input className={inputClass(true)} value={doctorate} disabled />
+                    <FormInput className={inputClass(true)} value={doctorate} disabled  disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Doutorado (somente leitura)" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Lotação (somente leitura)
                     </label>
-                    <input className={inputClass(true)} value={assignment} disabled />
+                    <FormInput className={inputClass(true)} value={assignment} disabled  disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Lotação (somente leitura)" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Departamento (somente leitura)
                     </label>
-                    <input className={inputClass(true)} value={department} disabled />
+                    <FormInput className={inputClass(true)} value={department} disabled  disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Departamento (somente leitura)" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Divisão (somente leitura)
                     </label>
-                    <input className={inputClass(true)} value={division} disabled />
+                    <FormInput className={inputClass(true)} value={division} disabled  disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Divisão (somente leitura)" />
                   </div>
 
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Cargo/Função (somente leitura)
                     </label>
-                    <input className={inputClass(true)} value={roleText} disabled />
+                    <FormInput className={inputClass(true)} value={roleText} disabled  disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Cargo/Função (somente leitura)" />
                   </div>
 
                   <div className="sm:col-span-2">
                     <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                       Chefia imediata (somente leitura)
                     </label>
-                    <input className={inputClass(true)} value={immediateSupervisor} disabled />
+                    <FormInput className={inputClass(true)} value={immediateSupervisor} disabled  disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Chefia imediata (somente leitura)" />
                   </div>
                 </div>
               )}

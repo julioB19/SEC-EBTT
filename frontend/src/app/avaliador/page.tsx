@@ -1,5 +1,12 @@
 "use client"
 
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import ActionButton from "@/components/ui/ActionButton"
+import { formatProcessTypeLabel } from "@/utils/processTypeLabels"
+
+import ConfirmModal from "@/components/ConfirmModal"
+import { FormTextarea } from "@/components/ui/FormControls"
 import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
 
@@ -52,10 +59,13 @@ function acceptanceLabel(status: AcceptanceStatus) {
 }
 
 export default function ExternalEvaluatorPage() {
+  const [pendingResponse, setPendingResponse] = useState<{memberId: number; response: "ACCEPTED" | "DECLINED"} | null>(null)
+  const [responseReason, setResponseReason] = useState("")
+  const [responseError, setResponseError] = useState<string | null>(null)
   const [items, setItems] = useState<Assignment[]>([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<number | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -84,17 +94,17 @@ export default function ExternalEvaluatorPage() {
   }, [load])
 
   async function respond(memberId: number, responseValue: "ACCEPTED" | "DECLINED") {
-    let absenceOfConflictDeclared = false
-    let reason: string | null = null
-    if (responseValue === "ACCEPTED") {
-      absenceOfConflictDeclared = window.confirm(
-        "Ao aceitar, declaro que não possuo conflito de interesses ou impedimento para avaliar este processo. Deseja continuar?"
-      )
-      if (!absenceOfConflictDeclared) return
-    } else {
-      reason = window.prompt("Informe o motivo da recusa:")?.trim() || null
-      if (!reason) return
-    }
+    setResponseReason("")
+    setResponseError(null)
+    setPendingResponse({ memberId, response: responseValue })
+  }
+
+  async function confirmResponse() {
+    if (!pendingResponse) return
+    const { memberId, response: responseValue } = pendingResponse
+    const reason = responseValue === "DECLINED" ? responseReason.trim() : null
+    if (responseValue === "DECLINED" && !reason) { setResponseError("Informe o motivo da recusa."); return }
+    const absenceOfConflictDeclared = responseValue === "ACCEPTED"
     setBusyId(memberId)
     setError(null)
     try {
@@ -114,6 +124,7 @@ export default function ExternalEvaluatorPage() {
         return
       }
       setItems(payload.data)
+      setPendingResponse(null)
     } catch {
       setError("Não foi possível responder ao convite.")
     } finally {
@@ -123,11 +134,14 @@ export default function ExternalEvaluatorPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-5">
+      <ConfirmModal open={pendingResponse !== null} title={pendingResponse?.response === "ACCEPTED" ? "Aceitar participação na comissão?" : "Recusar participação na comissão?"} description={pendingResponse?.response === "ACCEPTED" ? "Ao confirmar, declaro que não possuo conflito de interesses ou impedimento para avaliar este processo." : "Informe o motivo da recusa para que a CPPD possa acompanhar a composição da comissão."} error={responseError} loading={busyId !== null} onCancel={() => setPendingResponse(null)} onConfirm={confirmResponse}>
+        {pendingResponse?.response === "DECLINED" && <label className="block space-y-2 text-sm"><span>Motivo da recusa</span><FormTextarea aria-label="Motivo da recusa" required value={responseReason} onChange={event => { setResponseReason(event.target.value); setResponseError(null) }} className="w-full rounded-xl border border-[var(--border-subtle)] p-3" /></label>}
+      </ConfirmModal>
       <header>
         <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Minhas avaliações</h1>
       </header>
 
-      {error && <p className="text-sm text-[var(--state-danger-text)]">{error}</p>}
+      {error && null}
 
       {loading ? (
         <p className="border-t border-[var(--border-subtle)] py-8 text-center text-sm text-[var(--text-secondary)]">
@@ -146,7 +160,7 @@ export default function ExternalEvaluatorPage() {
             <article key={item.memberId} className="grid gap-4 py-5 md:grid-cols-[1fr_auto] md:items-center">
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="text-base font-semibold text-[var(--text-primary)]">{item.process.processTypeName}</h2>
+                  <h2 className="text-base font-semibold text-[var(--text-primary)]">{formatProcessTypeLabel(undefined, item.process.processTypeName)}</h2>
                   <span className="rounded-full border border-[var(--border-subtle)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text-secondary)]">
                     {acceptanceLabel(item.acceptanceStatus)}
                   </span>
@@ -155,7 +169,7 @@ export default function ExternalEvaluatorPage() {
                   Processo #{item.process.idProcess} · {item.process.teacherName}
                 </p>
                 <p className="text-xs text-[var(--text-secondary)]">
-                  {item.process.campus} · {item.process.cityState} · Função: {item.role}
+                  {item.process.campus} · {item.process.cityState} · Função: {({ PRESIDENT: "Presidente", MEMBER: "Membro", PRIMARY: "Titular", SUBSTITUTE: "Suplente" } as Record<string, string>)[item.role] || "Membro"}
                 </p>
                 {item.acceptanceStatus === "ACCEPTED" && item.commission.status === "DRAFT" && (
                   <p className="pt-1 text-xs text-[var(--text-secondary)]">
@@ -181,22 +195,22 @@ export default function ExternalEvaluatorPage() {
 
               {item.acceptanceStatus === "PENDING" && (
                 <div className="flex gap-2">
-                  <button
+                  <ActionButton
                     type="button"
                     onClick={() => respond(item.memberId, "DECLINED")}
                     disabled={busyId === item.memberId}
                     className="rounded-md border border-[var(--btn-secondary-border)] px-4 py-2 text-sm font-semibold text-[var(--btn-secondary-text)] disabled:opacity-50"
-                  >
+                   disabledReason={(busyId === item.memberId) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                     Recusar
-                  </button>
-                  <button
+                  </ActionButton>
+                  <ActionButton
                     type="button"
                     onClick={() => respond(item.memberId, "ACCEPTED")}
                     disabled={busyId === item.memberId}
                     className="rounded-md bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-50"
-                  >
+                   disabledReason={(busyId === item.memberId) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                     Aceitar
-                  </button>
+                  </ActionButton>
                 </div>
               )}
               {item.acceptanceStatus === "ACCEPTED" &&

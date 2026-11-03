@@ -1,4 +1,11 @@
 "use client"
+import { FormSelect } from "@/components/ui/FormControls"
+
+import Modal from "@/components/Modal"
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+import ActionButton from "@/components/ui/ActionButton"
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -47,89 +54,24 @@ type InfoModalProps = {
   onConfirm: () => void
 }
 
-function InfoModal({ open, title, description, confirmText = "Ok", onConfirm }: InfoModalProps) {
-  const okRef = useRef<HTMLButtonElement | null>(null)
-
-  useEffect(() => {
-    if (open) {
-      const t = setTimeout(() => okRef.current?.focus(), 0)
-      return () => clearTimeout(t)
-    }
-  }, [open])
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (!open) return
-      if (e.key === "Escape" || e.key === "Enter") onConfirm()
-    }
-    document.addEventListener("keydown", onKey)
-    return () => document.removeEventListener("keydown", onKey)
-  }, [open, onConfirm])
-
-  if (!open) return null
-
-  return (
-    <div
-      className="
-        fixed inset-0 z-[70]
-        flex items-center justify-center
-        p-4
-        bg-black/40
-      "
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="info-title"
-      onClick={onConfirm}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        className="
-          w-full max-w-md
-          rounded-2xl
-          bg-white
-          bg-[var(--surface-card)]
-          border border-[var(--border-subtle)]
-          shadow-xl
-          p-6
-        "
-      >
-        <h2 id="info-title" className="text-lg font-semibold text-[var(--text-primary)]">
-          {title}
-        </h2>
-
-        {description && <p className="text-sm text-[var(--text-secondary)] mt-2">{description}</p>}
-
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            ref={okRef}
-            type="button"
-            className="
-              px-4 py-2 rounded-xl text-sm font-medium
-              bg-[var(--btn-primary-bg)]
-              text-[var(--btn-primary-text)]
-              hover:bg-[var(--btn-primary-hover-bg)]
-              disabled:opacity-60
-            "
-            onClick={onConfirm}
-          >
-            {confirmText}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
+function InfoModal({ open, title, description, onConfirm }: InfoModalProps) {
+  return <Modal open={open} title={title} message={description ?? ""} variant="success" onClose={onConfirm} />
 }
+
 
 export default function AdminNovoUsuarioPage() {
   const router = useRouter()
 
   const [saving, setSaving] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
+  const [err, setErr] = useFeedbackState<string | null>(null, "error")
 
   const [doneOpen, setDoneOpen] = useState(false)
   const [doneTitle, setDoneTitle] = useState("Usuário criado")
   const [doneMessage, setDoneMessage] = useState("")
 
+  const [campusId, setCampusId] = useState("")
+  const [campuses, setCampuses] = useState<{ idCampus: number; name: string }[]>([])
+  useEffect(() => { void fetch("/api/acesso/campuses", { cache: "no-store" }).then(response => response.json()).then(json => { if (Array.isArray(json.data)) { setCampuses(json.data); if (json.data.length === 1) setCampusId(String(json.data[0].idCampus)) } }).catch(() => {}) }, [])
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [cpf, setCpf] = useState("")
@@ -165,11 +107,13 @@ export default function AdminNovoUsuarioPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (saving) return
+    if (hasExternalEvaluatorProfile) { router.push("/admin/convites"); return }
 
     setSaving(true)
     setErr(null)
 
     const payload: any = {
+      campusId: Number(campusId),
       name,
       email,
       phone: phone || null,
@@ -243,14 +187,16 @@ export default function AdminNovoUsuarioPage() {
       <div className="max-w-2xl mx-auto space-y-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Novo usuário</h1>
+          <a href="/admin/convites" className="mt-2 inline-block text-sm text-[var(--brand)] underline">Convidar por e-mail, inclusive avaliadores externos</a>
           <p className="text-sm text-[var(--text-secondary)]">
             Crie usuários externos. Um link de acesso será enviado por e-mail automaticamente.
           </p>
         </header>
 
-        {err && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{err}</div>}
+        {err && null}
 
         <form onSubmit={onSubmit} className="space-y-6">
+          <label className="block text-sm">Campus<FormSelect aria-label="Campus" className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-white px-3 py-2 text-sm" value={campusId} onChange={event => setCampusId(event.target.value)} required><option value="">Selecione o campus</option>{campuses.map(campus => <option key={campus.idCampus} value={campus.idCampus}>{campus.name}</option>)}</FormSelect></label>
           <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 space-y-3">
             <h2 className="text-base font-semibold text-[var(--text-primary)]">Dados</h2>
 
@@ -259,14 +205,14 @@ export default function AdminNovoUsuarioPage() {
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Nome
                 </label>
-                <input className={inputClass()} value={name} onChange={e => setName(e.target.value)} required />
+                <FormInput className={inputClass()} value={name} onChange={e => setName(e.target.value)} required  aria-label="Nome" />
               </div>
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Email
                 </label>
-                <input className={inputClass()} value={email} onChange={e => setEmail(e.target.value)} required />
+                <FormInput className={inputClass()} value={email} onChange={e => setEmail(e.target.value)} required  fieldKind={"email"}  aria-label="Email" />
               </div>
 
               {!isExternalEvaluatorOnly && (
@@ -274,7 +220,7 @@ export default function AdminNovoUsuarioPage() {
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     CPF
                   </label>
-                  <input className={inputClass()} value={cpf} onChange={e => setCpf(e.target.value)} required />
+                  <FormInput className={inputClass()} value={cpf} onChange={e => setCpf(e.target.value)} required  fieldKind={"cpf"}  aria-label="CPF" />
                 </div>
               )}
 
@@ -282,24 +228,24 @@ export default function AdminNovoUsuarioPage() {
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Telefone
                 </label>
-                <input className={inputClass()} value={phone} onChange={e => setPhone(e.target.value)} />
+                <FormInput className={inputClass()} value={phone} onChange={e => setPhone(e.target.value)}  fieldKind={"phone"}  aria-label="Telefone" />
               </div>
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Cidade
                 </label>
-                <input className={inputClass()} value={city} onChange={e => setCity(e.target.value)} />
+                <FormInput className={inputClass()} value={city} onChange={e => setCity(e.target.value)}  aria-label="Cidade" />
               </div>
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">UF</label>
-                <input
+                <FormInput
                   className={inputClass()}
                   value={uf}
                   onChange={e => setUf(e.target.value.toUpperCase())}
                   maxLength={2}
-                />
+                 fieldKind={"uf"}  aria-label="UF" />
               </div>
             </div>
           </section>
@@ -309,39 +255,39 @@ export default function AdminNovoUsuarioPage() {
 
             <div className="grid sm:grid-cols-2 gap-3 text-sm">
               <label className="flex items-center gap-2">
-                <input type="checkbox" checked={roles.includes("DOCENTE")} onChange={() => toggleRole("DOCENTE")} />
+                <FormInput type="checkbox" checked={roles.includes("DOCENTE")} onChange={() => toggleRole("DOCENTE")}  aria-label="DOCENTE" />
                 DOCENTE
               </label>
 
               <label className="flex items-center gap-2">
-                <input
+                <FormInput
                   type="checkbox"
                   checked={roles.includes("CPPD_MEMBER")}
                   onChange={() => toggleRole("CPPD_MEMBER")}
-                />
+                 aria-label="MEMBRO DA CPPD" />
                 MEMBRO DA CPPD
               </label>
 
               <label className="flex items-center gap-2">
-                <input
+                <FormInput
                   type="checkbox"
                   checked={roles.includes("CPPD_CENTRAL")}
                   onChange={() => toggleRole("CPPD_CENTRAL")}
-                />
+                 aria-label="CPPD CENTRAL" />
                 CPPD CENTRAL
               </label>
 
               <label className="flex items-center gap-2">
-                <input type="checkbox" checked={roles.includes("ADMIN")} onChange={() => toggleRole("ADMIN")} />
+                <FormInput type="checkbox" checked={roles.includes("ADMIN")} onChange={() => toggleRole("ADMIN")}  aria-label="ADMIN" />
                 ADMIN
               </label>
 
               <label className="flex items-center gap-2">
-                <input
+                <FormInput
                   type="checkbox"
                   checked={roles.includes("EXTERNAL_EVALUATOR")}
                   onChange={() => toggleRole("EXTERNAL_EVALUATOR")}
-                />
+                 aria-label="AVALIADOR EXTERNO" />
                 AVALIADOR EXTERNO
               </label>
             </div>
@@ -363,22 +309,22 @@ export default function AdminNovoUsuarioPage() {
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     Titulação
                   </label>
-                  <input
+                  <FormInput
                     className={inputClass()}
                     value={evaluatorTitle}
                     onChange={e => setEvaluatorTitle(e.target.value)}
-                  />
+                   aria-label="Titulação" />
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     Instituição
                   </label>
-                  <input
+                  <FormInput
                     className={inputClass()}
                     value={evaluatorInstitution}
                     onChange={e => setEvaluatorInstitution(e.target.value)}
-                  />
+                   aria-label="Instituição" />
                 </div>
               </div>
             </section>
@@ -393,67 +339,61 @@ export default function AdminNovoUsuarioPage() {
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     SIAPE
                   </label>
-                  <input className={inputClass()} value={siape} onChange={e => setSiape(e.target.value)} required />
+                  <FormInput className={inputClass()} value={siape} onChange={e => setSiape(e.target.value)} required  fieldKind={"siape"}  aria-label="SIAPE" />
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     Classe/Nível
                   </label>
-                  <input
+                  <FormInput
                     className={inputClass()}
                     value={classLevel}
                     onChange={e => setClassLevel(e.target.value)}
                     required
-                  />
+                   aria-label="Classe/Nível" />
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     Início do interstício
                   </label>
-                  <input
+                  <FormInput
                     className={inputClass()}
                     type="date"
                     value={startInterstice}
                     onChange={e => setStartInterstice(e.target.value)}
                     required
-                  />
+                   aria-label="Início do interstício" />
                 </div>
 
                 <div>
                   <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                     Nível de formação
                   </label>
-                  <input
+                  <FormInput
                     className={inputClass()}
                     value={educationLevel}
                     onChange={e => setEducationLevel(e.target.value)}
                     required
-                  />
+                   aria-label="Nível de formação" />
                 </div>
               </div>
             </section>
           )}
 
           <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)] hover:underline"
-            >
-              Voltar
-            </button>
 
-            <button
+
+            <ActionButton
               type="submit"
               disabled={saving}
               className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
                          bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                          hover:bg-[var(--btn-primary-hover-bg)] transition-[background] disabled:opacity-60"
-            >
-              {saving ? "Salvando..." : "Criar"}
-            </button>
+             disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
+              {saving ? "Salvando..." : hasExternalEvaluatorProfile ? "Continuar em convites de acesso" : "Criar"}
+            </ActionButton>
           </div>
         </form>
       </div>

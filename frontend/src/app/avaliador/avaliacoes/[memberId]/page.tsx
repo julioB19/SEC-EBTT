@@ -1,5 +1,13 @@
 "use client"
-import CaseCompliancePanel from "@/components/CaseCompliancePanel";
+
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+import { FormSelect } from "@/components/ui/FormControls"
+import { FormTextarea } from "@/components/ui/FormControls"
+import ActionButton from "@/components/ui/ActionButton"
+import { formatProcessTypeLabel } from "@/utils/processTypeLabels"
+import EvaluatorOpinionSteps from "@/components/EvaluatorOpinionSteps"
 
 import Link from "next/link"
 import { useParams } from "next/navigation"
@@ -162,7 +170,7 @@ export default function IndividualEvaluationPage() {
   const [opinionText, setOpinionText] = useState("")
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [modal, setModal] = useState({ open: false, title: "", message: "", variant: "info" as "info" | "success" | "error" })
 
@@ -218,9 +226,12 @@ export default function IndividualEvaluationPage() {
   )
   const recognizedPoints = recognizedSummary.total
   const targetLevel = data?.process.rscDetails?.targetLevel ?? ""
+  const targetLevelPoints = recognizedSummary.byRscLevel[targetLevel] ?? 0
+  const targetLevelLabel = targetLevel.replace(/_/g, " ") || "Não informado"
+  const minimumTotalPoints = data?.scoringTable?.minRequiredPoints ?? 60
   const automaticRscResult: EvaluationResult =
-    recognizedPoints >= (data?.scoringTable?.minRequiredPoints ?? 60) &&
-    (recognizedSummary.byRscLevel[targetLevel] ?? 0) >= 36
+    recognizedPoints >= minimumTotalPoints &&
+    targetLevelPoints >= 36
       ? "DEFERRED"
       : "DENIED"
 
@@ -234,6 +245,17 @@ export default function IndividualEvaluationPage() {
       current = current.parentId ? nodes.get(current.parentId) : undefined
     }
     return names.join(" / ") || "Pontuação"
+  }
+
+  function isTargetLevelItem(nodeId: number) {
+    if (!data?.scoringTable || !targetLevel) return false
+    const nodes = new Map(data.scoringTable.nodes.map(node => [node.idScoringNode, node]))
+    let node = nodes.get(nodeId)
+    while (node) {
+      if (node.code === targetLevel) return true
+      node = node.parentId ? nodes.get(node.parentId) : undefined
+    }
+    return false
   }
 
   function buildPayload() {
@@ -309,7 +331,7 @@ export default function IndividualEvaluationPage() {
     return (
       <div className="mx-auto max-w-6xl py-8">
         <p className="text-sm text-[var(--state-danger-text)]">{error ?? "Avaliação indisponível."}</p>
-        <Link href="/avaliador" className="mt-4 inline-block text-sm font-semibold underline">Voltar</Link>
+        <></>
       </div>
     )
   }
@@ -320,7 +342,6 @@ export default function IndividualEvaluationPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 pb-8">
-      <CaseCompliancePanel processId={data.process.idProcess} actor="AVALIADOR" memberId={memberId} />
       <ConfirmModal
         open={confirmOpen}
         title="Enviar avaliação individual?"
@@ -341,9 +362,9 @@ export default function IndividualEvaluationPage() {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Link href="/avaliador" className="text-xs font-semibold text-[var(--text-secondary)] hover:underline">Minhas avaliações</Link>
-          <h1 className="mt-1 text-2xl font-semibold text-[var(--text-primary)]">Avaliação individual</h1>
+          <h1 className="mt-1 text-2xl font-semibold text-[var(--text-primary)]">Meu parecer</h1>
           <p className="text-sm text-[var(--text-secondary)]">
-            Processo #{data.process.idProcess} · {data.process.processTypeName}
+            Processo #{data.process.idProcess} · {formatProcessTypeLabel(undefined, data.process.processTypeName)}
           </p>
         </div>
         <span className="rounded-full border border-[var(--border-subtle)] px-3 py-1 text-xs font-semibold">
@@ -351,7 +372,7 @@ export default function IndividualEvaluationPage() {
         </span>
       </header>
 
-      {error && <p className="text-sm text-[var(--state-danger-text)]">{error}</p>}
+      {error && null}
 
       <section className="grid gap-4 border-y border-[var(--border-subtle)] py-5 text-sm sm:grid-cols-2 lg:grid-cols-4">
         <div><span className="block text-xs text-[var(--text-secondary)]">Docente</span>{data.process.teacherName}</div>
@@ -360,9 +381,15 @@ export default function IndividualEvaluationPage() {
         <div><span className="block text-xs text-[var(--text-secondary)]">Portaria</span>{data.commission.ordinance ?? "Não informada"}</div>
       </section>
 
+      <section id="avaliacao-individual" className="space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">1. Preencher e enviar a avaliação</h2>
+          <span className="text-sm text-[var(--text-secondary)]">{data.evaluation.status === "SUBMITTED" ? "Avaliação enviada" : "Em preenchimento"}</span>
+        </div>
+        <p className="text-sm text-[var(--text-secondary)]">Confira os documentos, registre os pontos reconhecidos e escreva seu parecer. Após o envio, você poderá baixar o PDF para assinatura.</p>
       <section className="space-y-3 border-b border-[var(--border-subtle)] pb-5">
         <div>
-          <h2 className="text-base font-semibold text-[var(--text-primary)]">Documentos para análise</h2>
+          <h3 className="text-base font-semibold text-[var(--text-primary)]">Documentos para análise</h3>
           <p className="text-sm text-[var(--text-secondary)]">Abra os arquivos anexados pelo docente antes de emitir o parecer.</p>
         </div>
         <div className="flex flex-col items-start gap-2">
@@ -382,17 +409,9 @@ export default function IndividualEvaluationPage() {
 
       {data.commission.type === "RSC" && data.scoringTable && (
         <section className="space-y-4 border-b border-[var(--border-subtle)] pb-6">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold text-[var(--text-primary)]">Pontuação reconhecida</h2>
-              <p className="text-sm text-[var(--text-secondary)]">
-                {data.scoringTable.name} · Mínimo para deferimento: {(data.scoringTable.minRequiredPoints ?? 60).toFixed(2).replace(".", ",")}
-              </p>
-            </div>
-            <div className="text-right">
-              <span className="block text-xs text-[var(--text-secondary)]">Total reconhecido</span>
-              <strong className="text-xl text-[var(--text-primary)]">{recognizedPoints.toFixed(2).replace(".", ",")}</strong>
-            </div>
+          <div>
+            <h3 className="text-base font-semibold text-[var(--text-primary)]">Itens de pontuação</h3>
+            <p className="text-sm text-[var(--text-secondary)]">{data.scoringTable.name}</p>
           </div>
 
           <div className="divide-y divide-[var(--border-subtle)] border-y border-[var(--border-subtle)] md:hidden">
@@ -402,6 +421,7 @@ export default function IndividualEvaluationPage() {
                 <article key={item.idScoringItem} className="space-y-3 py-4">
                   <div>
                     <span className="block text-xs text-[var(--text-secondary)]">{nodePath(item.nodeId)}</span>
+                    {isTargetLevelItem(item.nodeId) && <span className="my-1 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">Nível pretendido: {targetLevelLabel}</span>}
                     <h3 className="text-sm font-medium text-[var(--text-primary)]">{item.description}</h3>
                     <p className="text-xs text-[var(--text-secondary)]">
                       Quantidade: {item.claimedQuantity} · Pontuação declarada: {item.claimedPoints.toFixed(2).replace(".", ",")}
@@ -413,7 +433,7 @@ export default function IndividualEvaluationPage() {
                   </div>
                   <label className="block text-xs font-medium text-[var(--text-primary)]">
                     Quantidade reconhecida
-                    <input
+                    <FormInput
                       type="number"
                       min="0"
                       max={item.claimedQuantity}
@@ -425,11 +445,11 @@ export default function IndividualEvaluationPage() {
                       }))}
                       disabled={!editable || busy}
                       className={inputClass}
-                    />
+                     disabledReason={(!editable) ? "A avaliação só pode ser editada com a comissão ativa e antes do envio do parecer." : (busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Quantidade reconhecida" />
                   </label>
                   <label className="block text-xs font-medium text-[var(--text-primary)]">
                     Observação
-                    <input
+                    <FormInput
                       value={current.evaluatorComment}
                       maxLength={500}
                       onChange={event => setScores(previous => ({
@@ -438,7 +458,7 @@ export default function IndividualEvaluationPage() {
                       }))}
                       disabled={!editable || busy}
                       className={inputClass}
-                    />
+                     disabledReason={(!editable) ? "A avaliação só pode ser editada com a comissão ativa e antes do envio do parecer." : (busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Observação" />
                   </label>
                 </article>
               )
@@ -462,6 +482,7 @@ export default function IndividualEvaluationPage() {
                     <tr key={item.idScoringItem}>
                       <td className="px-3 py-3 align-top">
                         <span className="block text-xs text-[var(--text-secondary)]">{nodePath(item.nodeId)}</span>
+                    {isTargetLevelItem(item.nodeId) && <span className="my-1 inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">Nível pretendido: {targetLevelLabel}</span>}
                         <span className="font-medium text-[var(--text-primary)]">{item.description}</span>
                         <span className="block text-xs text-[var(--text-secondary)]">Quantidade declarada: {item.claimedQuantity}</span>
                         <span className="block text-xs text-[var(--text-secondary)]">Fator: {item.factor ?? 1} · Peso: {item.weight ?? 1}</span>
@@ -469,7 +490,7 @@ export default function IndividualEvaluationPage() {
                       </td>
                       <td className="px-3 py-3 text-right align-top font-semibold">{item.claimedPoints.toFixed(2).replace(".", ",")}</td>
                       <td className="px-3 py-3 align-top">
-                        <input
+                        <FormInput
                           type="number"
                           min="0"
                           max={item.claimedQuantity}
@@ -482,10 +503,10 @@ export default function IndividualEvaluationPage() {
                           disabled={!editable || busy}
                           aria-label={`Quantidade reconhecida para ${item.description}`}
                           className={inputClass.replace("mt-1 ", "")}
-                        />
+                         disabledReason={(!editable) ? "A avaliação só pode ser editada com a comissão ativa e antes do envio do parecer." : (busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} />
                       </td>
                       <td className="px-3 py-3 align-top">
-                        <input
+                        <FormInput
                           value={current.evaluatorComment}
                           maxLength={500}
                           onChange={event => setScores(previous => ({
@@ -495,7 +516,7 @@ export default function IndividualEvaluationPage() {
                           disabled={!editable || busy}
                           aria-label={`Observação para ${item.description}`}
                           className={inputClass.replace("mt-1 ", "")}
-                        />
+                         disabledReason={(!editable) ? "A avaliação só pode ser editada com a comissão ativa e antes do envio do parecer." : (busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} />
                       </td>
                     </tr>
                   )
@@ -503,6 +524,27 @@ export default function IndividualEvaluationPage() {
               </tbody>
             </table>
           </div>
+
+          <section aria-label="Resumo da pontuação reconhecida" className="space-y-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted-bg)] p-4">
+            <h4 className="text-base font-semibold text-[var(--text-primary)]">Pontuação reconhecida</h4>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4">
+                <p className="text-sm font-medium text-[var(--text-primary)]">Total de pontos reconhecidos</p>
+                <p className="text-2xl font-semibold text-[var(--text-primary)]">{recognizedPoints.toFixed(2).replace(".", ",")} pontos</p>
+                <p className="text-xs text-[var(--text-secondary)]">Soma de todos os níveis, respeitando os limites das diretrizes.</p>
+                <p className="text-xs text-[var(--text-secondary)]">Mínimo total: {minimumTotalPoints.toFixed(2).replace(".", ",")} pontos.</p>
+                <p className={`text-sm font-medium ${recognizedPoints >= minimumTotalPoints ? "text-emerald-700" : "text-amber-700"}`}>{recognizedPoints >= minimumTotalPoints ? "Mínimo total atingido" : "Mínimo total ainda não atingido"}</p>
+              </div>
+              <div className="space-y-1 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4">
+                <p className="text-sm font-medium text-[var(--text-primary)]">Pontos no nível pretendido: {targetLevelLabel}</p>
+                <p className="text-2xl font-semibold text-[var(--text-primary)]">{targetLevelPoints.toFixed(2).replace(".", ",")} pontos</p>
+                <p className="text-xs text-[var(--text-secondary)]">Considera somente as diretrizes de {targetLevelLabel}.</p>
+                <p className="text-xs text-[var(--text-secondary)]">Mínimo no nível pretendido: 36,00 pontos.</p>
+                <p className={`text-sm font-medium ${targetLevelPoints >= 36 ? "text-emerald-700" : "text-amber-700"}`}>{targetLevelPoints >= 36 ? "Mínimo do nível atingido" : "Mínimo do nível ainda não atingido"}</p>
+              </div>
+            </div>
+            <p className="text-xs text-[var(--text-secondary)]">Os pontos do nível pretendido já estão incluídos no total.</p>
+          </section>
         </section>
       )}
 
@@ -523,16 +565,16 @@ export default function IndividualEvaluationPage() {
           ) : (
             <label className="text-sm font-medium text-[var(--text-primary)]">
               Resultado
-              <select
+              <FormSelect
                 className={inputClass}
                 value={result}
                 onChange={event => setResult(event.target.value as EvaluationResult | "")}
                 disabled={!editable || busy}
-              >
+               disabledReason={(!editable) ? "A avaliação só pode ser editada com a comissão ativa e antes do envio do parecer." : (busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Resultado" >
                 <option value="">Selecione</option>
                 <option value="APPROVED">Aprovado</option>
                 <option value="REJECTED">Reprovado</option>
-              </select>
+              </FormSelect>
             </label>
           )}
           <div className="text-sm text-[var(--text-secondary)] sm:self-end">
@@ -541,47 +583,44 @@ export default function IndividualEvaluationPage() {
         </div>
         <label className="block text-sm font-medium text-[var(--text-primary)]">
           Parecer individual
-          <textarea
+          <FormTextarea
             className={`${inputClass} min-h-40 resize-y`}
             value={opinionText}
             maxLength={20000}
             onChange={event => setOpinionText(event.target.value)}
             disabled={!editable || busy}
             placeholder="Registre a fundamentação da avaliação."
-          />
+           disabledReason={(!editable) ? "A avaliação só pode ser editada com a comissão ativa e antes do envio do parecer." : (busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Parecer individual" />
         </label>
       </section>
 
       {editable && (
         <div className="flex flex-wrap justify-end gap-3 border-t border-[var(--border-subtle)] pt-5">
-          <button
+          <ActionButton
             type="button"
             onClick={() => persist(false)}
             disabled={busy}
             className="rounded-md border border-[var(--btn-secondary-border)] px-4 py-2 text-sm font-semibold text-[var(--btn-secondary-text)] disabled:opacity-50"
-          >
+           disabledReason={(busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
             {busy ? "Salvando..." : "Salvar rascunho"}
-          </button>
-          <button
+          </ActionButton>
+          <ActionButton
             type="button"
             onClick={() => setConfirmOpen(true)}
             disabled={busy}
             className="rounded-md bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-50"
-          >
+           disabledReason={(busy) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
             Enviar avaliação
-          </button>
+          </ActionButton>
         </div>
       )}
-      {data.evaluation.status === "SUBMITTED" && (
-        <div className="flex justify-end border-t border-[var(--border-subtle)] pt-5">
-          <a
-            href={`/api/avaliador/avaliacoes/${memberId}/parecer`}
-            className="rounded-md border border-[var(--btn-secondary-border)] px-4 py-2 text-sm font-semibold text-[var(--btn-secondary-text)]"
-          >
-            Baixar parecer em PDF
-          </a>
-        </div>
-      )}
+      </section>
+
+      <EvaluatorOpinionSteps
+        processId={data.process.idProcess}
+        memberId={memberId}
+        evaluationStatus={data.evaluation.status}
+      />
     </div>
   )
 }

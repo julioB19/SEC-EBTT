@@ -1,4 +1,9 @@
 "use client"
+import { FormSelect } from "@/components/ui/FormControls"
+
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
 
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
@@ -23,6 +28,7 @@ type UserRow = {
 }
 
 function roleLabel(role: Role) {
+  if (role === "ADMIN") return "ADMINISTRADOR"
   if (role === "CPPD_MEMBER") return "MEMBRO DA CPPD"
   if (role === "CPPD_CENTRAL") return "CPPD CENTRAL"
   if (role === "EXTERNAL_EVALUATOR") return "AVALIADOR EXTERNO"
@@ -40,7 +46,7 @@ function badge(role: Role) {
 export default function AdminUsuariosPage() {
   const [rows, setRows] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [err, setErr] = useState<string | null>(null)
+  const [err, setErr] = useFeedbackState<string | null>(null, "error")
 
   const [q, setQ] = useState("")
   const [roleFilter, setRoleFilter] = useState<"" | Role>("")
@@ -100,14 +106,7 @@ export default function AdminUsuariosPage() {
 
           {/* AÇÕES */}
           <div className="flex items-center justify-between">
-            <Link
-              href="/admin"
-              className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
-                         bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
-                         hover:bg-[var(--btn-primary-hover-bg)] transition-[background]"
-            >
-              Voltar
-            </Link>
+            <></>
 
             <Link
               href="/admin/usuarios/novo"
@@ -120,29 +119,29 @@ export default function AdminUsuariosPage() {
           </div>
         </header>
 
-        {err && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{err}</div>}
+        {err && null}
 
         <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4 space-y-3">
           <div className="grid sm:grid-cols-3 gap-3">
-            <input
+            <FormInput
               className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] px-3 py-2 text-sm"
               placeholder="Buscar por nome, email, cpf, siape..."
               value={q}
               onChange={e => setQ(e.target.value)}
-            />
+             type="search" aria-label="Buscar usuários por nome, e-mail, CPF ou SIAPE" />
 
-            <select
+            <FormSelect aria-label="Filtrar por perfil"
               className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] px-3 py-2 text-sm"
               value={roleFilter}
               onChange={e => setRoleFilter(e.target.value as any)}
             >
               <option value="">Todos os usuários</option>
-              <option value="ADMIN">ADMIN</option>
+              <option value="ADMIN">Administrador</option>
               <option value="DOCENTE">DOCENTE</option>
               <option value="CPPD_MEMBER">MEMBRO DA CPPD</option>
               <option value="CPPD_CENTRAL">CPPD CENTRAL</option>
               <option value="EXTERNAL_EVALUATOR">AVALIADOR EXTERNO</option>
-            </select>
+            </FormSelect>
 
             <button
               type="button"

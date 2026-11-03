@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals"
+import { prisma } from "../../../src/infra/prismaClient"
+import { RoleName } from "@prisma/client"
 import jwt from "jsonwebtoken"
 import Joi from "joi"
 import { authMiddleware } from "../../../src/middleware/authMiddleware"
 import { ParamType, validatorMiddleware } from "../../../src/middleware/validatorMiddleware"
 import * as blacklist from "../../../src/util/tokenBlacklist"
 
+jest.mock("../../../src/infra/prismaClient", () => ({ prisma: { user: { findUnique: jest.fn() } } }))
 jest.mock("jsonwebtoken", () => ({ verify: jest.fn() }))
 
 function responseMock() {
@@ -29,13 +32,14 @@ describe("middlewares", () => {
     expect(res.status).toHaveBeenCalledWith(401)
   })
 
-  test("auth aceita Bearer, atribui usuário e chama next", () => {
+  test("auth aceita Bearer e atualiza permissões pelo cadastro atual", async () => {
     const next = jest.fn()
     const req: any = { headers: { authorization: "Bearer aaa.bbb.ccc" } }
     ;(jwt.verify as jest.Mock).mockReturnValue({ userId: 1 })
-    authMiddleware(req, responseMock(), next)
+    ;(prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({ active: true, deletedDate: null, roles: [{ role: { name: RoleName.ADMIN } }] })
+    await authMiddleware(req, responseMock(), next)
     expect(jwt.verify).toHaveBeenCalledWith("aaa.bbb.ccc", "secret")
-    expect(req.user).toEqual({ userId: 1 })
+    expect(req.user).toEqual({ userId: 1, sub: 1, roles: [RoleName.ADMIN] })
     expect(next).toHaveBeenCalled()
   })
 
@@ -72,5 +76,19 @@ describe("middlewares", () => {
     middleware(req, res, next)
     expect(req.body.age).toBe(12)
     expect(next).toHaveBeenCalled()
+  })
+  test("auth bloqueia usuário desativado e perfil removido durante uma sessão", async () => {
+    const req: any = { headers: { authorization: "Bearer aaa.bbb.ccc" } }
+    ;(jwt.verify as jest.Mock).mockReturnValue({ sub: 1, selectedRole: RoleName.ADMIN })
+    ;(prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({ active: false })
+    let response = responseMock()
+    const next = jest.fn()
+    await authMiddleware(req, response, next)
+    expect(response.status).toHaveBeenCalledWith(401)
+    ;(prisma.user.findUnique as jest.Mock<any>).mockResolvedValue({ active: true, roles: [{ role: { name: RoleName.DOCENTE } }] })
+    response = responseMock()
+    await authMiddleware(req, response, next)
+    expect(response.status).toHaveBeenCalledWith(401)
+    expect(next).not.toHaveBeenCalled()
   })
 })

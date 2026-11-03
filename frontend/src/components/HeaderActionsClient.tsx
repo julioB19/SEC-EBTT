@@ -1,5 +1,9 @@
 "use client"
 
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import ActionButton from "@/components/ui/ActionButton"
+
 import { useMemo, useState, useCallback } from "react"
 import RoleDropdown from "@/components/ui/RoleDropdown"
 import ConfirmModal from "@/components/ui/ConfirmModal"
@@ -30,7 +34,7 @@ export default function HeaderActionsClient(props: { roles: Role[]; selectedRole
   const [pendingRole, setPendingRole] = useState<Role | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [switching, setSwitching] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
+  const [err, setErr] = useFeedbackState<string | null>(null, "error")
 
   const [loggingOut, setLoggingOut] = useState(false)
 
@@ -128,11 +132,11 @@ export default function HeaderActionsClient(props: { roles: Role[]; selectedRole
                 onChange={onDropdownChange}
               />
             </div>
-            {err && <span className="mt-1 text-xs text-red-400">{err}</span>}
+            {err && null}
           </div>
         )}
 
-        <button
+        <ActionButton
           type="button"
           onClick={handleLogout}
           disabled={loggingOut}
@@ -144,9 +148,9 @@ export default function HeaderActionsClient(props: { roles: Role[]; selectedRole
             disabled:opacity-60
           "
           title="Sair"
-        >
+         disabledReason={(loggingOut) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
           {loggingOut ? "Saindo..." : "Sair"}
-        </button>
+        </ActionButton>
       </div>
 
       <ConfirmModal

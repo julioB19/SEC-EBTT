@@ -1,5 +1,7 @@
 import type { Server } from "http"
-import { afterAll, beforeAll, describe, expect, it } from "@jest/globals"
+import { afterAll, beforeAll, describe, expect, it, jest } from "@jest/globals"
+import { sendMail } from "../../src/util/mailer"
+jest.mock("../../src/util/mailer", () => ({ sendMail: jest.fn() }))
 import { PDFDocument } from "pdf-lib"
 
 type JsonResponse<T = any> = {
@@ -22,9 +24,19 @@ describe("API HTTP - fluxos funcionais de processos", () => {
   let adminAccessToken: string | null = null
   let rscFixture: { processId: number; teacherToken: string; cppdToken: string } | undefined
   const temporaryUserIds: number[] = []
+  let externalFixtureQueue: Promise<unknown> = Promise.resolve()
 
   beforeAll(async () => {
+    jest.mocked(sendMail).mockResolvedValue(undefined)
+    process.env.APP_URL = "https://sec.test"
     process.env.DATABASE_URL = TEST_DATABASE_URL
+    const { prisma: fixtureDb } = await import("../../src/infra/prismaClient")
+    const fixtureCampus = await fixtureDb.campus.findFirstOrThrow({ where: { acronym: "SM" } })
+    await fixtureDb.campusEmailDomain.upsert({
+      where: { campusId_domain: { campusId: fixtureCampus.idCampus, domain: "iffar.edu.br" } },
+      create: { campusId: fixtureCampus.idCampus, domain: "iffar.edu.br", includeSubdomains: true },
+      update: { active: true, includeSubdomains: true }
+    })
     process.env.JWT_ACCESS_SECRET = "integration-access-secret"
     process.env.JWT_REFRESH_SECRET = "integration-refresh-secret"
     process.env.JWT_ACCESS_EXPIRATION = "1h"
@@ -75,11 +87,41 @@ describe("API HTTP - fluxos funcionais de processos", () => {
       body?: unknown | FormData
     } = {},
   ): Promise<JsonResponse<T>> {
+    const userBody: any = options.body
+    if (path === "/users" && options.token && userBody?.roles?.includes("EXTERNAL_EVALUATOR")) {
+      if (userBody.roles.includes("DOCENTE")) {
+        options.body = { ...userBody, roles: userBody.roles.filter((role: string) => role !== "EXTERNAL_EVALUATOR") }
+      } else {
+        // A preparação de contas é sequencial; a concorrência da comissão tem teste próprio.
+        const operation = externalFixtureQueue.then(async () => {
+        const invite = await request<any>("/access/invitations", { method: "POST", token: options.token, body: { name: userBody.name, email: userBody.email, campusId: (await request<any>("/access/campus-policy/campuses", { token: options.token })).data.data[0].idCampus, roles: ["EXTERNAL_EVALUATOR"], institutionalExternal: true } })
+        expect(invite.status).toBe(200)
+        const raw = jest.mocked(sendMail).mock.calls.filter(call => call[0].to === userBody.email).at(-1)![0].text!.match(/#convite=([a-f0-9]{64})/)![1]
+        const start = await request<any>("/auth/google/start", { method: "POST", body: { invitationToken: raw } })
+        expect(start.status).toBe(200)
+        const completed = await request<any>("/auth/access/complete", { method: "POST", body: { attemptSecret: start.data.data.secret, profile: { name: userBody.name, cpf: userBody.cpf, password: userBody.password, siape: "7654321", evaluationCity: "Santa Maria", qualification: userBody.externalEvaluatorProfile?.title || "Doutor", institution: userBody.externalEvaluatorProfile?.institution || "Instituição de Teste", workUnit: "Campus sede" } } })
+        expect(completed.status).toBe(200)
+        const approved = await request<any>("/access/invitations/" + invite.data.data.id + "/approve", { method: "POST", token: options.token, body: {} })
+        expect(approved.status).toBe(200)
+        const { prisma } = await import("../../src/infra/prismaClient")
+        const user = await prisma.user.findUniqueOrThrow({ where: { email: userBody.email } })
+        return { status: 201, data: { data: { idUser: user.idUser } } as T }
+        })
+        externalFixtureQueue = operation.catch(() => undefined)
+        return operation
+      }
+    }
     const headers: Record<string, string> = {}
     if (options.token) headers.Authorization = `Bearer ${options.token}`
     const isFormData = options.body instanceof FormData
     if (options.body !== undefined && !isFormData) headers["Content-Type"] = "application/json"
 
+    // Os cadastros internos devem selecionar o campus, como no formulário real.
+    if (path === "/users" && options.method === "POST" && options.body) {
+      const { prisma } = await import("../../src/infra/prismaClient")
+      const campus = await prisma.campus.findFirstOrThrow({ where: { acronym: "SM" } })
+      options = { ...options, body: { campusId: campus.idCampus, ...(options.body as Record<string, unknown>) } }
+    }
     const response = await fetch(`${baseUrl}${path}`, {
       method: options.method ?? "GET",
       headers,
@@ -353,7 +395,7 @@ describe("API HTTP - fluxos funcionais de processos", () => {
       docente?: boolean
     }) => {
       const cpf = validCpf(Number(runId) + input.index)
-      const email = `integration.${runId}.${input.index}@example.com`
+      const email = `integration.${runId}.${input.index}@iffar.edu.br`
       const response = await request("/users", {
         method: "POST",
         token: adminAccessToken!,
@@ -705,7 +747,7 @@ describe("API HTTP - fluxos funcionais de processos", () => {
       token: adminAccessToken!,
       body: {
         name: "Docente Progressão Origem",
-        email: `progressao.origem.${runId}@example.com`,
+        email: `progressao.origem.${runId}@iffar.edu.br`,
         cpf,
         password,
         roles: ["DOCENTE"],
@@ -788,7 +830,7 @@ describe("API HTTP - fluxos funcionais de processos", () => {
 
     for (const scenario of scenarios) {
       const cpf = validCpf(Number(runId) + scenario.index)
-      const email = `carreira.${scenario.code.toLowerCase()}.${runId}@example.com`
+      const email = `carreira.${scenario.code.toLowerCase()}.${runId}@iffar.edu.br`
       const created = await request("/users", {
         method: "POST",
         token: adminAccessToken!,
@@ -1011,7 +1053,7 @@ describe("API HTTP - fluxos funcionais de processos", () => {
       docente?: boolean
     }) => {
       const cpf = validCpf(Number(runId) + input.index)
-      const email = `titular.memorial.${runId}.${input.index}@example.com`
+      const email = `titular.memorial.${runId}.${input.index}@iffar.edu.br`
       const created = await request("/users", {
         method: "POST",
         token: adminAccessToken!,
@@ -1268,7 +1310,7 @@ describe("API HTTP - fluxos funcionais de processos", () => {
       docente?: boolean
     }) => {
       const cpf = validCpf(Number(runId) + input.index)
-      const email = `titular.tese.${runId}.${input.index}@example.com`
+      const email = `titular.tese.${runId}.${input.index}@iffar.edu.br`
       const created = await request("/users", {
         method: "POST",
         token: adminAccessToken!,
@@ -1525,7 +1567,7 @@ describe("API HTTP - fluxos funcionais de processos", () => {
       token: adminAccessToken!,
       body: {
         name: "Docente Concorrência Comissão",
-        email: `concorrencia.docente.${runId}@example.com`,
+        email: `concorrencia.docente.${runId}@iffar.edu.br`,
         cpf: teacherCpf,
         password,
         roles: ["DOCENTE"],
@@ -1541,7 +1583,7 @@ describe("API HTTP - fluxos funcionais de processos", () => {
     expect(teacherCreated.status).toBe(201)
     temporaryUserIds.push(teacherCreated.data.data.idUser)
 
-    const evaluatorEmail = `concorrencia.avaliador.${runId}@example.com`
+    const evaluatorEmail = `concorrencia.avaliador.${runId}@iffar.edu.br`
     const evaluatorCreated = await request("/users", {
       method: "POST",
       token: adminAccessToken!,

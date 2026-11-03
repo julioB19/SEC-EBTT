@@ -1,3 +1,7 @@
+jest.mock("../../../src/service/campusEmailPolicyService", () => ({ CampusEmailPolicyService: class {
+    async resolveCampus() { return { idCampus: 1 } }
+    async requireAllowed(email: string) { return email.trim().toLowerCase() }
+  } }))
 import { describe, expect, jest, beforeEach, test } from "@jest/globals"
 import bcrypt from "bcryptjs"
 import { RoleName } from "@prisma/client"
@@ -35,7 +39,7 @@ describe("UserService", () => {
   const dbUser = {
     idUser: 10,
     name: "Fulano",
-    email: "fulano@if.edu.br",
+    email: "fulano@iffar.edu.br",
     cpf: "11122233344",
     passwordHash: "hashed",
     phone: "(11) 99888-7766",
@@ -282,7 +286,7 @@ describe("UserService", () => {
       await expect(
         service.createUser({
           name: "a",
-          email: "b",
+          email: "teste@iffar.edu.br",
           cpf: dbUser.cpf,
           password: "123",
           phone: "(11) 90000-0000", // 👈 incluir phone
@@ -297,7 +301,7 @@ describe("UserService", () => {
       await expect(
         service.createUser({
           name: "a",
-          email: "b",
+          email: "teste@iffar.edu.br",
           cpf: "000",
           password: "123",
           phone: "(11) 90000-0000", // 👈 incluir phone
@@ -314,7 +318,7 @@ describe("UserService", () => {
       await expect(
         service.createUser({
           name: "a",
-          email: "b",
+          email: "teste@iffar.edu.br",
           cpf: "000",
           password: "123",
           phone: "(11) 90000-0000", // 👈 incluir phone
@@ -363,41 +367,9 @@ describe("UserService", () => {
       expect(out).toEqual(mapResponse(dbUser))
     })
 
-    test("cria avaliador externo pendente sem CPF e senha", async () => {
-      const externalUser = {
-        ...dbUser,
-        cpf: null,
-        passwordHash: null,
-        roles: [{ role: { name: RoleName.EXTERNAL_EVALUATOR } }],
-        docente: null,
-        externalEvaluator: {
-          idExternalEvaluator: 15,
-          title: "Doutor",
-          institution: "Instituto Federal",
-          active: true
-        }
-      }
-      repo.createWithRolesAndDocente.mockResolvedValue(externalUser as any)
-
-      const out = await service.createUser({
-        name: externalUser.name,
-        email: externalUser.email,
-        roles: [RoleName.EXTERNAL_EVALUATOR],
-        externalEvaluatorProfile: {
-          title: "Doutor",
-          institution: "Instituto Federal"
-        }
-      })
-
-      expect(repo.createWithRolesAndDocente).toHaveBeenCalledWith(
-        expect.objectContaining({
-          cpf: null,
-          passwordHash: null,
-          roles: [RoleName.EXTERNAL_EVALUATOR]
-        })
-      )
-      expect(out.cpf).toBeNull()
-      expect(out.externalEvaluatorProfile?.institution).toBe("Instituto Federal")
+    test("orienta cadastro de externo pelo convite, sem conceder perfil antecipadamente", async () => {
+      await expect(service.createUser({ name: "Externo", email: "avaliador@outra.edu.br", roles: [RoleName.EXTERNAL_EVALUATOR] })).rejects.toThrow("Convites de acesso")
+      expect(repo.createWithRolesAndDocente).not.toHaveBeenCalled()
     })
   })
 

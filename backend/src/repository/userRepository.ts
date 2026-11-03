@@ -10,6 +10,7 @@ function personTypeForRoles(roles: RoleName[]): PersonType {
 }
 
 export interface CreateWithRolesAndDocenteInput {
+  campusId?: number
   name: string
   email: string
   cpf: string | null
@@ -19,6 +20,7 @@ export interface CreateWithRolesAndDocenteInput {
   passwordHash: string | null
   roles: RoleName[]
   docenteProfile?: {
+    campusId?: number
     siape: string
     classLevel: ClassLevel
     startInterstice: Date
@@ -56,6 +58,7 @@ export interface UpdateDocenteProfileInput {
 }
 
 export interface UpdateUserWithRolesAndDocenteInput {
+  campusId?: number
   name?: string
   email?: string
   cpf?: string
@@ -187,6 +190,7 @@ export class UserRepository {
         data: {
           name: input.name,
           email: input.email,
+          campus: input.campusId ? { connect: { idCampus: input.campusId } } : undefined,
           cpf: null,
           cpfEncrypted: protectedCpf?.cpfEncrypted ?? null,
           cpfHash: protectedCpf?.cpfHash ?? null,
@@ -203,6 +207,7 @@ export class UserRepository {
           docente: input.docenteProfile
             ? {
                 create: {
+                  campusId: input.docenteProfile.campusId ?? input.campusId,
                   siape: input.docenteProfile.siape,
                   classLevel: input.docenteProfile.classLevel,
                   start_interstice: input.docenteProfile.startInterstice,
@@ -253,6 +258,10 @@ export class UserRepository {
 
       const data: any = {}
 
+      if (input.campusId !== undefined) {
+        data.campus = { connect: { idCampus: input.campusId } }
+        if (current.docente) data.docente = { update: { campusId: input.campusId } }
+      }
       if (input.name !== undefined) data.name = input.name
       if (input.email !== undefined) data.email = input.email
       if (input.phone !== undefined) data.phone = input.phone
@@ -308,6 +317,7 @@ export class UserRepository {
       if (input.docenteProfile) {
         const p = input.docenteProfile
         const docenteUpdate: any = {}
+        if (input.campusId !== undefined) docenteUpdate.campusId = input.campusId
         if (p.siape !== undefined) docenteUpdate.siape = p.siape
         if (p.classLevel !== undefined) docenteUpdate.classLevel = p.classLevel
         if (p.startInterstice !== undefined) docenteUpdate.start_interstice = p.startInterstice

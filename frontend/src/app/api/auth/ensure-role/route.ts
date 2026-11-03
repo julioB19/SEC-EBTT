@@ -62,14 +62,14 @@ export async function GET(req: NextRequest) {
   redirect.cookies.set("accessToken", data.accessToken, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: parseDurationToSeconds(data.expiresIn)
   })
   redirect.cookies.set("refreshToken", data.refreshToken, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: parseDurationToSeconds(data.refreshExpiresIn)
   })

@@ -1,6 +1,12 @@
 "use client"
 
-import Link from "next/link"
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+import ActionButton from "@/components/ui/ActionButton"
+import { FormSelect } from "@/components/ui/FormControls"
+
+import ConfirmModal from "@/components/ConfirmModal"
 import { fieldClass, primaryButtonClass } from "@/components/ui/systemStyles"
 import { FormEvent, useEffect, useMemo, useState } from "react"
 
@@ -109,6 +115,7 @@ function commissionStatus(commission: Commission) {
 
 
 export default function CppdCommissionManagement({ backHref }: { backHref: string }) {
+  const [memberToRemove, setMemberToRemove] = useState<CommissionMember | null>(null)
   const [tab, setTab] = useState<"campuses" | "commissions">("commissions")
   const [campuses, setCampuses] = useState<Campus[]>([])
   const [commissions, setCommissions] = useState<Commission[]>([])
@@ -123,8 +130,8 @@ export default function CppdCommissionManagement({ backHref }: { backHref: strin
   const [newMembershipType, setNewMembershipType] = useState<MembershipType>("PRIMARY")
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
+  const [notice, setNotice] = useFeedbackState<string | null>(null, "success")
 
   const selectedCommission = useMemo(
     () => commissions.find(item => item.idCppdCommission === selectedCommissionId) ?? null,
@@ -315,7 +322,7 @@ export default function CppdCommissionManagement({ backHref }: { backHref: strin
   }
 
   async function removeMember(member: CommissionMember) {
-    if (!selectedCommission || !window.confirm(`Remover ${member.person.name} desta comissão?`)) return
+    if (!selectedCommission) return
     setSaving(true)
     setError(null)
     try {
@@ -334,6 +341,7 @@ export default function CppdCommissionManagement({ backHref }: { backHref: strin
 
   return (
     <main className="mx-auto w-full max-w-6xl space-y-6">
+      <ConfirmModal open={memberToRemove !== null} title="Remover membro da comissão?" description={memberToRemove ? `Confirme a remoção de ${memberToRemove.person.name} desta comissão.` : undefined} loading={saving} onCancel={() => setMemberToRemove(null)} onConfirm={async () => { if (memberToRemove) await removeMember(memberToRemove); setMemberToRemove(null) }} />
       <header className="space-y-3">
         <div>
           <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Campi e comissões CPPD</h1>
@@ -341,7 +349,7 @@ export default function CppdCommissionManagement({ backHref }: { backHref: strin
             Gerencie os vínculos que determinam o acesso local aos processos.
           </p>
         </div>
-        <Link href={backHref} className={primaryButton}>Voltar</Link>
+
       </header>
 
       <div className="inline-flex rounded-full border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-1" role="tablist">
@@ -363,8 +371,8 @@ export default function CppdCommissionManagement({ backHref }: { backHref: strin
         </button>
       </div>
 
-      {error && <p className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      {notice && <p className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
+      {error && null}
+      {notice && null}
 
       {loading ? (
         <p className="text-sm text-[var(--text-secondary)]">Carregando...</p>
@@ -404,11 +412,11 @@ export default function CppdCommissionManagement({ backHref }: { backHref: strin
               <h2 className="text-base font-semibold">{editingCampusId ? "Editar campus" : "Novo campus"}</h2>
               {editingCampusId && <button type="button" className="text-sm text-[var(--text-primary)]" onClick={() => beginCampusEdit()}>Cancelar</button>}
             </div>
-            <label className="block text-sm">Nome<input required className={`${inputClass} mt-1`} value={campusForm.name} onChange={event => setCampusForm(value => ({ ...value, name: event.target.value }))} /></label>
-            <label className="block text-sm">Sigla<input required className={`${inputClass} mt-1`} value={campusForm.acronym} onChange={event => setCampusForm(value => ({ ...value, acronym: event.target.value }))} /></label>
-            <label className="block text-sm">E-mail da CPPD<input type="email" className={`${inputClass} mt-1`} value={campusForm.cppdEmail} onChange={event => setCampusForm(value => ({ ...value, cppdEmail: event.target.value }))} /></label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={campusForm.active} onChange={event => setCampusForm(value => ({ ...value, active: event.target.checked }))} /> Campus ativo</label>
-            <button disabled={saving} className={primaryButton}>{saving ? "Salvando..." : "Salvar campus"}</button>
+            <label className="block text-sm">Nome<FormInput required className={`${inputClass} mt-1`} value={campusForm.name} onChange={event => setCampusForm(value => ({ ...value, name: event.target.value }))}  aria-label="Nome" /></label>
+            <label className="block text-sm">Sigla<FormInput required className={`${inputClass} mt-1`} value={campusForm.acronym} onChange={event => setCampusForm(value => ({ ...value, acronym: event.target.value }))}  aria-label="Sigla" /></label>
+            <label className="block text-sm">E-mail da CPPD<FormInput type="email" className={`${inputClass} mt-1`} value={campusForm.cppdEmail} onChange={event => setCampusForm(value => ({ ...value, cppdEmail: event.target.value }))}  fieldKind={"email"}  aria-label="E-mail da CPPD" /></label>
+            <label className="flex items-center gap-2 text-sm"><FormInput type="checkbox" checked={campusForm.active} onChange={event => setCampusForm(value => ({ ...value, active: event.target.checked }))}  aria-label="Campus ativo" /> Campus ativo</label>
+            <ActionButton disabled={saving} className={primaryButton} disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >{saving ? "Salvando..." : "Salvar campus"}</ActionButton>
           </form>
         </div>
       ) : (
@@ -449,16 +457,16 @@ export default function CppdCommissionManagement({ backHref }: { backHref: strin
                 {editingCommissionId || !selectedCommission ? (
                   <>
                     <div className="grid gap-4 md:grid-cols-2">
-                      <label className="block text-sm">Campus<select required className={`${inputClass} mt-1`} value={commissionForm.campusId} onChange={event => setCommissionForm(value => ({ ...value, campusId: event.target.value }))}><option value="">Selecione</option>{campuses.filter(campus => campus.active).map(campus => <option key={campus.idCampus} value={campus.idCampus}>{campus.name}</option>)}</select></label>
-                      <label className="block text-sm">Portaria<input className={`${inputClass} mt-1`} value={commissionForm.ordinance} onChange={event => setCommissionForm(value => ({ ...value, ordinance: event.target.value }))} /></label>
+                      <label className="block text-sm">Campus<FormSelect required className={`${inputClass} mt-1`} value={commissionForm.campusId} onChange={event => setCommissionForm(value => ({ ...value, campusId: event.target.value }))} aria-label="Campus" ><option value="">Selecione</option>{campuses.filter(campus => campus.active).map(campus => <option key={campus.idCampus} value={campus.idCampus}>{campus.name}</option>)}</FormSelect></label>
+                      <label className="block text-sm">Portaria<FormInput className={`${inputClass} mt-1`} value={commissionForm.ordinance} onChange={event => setCommissionForm(value => ({ ...value, ordinance: event.target.value }))}  aria-label="Portaria" /></label>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
-                      <label className="block text-sm">Início do mandato<input type="date" className={`${inputClass} mt-1`} value={commissionForm.mandateStart} onChange={event => setCommissionForm(value => ({ ...value, mandateStart: event.target.value }))} /></label>
-                      <label className="block text-sm">Fim do mandato<input type="date" className={`${inputClass} mt-1`} value={commissionForm.mandateEnd} onChange={event => setCommissionForm(value => ({ ...value, mandateEnd: event.target.value }))} /></label>
-                      <label className="block text-sm">Início da vigência<input type="date" className={`${inputClass} mt-1`} value={commissionForm.validityStart} onChange={event => setCommissionForm(value => ({ ...value, validityStart: event.target.value }))} /></label>
-                      <label className="block text-sm">Fim da vigência<input type="date" className={`${inputClass} mt-1`} value={commissionForm.validityEnd} onChange={event => setCommissionForm(value => ({ ...value, validityEnd: event.target.value }))} /></label>
+                      <label className="block text-sm">Início do mandato<FormInput type="date" className={`${inputClass} mt-1`} value={commissionForm.mandateStart} onChange={event => setCommissionForm(value => ({ ...value, mandateStart: event.target.value }))}  aria-label="Início do mandato" /></label>
+                      <label className="block text-sm">Fim do mandato<FormInput type="date" className={`${inputClass} mt-1`} value={commissionForm.mandateEnd} onChange={event => setCommissionForm(value => ({ ...value, mandateEnd: event.target.value }))}  aria-label="Fim do mandato" /></label>
+                      <label className="block text-sm">Início da vigência<FormInput type="date" className={`${inputClass} mt-1`} value={commissionForm.validityStart} onChange={event => setCommissionForm(value => ({ ...value, validityStart: event.target.value }))}  aria-label="Início da vigência" /></label>
+                      <label className="block text-sm">Fim da vigência<FormInput type="date" className={`${inputClass} mt-1`} value={commissionForm.validityEnd} onChange={event => setCommissionForm(value => ({ ...value, validityEnd: event.target.value }))}  aria-label="Fim da vigência" /></label>
                     </div>
-                    <button disabled={saving} className={primaryButton}>{saving ? "Salvando..." : "Salvar comissão"}</button>
+                    <ActionButton disabled={saving} className={primaryButton} disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >{saving ? "Salvando..." : "Salvar comissão"}</ActionButton>
                   </>
                 ) : (
                   <dl className="grid gap-4 text-sm break-words md:grid-cols-2">
@@ -480,10 +488,10 @@ export default function CppdCommissionManagement({ backHref }: { backHref: strin
                         {selectedCommission.members.map(member => (
                           <tr key={member.personId} className="border-t border-[var(--border-subtle)] hover:bg-[var(--table-row-hover-bg)]">
                             <td className="px-3 py-2"><span className="block font-medium">{member.person.name}</span><span className="text-xs text-[var(--text-secondary)]">{member.person.email}</span></td>
-                            <td className="px-3 py-2"><select disabled={saving} className={inputClass} value={member.function} onChange={event => updateMember(member, { function: event.target.value as MemberFunction })}><option value="PRESIDENT">Presidente</option><option value="SECRETARY">Secretário(a)</option><option value="MEMBER">Membro</option></select></td>
-                            <td className="px-3 py-2"><select disabled={saving} className={inputClass} value={member.membershipType} onChange={event => updateMember(member, { membershipType: event.target.value as MembershipType })}><option value="PRIMARY">Titular</option><option value="SUBSTITUTE">Suplente</option></select></td>
-                            <td className="px-3 py-2"><label className="flex items-center gap-2"><input type="checkbox" disabled={saving} checked={member.active} onChange={event => updateMember(member, { active: event.target.checked })} /> {member.active ? "Sim" : "Não"}</label></td>
-                            <td className="px-3 py-2"><button type="button" disabled={saving} className="font-semibold text-red-700" onClick={() => removeMember(member)}>Remover</button></td>
+                            <td className="px-3 py-2"><FormSelect aria-label={`Função de ${member.person.name}`} disabled={saving} className={inputClass} value={member.function} onChange={event => updateMember(member, { function: event.target.value as MemberFunction })} disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} ><option value="PRESIDENT">Presidente</option><option value="SECRETARY">Secretário(a)</option><option value="MEMBER">Membro</option></FormSelect></td>
+                            <td className="px-3 py-2"><FormSelect aria-label={`Vínculo de ${member.person.name}`} disabled={saving} className={inputClass} value={member.membershipType} onChange={event => updateMember(member, { membershipType: event.target.value as MembershipType })} disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} ><option value="PRIMARY">Titular</option><option value="SUBSTITUTE">Suplente</option></FormSelect></td>
+                            <td className="px-3 py-2"><label className="flex items-center gap-2"><FormInput type="checkbox" disabled={saving} checked={member.active} onChange={event => updateMember(member, { active: event.target.checked })}  disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} /> {member.active ? "Sim" : "Não"}</label></td>
+                            <td className="px-3 py-2"><ActionButton type="button" disabled={saving} className="font-semibold text-red-700" onClick={() => setMemberToRemove(member)} disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >Remover</ActionButton></td>
                           </tr>
                         ))}
                         {!selectedCommission.members.length && <tr><td colSpan={5} className="px-3 py-5 text-center text-[var(--text-secondary)]">Nenhum membro vinculado.</td></tr>}
@@ -492,10 +500,10 @@ export default function CppdCommissionManagement({ backHref }: { backHref: strin
                   </div>
 
                   <form onSubmit={addMember} className="grid gap-3 border-t border-[var(--border-subtle)] pt-4 sm:grid-cols-2 2xl:grid-cols-[minmax(0,1fr)_140px_130px_auto] sm:items-end">
-                    <label className="block text-sm">Novo membro<select required className={`${inputClass} mt-1`} value={newMemberId} onChange={event => setNewMemberId(event.target.value)}><option value="">Selecione</option>{availableCandidates.map(candidate => <option key={candidate.idPerson} value={candidate.idPerson}>{candidate.name} · {candidate.email}</option>)}</select></label>
-                    <label className="block text-sm">Função<select className={`${inputClass} mt-1`} value={newMemberFunction} onChange={event => setNewMemberFunction(event.target.value as MemberFunction)}><option value="PRESIDENT">Presidente</option><option value="SECRETARY">Secretário(a)</option><option value="MEMBER">Membro</option></select></label>
-                    <label className="block text-sm">Vínculo<select className={`${inputClass} mt-1`} value={newMembershipType} onChange={event => setNewMembershipType(event.target.value as MembershipType)}><option value="PRIMARY">Titular</option><option value="SUBSTITUTE">Suplente</option></select></label>
-                    <button disabled={saving || !availableCandidates.length} className={primaryButton}>Adicionar</button>
+                    <label className="block text-sm">Novo membro<FormSelect required className={`${inputClass} mt-1`} value={newMemberId} onChange={event => setNewMemberId(event.target.value)} aria-label="Novo membro" ><option value="">Selecione</option>{availableCandidates.map(candidate => <option key={candidate.idPerson} value={candidate.idPerson}>{candidate.name} · {candidate.email}</option>)}</FormSelect></label>
+                    <label className="block text-sm">Função<FormSelect className={`${inputClass} mt-1`} value={newMemberFunction} onChange={event => setNewMemberFunction(event.target.value as MemberFunction)} aria-label="Função" ><option value="PRESIDENT">Presidente</option><option value="SECRETARY">Secretário(a)</option><option value="MEMBER">Membro</option></FormSelect></label>
+                    <label className="block text-sm">Vínculo<FormSelect className={`${inputClass} mt-1`} value={newMembershipType} onChange={event => setNewMembershipType(event.target.value as MembershipType)} aria-label="Vínculo" ><option value="PRIMARY">Titular</option><option value="SUBSTITUTE">Suplente</option></FormSelect></label>
+                    <ActionButton disabled={saving || !availableCandidates.length} className={primaryButton} disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (!availableCandidates.length) ? "Não há candidatos disponíveis. Cadastre uma conta ativa e elegível antes de vincular um membro." : "Este controle está indisponível na etapa atual."} >Adicionar</ActionButton>
                   </form>
                   {!availableCandidates.length && <p className="text-xs text-[var(--text-secondary)]">Todos os usuários locais da CPPD já estão vinculados a esta comissão.</p>}
                 </section>

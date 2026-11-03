@@ -1,5 +1,10 @@
 "use client"
 
+import BackButton from "@/components/ui/BackButton"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+import ActionButton from "@/components/ui/ActionButton"
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Modal from "@/components/Modal"
@@ -120,6 +125,7 @@ export default function ForgotPasswordPage() {
       <h1 className="text-2xl font-semibold text-[var(--text-primary)] mb-6 text-center">
         SEC-EBTT
       </h1>
+<BackButton />
 
       <form
         onSubmit={onSubmit}
@@ -143,7 +149,7 @@ export default function ForgotPasswordPage() {
           <label className="block text-sm text-[var(--text-secondary)]">
             CPF
           </label>
-          <input
+          <FormInput
             value={cpf}
             onChange={onCpfChange}
             placeholder="000.000.000-00"
@@ -157,10 +163,10 @@ export default function ForgotPasswordPage() {
               outline-none
               focus:ring-2 focus:ring-[var(--brand)]
             "
-          />
+           fieldKind={"cpf"}  aria-label="CPF" />
         </div>
 
-        <button
+        <ActionButton
           type="submit"
           disabled={loading}
           className="
@@ -170,17 +176,12 @@ export default function ForgotPasswordPage() {
             hover:bg-[var(--btn-primary-hover-bg)]
             disabled:opacity-50
           "
-        >
+         disabledReason={(loading) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
           {loading ? "Enviando..." : "Enviar código"}
-        </button>
+        </ActionButton>
 
         <div className="pt-2 text-center">
-          <a
-            href="/login"
-            className="text-sm text-[var(--brand)] hover:underline"
-          >
-            Voltar para o login
-          </a>
+          <></>
         </div>
       </form>
     </div>

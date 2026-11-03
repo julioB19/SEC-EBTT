@@ -1,4 +1,5 @@
 import { cookies } from "next/headers"
+import BackButton from "@/components/ui/BackButton"
 import { LogoutButton } from "@/components/LogoutButton"
 
 type Role = "DOCENTE" | "CPPD_MEMBER" | "CPPD_CENTRAL" | "ADMIN" | "EXTERNAL_EVALUATOR"
@@ -57,21 +58,12 @@ export default async function ForbiddenPage() {
       "
       >
         <h1 className="text-2xl font-semibold mb-2 text-[var(--text-primary)]">Acesso negado</h1>
+<BackButton />
 
         <p className="text-[var(--text-secondary)] mb-6">Você não tem permissão para acessar esta página.</p>
 
         <div className="flex gap-3 justify-center">
-          <a
-            href={backPath}
-            className="
-              px-4 py-2 rounded-xl text-sm
-              border border-[var(--border-subtle)]
-              text-[var(--text-primary)]
-              hover:bg-[var(--surface-muted)]
-            "
-          >
-            Voltar
-          </a>
+          <></>
 
           <LogoutButton />
         </div>

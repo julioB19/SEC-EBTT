@@ -1,5 +1,11 @@
 "use client"
 
+import BackButton from "@/components/ui/BackButton"
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+import ActionButton from "@/components/ui/ActionButton"
+
 import { FormEvent, Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 
@@ -12,7 +18,7 @@ function InvitationForm() {
   const [newPassword, setNewPassword] = useState("")
   const [confirmation, setConfirmation] = useState("")
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
   const [completed, setCompleted] = useState(false)
 
   useEffect(() => {
@@ -57,6 +63,7 @@ function InvitationForm() {
     return (
       <div className="w-full max-w-sm rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 shadow-sm">
         <h1 className="text-xl font-semibold text-[var(--text-primary)]">Cadastro concluído</h1>
+<BackButton />
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
           Seu acesso foi ativado. Entre usando seu CPF e a senha definida agora.
         </p>
@@ -77,24 +84,25 @@ function InvitationForm() {
       className="w-full max-w-sm space-y-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 shadow-sm"
     >
       <div>
-        <h1 className="text-xl font-semibold text-[var(--text-primary)]">Concluir cadastro</h1>
+        <BackButton />
+      <h1 className="text-xl font-semibold text-[var(--text-primary)]">Concluir cadastro</h1>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">Defina os dados que serão usados no seu acesso.</p>
       </div>
 
       <label className="block space-y-1 text-sm text-[var(--text-secondary)]">
         <span>E-mail</span>
-        <input
+        <FormInput
           type="email"
           value={email}
           onChange={event => setEmail(event.target.value)}
           required
           className="w-full rounded-xl border border-[var(--border-subtle)] bg-white px-3 py-2 text-[var(--text-primary)]"
-        />
+         fieldKind={"email"} />
       </label>
 
       <label className="block space-y-1 text-sm text-[var(--text-secondary)]">
         <span>Código do convite</span>
-        <input
+        <FormInput
           value={code}
           onChange={event => setCode(event.target.value)}
           required
@@ -104,18 +112,18 @@ function InvitationForm() {
 
       <label className="block space-y-1 text-sm text-[var(--text-secondary)]">
         <span>CPF</span>
-        <input
+        <FormInput
           value={cpf}
           onChange={event => setCpf(event.target.value)}
           placeholder="000.000.000-00"
           required
           className="w-full rounded-xl border border-[var(--border-subtle)] bg-white px-3 py-2 text-[var(--text-primary)]"
-        />
+         fieldKind={"cpf"} />
       </label>
 
       <label className="block space-y-1 text-sm text-[var(--text-secondary)]">
         <span>Senha</span>
-        <input
+        <FormInput
           type="password"
           value={newPassword}
           onChange={event => setNewPassword(event.target.value)}
@@ -127,7 +135,7 @@ function InvitationForm() {
 
       <label className="block space-y-1 text-sm text-[var(--text-secondary)]">
         <span>Confirmar senha</span>
-        <input
+        <FormInput
           type="password"
           value={confirmation}
           onChange={event => setConfirmation(event.target.value)}
@@ -137,15 +145,15 @@ function InvitationForm() {
         />
       </label>
 
-      {error && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {error && null}
 
-      <button
+      <ActionButton
         type="submit"
         disabled={loading}
         className="w-full rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-medium text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover-bg)] disabled:opacity-60"
-      >
+       disabledReason={(loading) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
         {loading ? "Concluindo..." : "Concluir cadastro"}
-      </button>
+      </ActionButton>
     </form>
   )
 }

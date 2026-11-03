@@ -1,5 +1,11 @@
 "use client"
 
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import ActionButton from "@/components/ui/ActionButton"
+import { FormSelect } from "@/components/ui/FormControls"
+import FormInput from "@/components/ui/FormInput"
+
 import { useEffect, useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
@@ -68,8 +74,8 @@ export default function ScoringTableBlockBuilderPage() {
   const [saving, setSaving] = useState(false)
   const [loadingStructure, setLoadingStructure] = useState(false)
 
-  const [infoMessage, setInfoMessage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [infoMessage, setInfoMessage] = useFeedbackState<string | null>(null, "auto")
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
   const [details, setDetails] = useState<string[] | null>(null)
 
   useEffect(() => {
@@ -412,7 +418,7 @@ export default function ScoringTableBlockBuilderPage() {
         }
       }
 
-      setInfoMessage("Bloco salvo no banco com sucesso.")
+      setInfoMessage("Bloco salvo com sucesso.")
 
       const selected = nodes.find(n => n.draftId === selectedBlockDraftId)
       await bootstrap(selected?.idScoringNode ? `db_${selected.idScoringNode}` : undefined)
@@ -451,22 +457,15 @@ export default function ScoringTableBlockBuilderPage() {
       <div className="max-w-6xl mx-auto space-y-6 px-4 md:px-6 lg:px-8 py-6">
         <header className="space-y-3">
           <div>
-            <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Builder da Tabela de Pontuação</h1>
+            <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Editor da tabela de pontuação</h1>
             <p className="text-sm text-[var(--text-secondary)]">Tabela #{tableId} · editar por bloco</p>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 w-full">
-            <Link
-              href="/admin/tabelas-pontuacao"
-              className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
-                         bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
-                         hover:bg-[var(--btn-primary-hover-bg)] transition-[background]"
-            >
-              Voltar
-            </Link>
+            <></>
 
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <button
+              <ActionButton
                 type="button"
                 onClick={addNode}
                 disabled={saving || loadingStructure || !selectedBlockDraftId}
@@ -474,11 +473,11 @@ export default function ScoringTableBlockBuilderPage() {
                            border border-[var(--border-subtle)]
                            hover:bg-[var(--surface-bg-2)] transition
                            disabled:opacity-60 disabled:cursor-not-allowed"
-              >
+               disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : (!selectedBlockDraftId) ? "Selecione um bloco da tabela antes de adicionar itens." : "Este controle está indisponível na etapa atual."} >
                 Adicionar subitem
-              </button>
+              </ActionButton>
 
-              <button
+              <ActionButton
                 type="button"
                 onClick={handleSalvarTudo}
                 disabled={saving || loadingStructure || !selectedBlockDraftId}
@@ -486,9 +485,9 @@ export default function ScoringTableBlockBuilderPage() {
                            bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                            hover:bg-[var(--btn-primary-hover-bg)] transition-[background]
                            disabled:opacity-60 disabled:cursor-not-allowed"
-              >
+               disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : (!selectedBlockDraftId) ? "Selecione um bloco da tabela antes de adicionar itens." : "Este controle está indisponível na etapa atual."} >
                 {saving ? "Salvando..." : "Salvar alterações"}
-              </button>
+              </ActionButton>
             </div>
           </div>
         </header>
@@ -496,15 +495,11 @@ export default function ScoringTableBlockBuilderPage() {
         {(infoMessage || error) && (
           <div className="space-y-2">
             {infoMessage && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
-                {infoMessage}
-              </div>
+              null
             )}
 
             {error && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                {error}
-              </div>
+              null
             )}
 
             {details && details.length > 0 && (
@@ -530,14 +525,14 @@ export default function ScoringTableBlockBuilderPage() {
               Selecione o bloco
             </label>
 
-            <select
+            <FormSelect
               className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
                          px-3 py-2 text-sm text-[var(--text-primary)] outline-none
                          disabled:opacity-60 disabled:cursor-not-allowed"
               value={selectedBlockDraftId || ""}
               onChange={e => handleSelectBlock(e.target.value)}
               disabled={saving || loadingStructure}
-            >
+             disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Selecione o bloco" >
               <option value="">(selecione…)</option>
 
               {blocks.map(b => (
@@ -547,7 +542,7 @@ export default function ScoringTableBlockBuilderPage() {
               ))}
 
               <option value="__NEW__">+ Novo bloco</option>
-            </select>
+            </FormSelect>
 
             {!selectedBlockDraftId && (
               <p className="text-sm text-[var(--text-secondary)]">
@@ -580,7 +575,7 @@ export default function ScoringTableBlockBuilderPage() {
                       </div>
                     </div>
 
-                    <button
+                    <ActionButton
                       type="button"
                       onClick={() => removeNode(node.draftId)}
                       disabled={saving || loadingStructure || isPersisted || isRootBlock}
@@ -595,9 +590,9 @@ export default function ScoringTableBlockBuilderPage() {
                                  border border-[var(--border-subtle)]
                                  hover:bg-[var(--surface-bg-2)] transition
                                  disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
+                     disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : (isPersisted) ? "Este registro já foi salvo e não pode ser removido nesta tela." : (isRootBlock) ? "O bloco raiz não pode ser removido nem ter sua posição alterada." : "Este controle está indisponível na etapa atual."} >
                       Remover
-                    </button>
+                    </ActionButton>
                   </div>
 
                   <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4 space-y-3">
@@ -606,40 +601,40 @@ export default function ScoringTableBlockBuilderPage() {
                         <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                           Nome
                         </label>
-                        <input
+                        <FormInput
                           className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
                                      px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
                           value={node.name}
                           onChange={e => updateNode(node.draftId, { name: e.target.value })}
                           disabled={saving || loadingStructure}
-                        />
+                         disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Nome" />
                       </div>
 
                       <div>
                         <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                           Código
                         </label>
-                        <input
+                        <FormInput
                           className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
                                      px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
                           value={node.code}
                           onChange={e => updateNode(node.draftId, { code: e.target.value })}
                           placeholder="Ex: DOC"
                           disabled={saving || loadingStructure}
-                        />
+                         disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Código" />
                       </div>
 
                       <div>
                         <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                           Ordem
                         </label>
-                        <input
+                        <FormInput
                           className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
                                      px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
                           value={String(node.sortOrder)}
                           onChange={e => updateNode(node.draftId, { sortOrder: Number(e.target.value) })}
                           disabled={saving || loadingStructure}
-                        />
+                         disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Ordem" />
                       </div>
 
                       <div className="md:col-span-2">
@@ -647,21 +642,21 @@ export default function ScoringTableBlockBuilderPage() {
                           Pai
                         </label>
 
-                        <select
+                        <FormSelect
                           className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
                                      px-3 py-2 text-sm text-[var(--text-primary)] outline-none
                                      disabled:opacity-60 disabled:cursor-not-allowed"
                           value={node.parentDraftId ?? ""}
                           onChange={e => updateNode(node.draftId, { parentDraftId: e.target.value || null })}
                           disabled={saving || loadingStructure || isRootBlock}
-                        >
+                         disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : (isRootBlock) ? "O bloco raiz não pode ser removido nem ter sua posição alterada." : "Este controle está indisponível na etapa atual."}  aria-label="Pai" >
                           <option value="">(raiz)</option>
                           {parentOptions.map(n => (
                             <option key={n.draftId} value={n.draftId}>
                               {n.name?.trim() ? `${n.name} (${n.code || "sem código"})` : n.draftId}
                             </option>
                           ))}
-                        </select>
+                        </FormSelect>
 
                         {isRootBlock && (
                           <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -675,12 +670,12 @@ export default function ScoringTableBlockBuilderPage() {
                           Fórmula
                         </label>
                         <div className="mt-2 flex items-center gap-2 text-sm">
-                          <input
+                          <FormInput
                             type="checkbox"
                             checked={node.hasFormula}
                             onChange={e => updateNode(node.draftId, { hasFormula: e.target.checked })}
                             disabled={saving || loadingStructure}
-                          />
+                           disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} />
                           <span className="text-[var(--text-primary)]">Possui fórmula</span>
                         </div>
                       </div>
@@ -690,14 +685,14 @@ export default function ScoringTableBlockBuilderPage() {
                           <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                             Expressão
                           </label>
-                          <input
+                          <FormInput
                             className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
                                        px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
                             value={node.formulaExpression}
                             onChange={e => updateNode(node.draftId, { formulaExpression: e.target.value })}
                             placeholder="Ex: A * 0.5 + B"
                             disabled={saving || loadingStructure}
-                          />
+                           disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Expressão" />
                         </div>
                       )}
                     </div>
@@ -707,7 +702,7 @@ export default function ScoringTableBlockBuilderPage() {
                     <div className="flex items-center justify-between">
                       <h3 className="text-base font-semibold text-[var(--text-primary)]">Itens</h3>
 
-                      <button
+                      <ActionButton
                         type="button"
                         onClick={() => addItem(node.draftId)}
                         disabled={saving || loadingStructure}
@@ -715,9 +710,9 @@ export default function ScoringTableBlockBuilderPage() {
                                    border border-[var(--border-subtle)]
                                    hover:bg-[var(--surface-bg-2)] transition
                                    disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
+                       disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                         Adicionar item
-                      </button>
+                      </ActionButton>
                     </div>
 
                     {node.items.map((item, idx) => {
@@ -736,7 +731,7 @@ export default function ScoringTableBlockBuilderPage() {
                               </span>
                             </div>
 
-                            <button
+                            <ActionButton
                               type="button"
                               onClick={() => removeItem(node.draftId, idx)}
                               disabled={saving || loadingStructure || itemPersisted}
@@ -745,9 +740,9 @@ export default function ScoringTableBlockBuilderPage() {
                                          border border-[var(--border-subtle)]
                                          hover:bg-[var(--surface-bg-2)] transition
                                          disabled:opacity-60 disabled:cursor-not-allowed"
-                            >
+                             disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : (itemPersisted) ? "Este registro já foi salvo e não pode ser removido nesta tela." : "Este controle está indisponível na etapa atual."} >
                               Remover
-                            </button>
+                            </ActionButton>
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -755,39 +750,39 @@ export default function ScoringTableBlockBuilderPage() {
                               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                                 Descrição
                               </label>
-                              <input
+                              <FormInput
                                 className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
                                            px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
                                 value={item.description}
                                 onChange={e => updateItem(node.draftId, idx, { description: e.target.value })}
                                 disabled={saving || loadingStructure}
-                              />
+                               disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Descrição" />
                             </div>
 
                             <div>
                               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                                 Unidade
                               </label>
-                              <input
+                              <FormInput
                                 className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
                                            px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
                                 value={item.unit}
                                 onChange={e => updateItem(node.draftId, idx, { unit: e.target.value })}
                                 disabled={saving || loadingStructure}
-                              />
+                               disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Unidade" />
                             </div>
 
                             <div>
                               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                                 Pontos
                               </label>
-                              <input
+                              <FormInput
                                 className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
                                            px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
                                 value={item.points}
                                 onChange={e => updateItem(node.draftId, idx, { points: e.target.value })}
                                 disabled={saving || loadingStructure}
-                              />
+                               disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Pontos" />
                             </div>
 
                             <div>
@@ -795,12 +790,12 @@ export default function ScoringTableBlockBuilderPage() {
                                 Máximo
                               </label>
                               <div className="mt-2 flex items-center gap-2 text-sm">
-                                <input
+                                <FormInput
                                   type="checkbox"
                                   checked={item.hasMaxPoints}
                                   onChange={e => updateItem(node.draftId, idx, { hasMaxPoints: e.target.checked })}
                                   disabled={saving || loadingStructure}
-                                />
+                                 disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} />
                                 <span className="text-[var(--text-primary)]">Possui pontuação máxima</span>
                               </div>
                             </div>
@@ -809,27 +804,27 @@ export default function ScoringTableBlockBuilderPage() {
                               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                                 Pontuação máxima
                               </label>
-                              <input
+                              <FormInput
                                 className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
                                            px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
                                 value={item.maxPoints}
                                 onChange={e => updateItem(node.draftId, idx, { maxPoints: e.target.value })}
                                 disabled={saving || loadingStructure || !item.hasMaxPoints}
-                              />
+                               disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : (!item.hasMaxPoints) ? "Marque a opção de pontuação máxima para informar um limite." : "Este controle está indisponível na etapa atual."}  aria-label="Pontuação máxima" />
                             </div>
 
                             <div>
                               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                                 Variável da expressão
                               </label>
-                              <input
+                              <FormInput
                                 className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
                                            px-3 py-2 text-sm text-[var(--text-primary)] outline-none"
                                 value={item.formulaKey}
                                 onChange={e => updateItem(node.draftId, idx, { formulaKey: e.target.value })}
                                 placeholder="Ex: A"
                                 disabled={saving || loadingStructure}
-                              />
+                               disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : (loadingStructure) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Variável da expressão" />
                             </div>
                           </div>
                         </div>

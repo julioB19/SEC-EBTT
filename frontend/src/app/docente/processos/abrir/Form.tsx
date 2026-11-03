@@ -1,5 +1,13 @@
 "use client"
 
+import ProcessSteps, { ProcessSection } from "@/components/ProcessSteps"
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+import { FormSelect } from "@/components/ui/FormControls"
+import ActionButton from "@/components/ui/ActionButton"
+import { formatProcessTypeLabel } from "@/utils/processTypeLabels"
+
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Modal from "@/components/Modal"
@@ -98,13 +106,6 @@ const FALLBACK_PROCESS_TYPES: ConfiguredProcessType[] = [
   }
 ]
 
-const PROCESS_TYPE_LABELS: Record<string, string> = {
-  PROGRESSION: "Progressão",
-  PROMOTION: "Promoção",
-  RSC: "RSC",
-  FULL_PROFESSOR: "Promoção à Classe Titular"
-}
-
 function mapLegacyTypeToProcessTypeCode(type: LegacyProcessType): ProcessTypeCode {
   return type === "PROMOCAO" ? "PROMOTION" : "PROGRESSION"
 }
@@ -116,7 +117,7 @@ function mapProcessTypeCodeToLegacy(code: ProcessTypeCode): LegacyProcessType | 
 }
 
 function getProcessTypeLabel(processType: ConfiguredProcessType) {
-  return PROCESS_TYPE_LABELS[processType.code] ?? processType.name
+  return formatProcessTypeLabel(processType.code, processType.name)
 }
 
 export default function Form() {
@@ -154,7 +155,7 @@ export default function Form() {
     useState<"MEMORIAL" | "THESIS">("MEMORIAL")
 
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
 
   const [modal, setModal] = useState<ModalState>({
     open: false,
@@ -529,69 +530,68 @@ export default function Form() {
             Revise seus dados e informe os detalhes necessários para iniciar o processo.
           </p>
         </header>
+<ProcessSteps steps={[{"title":"Revisar seus dados","description":"Confira identificação, contato, campus e vínculo funcional."},{"title":"Escolher e preencher o processo","description":"Selecione o tipo e informe apenas os requisitos solicitados para ele."},{"title":"Criar o rascunho","description":"Depois de abrir, você poderá anexar documentos, preencher a pontuação e enviar à CPPD."}]} />
 
         {error && (
-          <div className="rounded-xl border border-[var(--border-strong)] bg-[var(--state-danger-bg)] text-[var(--state-danger-text)] text-sm p-3">
-            {error}
-          </div>
+          null
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-[var(--text-primary)]">
-              Dados do docente
-            </h2>
+<ProcessSection number={1} title="Revisar seus dados" description="Confira os dados pessoais, o contato e o vínculo antes de abrir o processo.">
+<section className="space-y-3">
+
             <div className="grid md:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1 text-sm">
                 <label className="font-medium text-[var(--text-primary)]">
                   Nome
                 </label>
-                <input
+                <FormInput
                   className={inputClass}
                   value={nome}
                   onChange={e => setNome(e.target.value)}
-                />
+                 aria-label="Nome" />
               </div>
               <div className="flex flex-col gap-1 text-sm">
                 <label className="font-medium text-[var(--text-primary)]">
                   E-mail
                 </label>
-                <input
+                <FormInput
                   type="email"
                   className={inputClass}
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                />
+                 fieldKind={"email"}  aria-label="E-mail" />
               </div>
               <div className="flex flex-col gap-1 text-sm">
                 <label className="font-medium text-[var(--text-primary)]">
                   Telefone / Celular
                 </label>
-                <input
+                <FormInput
                   className={inputClass}
                   value={telefone}
                   onChange={e => setTelefone(e.target.value)}
-                />
+                 fieldKind={"phone"}  aria-label="Telefone / Celular" />
               </div>
               <div className="flex flex-col gap-1 text-sm">
                 <label className="font-medium text-[var(--text-primary)]">
                   SIAPE
                 </label>
-                <input
+                <FormInput
                   className={inputClass}
                   value={siape}
                   onChange={e => setSiape(e.target.value)}
-                />
+                 fieldKind={"siape"}  aria-label="SIAPE" />
               </div>
             </div>
           </section>
-
-          <section className="grid md:grid-cols-2 gap-4">
+</ProcessSection>
+<ProcessSection number={2} title="Preencher os dados do processo" description="Selecione o tipo e preencha os requisitos correspondentes. Os campos apresentados acompanham o tipo escolhido.">
+<section className="grid md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1 text-sm">
               <label className="font-medium text-[var(--text-primary)]">
                 Tipo de processo
               </label>
-              <select
+              <FormSelect
                 className={selectClass}
                 value={selectedProcessTypeCode}
                 onChange={e => {
@@ -600,7 +600,7 @@ export default function Form() {
                   setNivelDestino("")
                 }}
                 disabled={loadingProcessTypes}
-              >
+               disabledReason={(loadingProcessTypes) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Tipo de processo" >
                 {processTypes.map(processType => {
                   const label = getProcessTypeLabel(processType)
 
@@ -613,85 +613,82 @@ export default function Form() {
                     </option>
                   )
                 })}
-              </select>
+              </FormSelect>
             </div>
 
             <div className="flex flex-col gap-1 text-sm">
               <label className="font-medium text-[var(--text-primary)]">
                 Campus
               </label>
-              <input
+              <FormInput
                 className={inputClass}
                 value={campus}
                 onChange={e => setCampus(e.target.value)}
-              />
+               aria-label="Campus" />
             </div>
           </section>
-
-          <section className="grid md:grid-cols-3 gap-4">
+<section className="grid md:grid-cols-3 gap-4">
             <div className="md:col-span-2 flex flex-col gap-1 text-sm">
               <label className="font-medium text-[var(--text-primary)]">
                 Cidade
               </label>
-              <input
+              <FormInput
                 className={inputClass}
                 value={cidade}
                 onChange={e => setCidade(e.target.value)}
-              />
+               aria-label="Cidade" />
             </div>
             <div className="flex flex-col gap-1 text-sm">
               <label className="font-medium text-[var(--text-primary)]">
                 UF
               </label>
-              <input
+              <FormInput
                 className={inputClass}
                 value={estado}
                 maxLength={2}
                 onChange={e => setEstado(e.target.value.toUpperCase())}
-              />
+               aria-label="UF" fieldKind="uf" />
             </div>
           </section>
-
-          <section className="grid md:grid-cols-2 gap-4">
+<section className="grid md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1 text-sm">
               <label className="font-medium text-[var(--text-primary)]">
                 Número do processo externo (opcional)
               </label>
-              <input
+              <FormInput
                 className={inputClass}
                 value={externalNumber}
                 onChange={e => setExternalNumber(e.target.value)}
                 maxLength={120}
-              />
+               aria-label="Número do processo externo (opcional)" />
             </div>
           </section>
-
-          {isCareerProcess && (
+{isCareerProcess && (
             <>
               <section className="grid md:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1 text-sm">
                   <label className="font-medium text-[var(--text-primary)]">
                     Início do interstício
                   </label>
-                  <input
+                  <FormInput
                     type="date"
                     className={inputClass}
                     value={intersticioInicio}
                     onChange={e => setIntersticioInicio(e.target.value)}
                     required
-                  />
+                   aria-label="Início do interstício" />
                 </div>
                 <div className="flex flex-col gap-1 text-sm">
                   <label className="font-medium text-[var(--text-primary)]">
                     Fim do interstício
                   </label>
-                  <input
+                  <FormInput
                     type="date"
                     className={inputClass}
                     value={intersticioFim}
                     onChange={e => setIntersticioFim(e.target.value)}
                     required
-                  />
+                   aria-label="Fim do interstício" />
                 </div>
               </section>
 
@@ -705,32 +702,32 @@ export default function Form() {
                     <label className="text-[var(--text-primary)]">
                       Classe / nível de origem
                     </label>
-                    <select
+                    <FormSelect
                       className={selectClass}
                       value={origemCode}
                       onChange={handleChangeOrigem}
                       required
-                    >
+                     aria-label="Classe / nível de origem" >
                       <option value="">Selecione a origem...</option>
                       {origemOptions.map(opt => (
                         <option key={opt.code} value={opt.code}>
                           {opt.code}
                         </option>
                       ))}
-                    </select>
+                    </FormSelect>
                   </div>
 
                   <div className="flex flex-col gap-1 text-sm">
                     <label className="text-[var(--text-primary)]">
                       Classe / nível de destino
                     </label>
-                    <select
+                    <FormSelect
                       className={selectClass}
                       value={classeDestino && nivelDestino ? `${classeDestino}${nivelDestino}` : ""}
                       onChange={handleChangeDestino}
                       disabled={!origemCode}
                       required
-                    >
+                     disabledReason={(!origemCode) ? "Selecione primeiro a classe e o nível de origem." : "Este controle está indisponível na etapa atual."}  aria-label="Classe / nível de destino" >
                       <option value="">
                         {origemCode ? "Selecione o destino..." : "Escolha primeiro a origem"}
                       </option>
@@ -739,14 +736,13 @@ export default function Form() {
                           {opt.label}
                         </option>
                       ))}
-                    </select>
+                    </FormSelect>
                   </div>
                 </div>
               </section>
             </>
           )}
-
-          {isRscProcess && (
+{isRscProcess && (
             <section className="space-y-3">
               <h2 className="text-sm font-semibold text-[var(--text-primary)]">
                 Dados do RSC
@@ -756,80 +752,79 @@ export default function Form() {
                   <label className="font-medium text-[var(--text-primary)]">
                     Nível pretendido
                   </label>
-                  <select
+                  <FormSelect
                     className={selectClass}
                     value={rscTargetLevel}
                     onChange={e => setRscTargetLevel(e.target.value)}
                     required
-                  >
+                   aria-label="Nível pretendido" >
                     <option value="">Selecione...</option>
                     <option value="RSC_I">RSC I</option>
                     <option value="RSC_II">RSC II</option>
                     <option value="RSC_III">RSC III</option>
-                  </select>
+                  </FormSelect>
                 </div>
                 <div className="flex flex-col gap-1 text-sm">
                   <label className="font-medium text-[var(--text-primary)]">
                     Ingresso na carreira EBTT
                   </label>
-                  <input
+                  <FormInput
                     type="date"
                     className={inputClass}
                     value={rscCareerEntryDate}
                     onChange={e => setRscCareerEntryDate(e.target.value)}
                     required
-                  />
+                   aria-label="Ingresso na carreira EBTT" />
                 </div>
                 <div className="flex flex-col gap-1 text-sm">
                   <label className="font-medium text-[var(--text-primary)]">
                     Início das atividades consideradas
                   </label>
-                  <input
+                  <FormInput
                     type="date"
                     className={inputClass}
                     value={rscActivityPeriodStart}
                     onChange={e => setRscActivityPeriodStart(e.target.value)}
                     required
-                  />
+                   aria-label="Início das atividades consideradas" />
                 </div>
                 <div className="flex flex-col gap-1 text-sm">
                   <label className="font-medium text-[var(--text-primary)]">
                     Fim das atividades consideradas
                   </label>
-                  <input
+                  <FormInput
                     type="date"
                     className={inputClass}
                     value={rscActivityPeriodEnd}
                     onChange={e => setRscActivityPeriodEnd(e.target.value)}
                     required
-                  />
+                   aria-label="Fim das atividades consideradas" />
                 </div>
                 <div className="flex flex-col gap-1 text-sm">
                   <label className="font-medium text-[var(--text-primary)]">
                     Concessão anterior de RSC (se houver)
                   </label>
-                  <input
+                  <FormInput
                     type="date"
                     className={inputClass}
                     value={rscPreviousGrantDate}
                     onChange={e => setRscPreviousGrantDate(e.target.value)}
-                  />
+                   aria-label="Concessão anterior de RSC (se houver)" />
                 </div>
               </div>
               <label className="flex items-start gap-2 text-sm text-[var(--text-primary)]">
-                <input
+                <FormInput
                   type="checkbox"
                   checked={rscTruthDeclaration}
                   onChange={e => setRscTruthDeclaration(e.target.checked)}
                   required
                   className="mt-1"
-                />
+                 aria-label="Declaro que as informações e os períodos informados são verdadeiros e correspondem aos documentos comprobatórios do processo." />
                 Declaro que as informações e os períodos informados são verdadeiros e correspondem aos documentos comprobatórios do processo.
               </label>
             </section>
           )}
-
-          {isFullProfessorProcess && (
+{isFullProfessorProcess && (
             <section className="space-y-3">
               <h2 className="text-sm font-semibold text-[var(--text-primary)]">
                 Dados da Classe Titular
@@ -838,7 +833,7 @@ export default function Form() {
                 <label className="font-medium text-[var(--text-primary)]">
                   Modalidade de avaliação
                 </label>
-                <select
+                <FormSelect
                   className={selectClass}
                   value={fullProfessorEvaluationMode}
                   onChange={e =>
@@ -846,27 +841,29 @@ export default function Form() {
                       e.target.value as "MEMORIAL" | "THESIS"
                     )
                   }
-                >
+                 aria-label="Modalidade de avaliação" >
                   <option value="MEMORIAL">Memorial</option>
                   <option value="THESIS">Tese acadêmica inédita</option>
-                </select>
+                </FormSelect>
               </div>
             </section>
           )}
-
-          <div className="flex gap-3">
-            <button
+</ProcessSection>
+<ProcessSection number={3} title="Criar o rascunho" description="Ao abrir, o processo ficará disponível para preencher a pontuação e anexar os documentos antes do envio à CPPD.">
+<div className="flex gap-3">
+            <ActionButton
               type="submit"
               disabled={submitting}
               className="px-4 py-2 rounded-full text-sm font-medium
                          bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                          hover:bg-[var(--btn-primary-hover-bg)]
                          disabled:opacity-50 transition"
-            >
+             disabledReason={(submitting) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
               {submitting ? "Abrindo processo..." : "Abrir processo"}
-            </button>
+            </ActionButton>
           </div>
-        </form>
+</ProcessSection>
+</form>
       </div>
     </>
   )

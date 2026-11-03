@@ -1,4 +1,5 @@
 "use client"
+import ActionButton from "@/components/ui/ActionButton"
 
 import { useEffect, useMemo, useRef, useState } from "react"
 
@@ -40,7 +41,7 @@ export default function RoleDropdown({
       }
     }
     function onEsc(e: KeyboardEvent) {
-      if (e.key === "Escape") {
+      if (e.key === "Escape" && open) {
         setOpen(false)
         setActiveIndex(-1)
         btnRef.current?.focus()
@@ -52,7 +53,7 @@ export default function RoleDropdown({
       document.removeEventListener("mousedown", onClickOutside)
       document.removeEventListener("keydown", onEsc)
     }
-  }, [])
+  }, [open])
 
   function toggle() {
     if (disabled) return
@@ -101,7 +102,7 @@ export default function RoleDropdown({
 
   return (
     <div className="relative inline-block text-left">
-      <button
+      <ActionButton
         id={id}
         ref={btnRef}
         type="button"
@@ -119,7 +120,7 @@ export default function RoleDropdown({
           shadow-sm disabled:opacity-60
         "
         title="Trocar módulo"
-      >
+       disabledReason={(disabled) ? "Aguarde a troca de módulo em andamento." : "Este controle está indisponível na etapa atual."} >
         <span>{current ? current.label : placeholder}</span>
         <svg
           className="pointer-events-none absolute right-2"
@@ -130,7 +131,7 @@ export default function RoleDropdown({
         >
           <path d="M5 7l5 6 5-6H5z" fill="currentColor" />
         </svg>
-      </button>
+      </ActionButton>
 
       {open && (
         <div

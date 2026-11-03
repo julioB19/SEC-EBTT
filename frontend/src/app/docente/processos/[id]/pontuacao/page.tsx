@@ -1,5 +1,11 @@
-// src/app/docente/processos/[id]/pontuacao/page.tsx
 "use client"
+
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+import ActionButton from "@/components/ui/ActionButton"
+// src/app/docente/processos/[id]/pontuacao/page.tsx
+import ProcessSteps from "@/components/ProcessSteps"
 
 import { useEffect, useState, useCallback, useMemo } from "react"
 import { useParams } from "next/navigation"
@@ -95,6 +101,38 @@ type TreeNode = {
   formulaExpression: string | null
   totalPoints: number | null
   maxPoints: string | number | null
+}
+
+function normalizeSearch(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[_-]+/g, " ").trim()
+}
+
+function findScoringMatches(nodes: TreeNode[], query: string) {
+  const terms = normalizeSearch(query).split(/\s+/).filter(Boolean)
+  const visibleItemIds = new Set<number>()
+  const visibleNodeIds = new Set<number>()
+  let totalItems = 0
+
+  function visit(node: TreeNode, ancestors: string): boolean {
+    const context = `${ancestors} ${node.code ?? ""} ${node.name}`
+    let hasVisibleItems = false
+    for (const item of node.items) {
+      totalItems++
+      const searchable = normalizeSearch(`${context} ${item.description} ${item.formulaKey ?? ""} ${item.unit ?? ""} ${item.itemId}`)
+      if (terms.every(term => searchable.includes(term))) {
+        visibleItemIds.add(item.itemId)
+        hasVisibleItems = true
+      }
+    }
+    // Visita todos os filhos para reunir os resultados de cada ramo.
+    const childrenVisible = node.children.map(child => visit(child, context)).some(Boolean)
+    const visible = terms.length === 0 || hasVisibleItems || childrenVisible
+    if (visible) visibleNodeIds.add(node.nodeId)
+    return visible
+  }
+
+  nodes.forEach(node => visit(node, ""))
+  return { visibleItemIds, visibleNodeIds, totalItems }
 }
 
 function calculateItemPoints(item: ScoringItem, quantity: number) {
@@ -213,10 +251,12 @@ export default function ProcessoPontuacaoPage() {
 
   const [estrutura, setEstrutura] = useState<EstruturaPontuacao | null>(null)
   const [treeRoots, setTreeRoots] = useState<TreeNode[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const searchResults = useMemo(() => findScoringMatches(treeRoots, searchQuery), [treeRoots, searchQuery])
   const [loading, setLoading] = useState(true)
   const [savingItemId, setSavingItemId] = useState<number | null>(null)
   const [uploadingItemId, setUploadingItemId] = useState<number | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
 
   const [modal, setModal] = useState<ModalState>({
     open: false,
@@ -1156,7 +1196,7 @@ export default function ProcessoPontuacaoPage() {
                     <label className="block text-[11px] text-[var(--text-muted)] mb-1">
                       Quantidade
                     </label>
-                    <input
+                    <FormInput
                       type="number"
                       min={0}
                       max={item.maxQuantity ?? undefined}
@@ -1174,7 +1214,7 @@ export default function ProcessoPontuacaoPage() {
                         savingItemId === item.itemId ||
                         isLockedByAnother
                       }
-                    />
+                     disabledReason={(!canEditScores) ? "A pontuação só pode ser alterada enquanto o processo estiver em rascunho ou devolvido." : (savingItemId === item.itemId) ? "Aguarde a operação em andamento terminar." : (isLockedByAnother) ? "Salve ou cancele a edição do item em andamento antes de continuar." : "Este controle está indisponível na etapa atual."}  aria-label="Quantidade" />
                   </div>
                 </div>
 
@@ -1193,7 +1233,7 @@ export default function ProcessoPontuacaoPage() {
                   <label className="block text-[11px] text-[var(--text-muted)] mb-1">
                     Pontos (até {maxLabel ?? "o máximo definido"})
                   </label>
-                  <input
+                  <FormInput
                     type="number"
                     step="0.01"
                     min={0}
@@ -1212,7 +1252,7 @@ export default function ProcessoPontuacaoPage() {
                       savingItemId === item.itemId ||
                       isLockedByAnother
                     }
-                  />
+                   disabledReason={(!canEditScores) ? "A pontuação só pode ser alterada enquanto o processo estiver em rascunho ou devolvido." : (savingItemId === item.itemId) ? "Aguarde a operação em andamento terminar." : (isLockedByAnother) ? "Salve ou cancele a edição do item em andamento antes de continuar." : "Este controle está indisponível na etapa atual."}  aria-label="Pontos (até )" />
                 </div>
               </div>
             )}
@@ -1225,7 +1265,7 @@ export default function ProcessoPontuacaoPage() {
             )}
 
             {isThisActive && (
-              <button
+              <ActionButton
                 type="button"
                 onClick={() => handleSalvarItem(item.itemId)}
                 disabled={
@@ -1237,9 +1277,9 @@ export default function ProcessoPontuacaoPage() {
                            bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                            hover:bg-[var(--btn-primary-hover-bg)]
                            disabled:opacity-50 transition"
-              >
+               disabledReason={(!canEditScores) ? "A pontuação só pode ser alterada enquanto o processo estiver em rascunho ou devolvido." : (savingItemId === item.itemId) ? "Aguarde a operação em andamento terminar." : (isLockedByAnother) ? "Salve ou cancele a edição do item em andamento antes de continuar." : "Este controle está indisponível na etapa atual."} >
                 {savingItemId === item.itemId ? "Salvando..." : "Salvar pontuação"}
-              </button>
+              </ActionButton>
             )}
 
             {isThisActive && (
@@ -1271,31 +1311,31 @@ export default function ProcessoPontuacaoPage() {
 
             <div className="flex flex-col md:flex-row md:items-center gap-2">
               {evidence && (
-                <button
+                <ActionButton
                   type="button"
                   className="inline-flex items-center justify-center gap-1 px-3 py-1 rounded-full border border-[var(--border-subtle)] text-[11px] font-medium hover:bg-[var(--btn-secondary-hover-bg)]"
                   onClick={() =>
                     openEvidenceModalForItem(item.itemId, "change", evidence)
                   }
                   disabled={!canEditScores || isLockedByAnother}
-                >
+                 disabledReason={(!canEditScores) ? "A pontuação só pode ser alterada enquanto o processo estiver em rascunho ou devolvido." : (isLockedByAnother) ? "Salve ou cancele a edição do item em andamento antes de continuar." : "Este controle está indisponível na etapa atual."} >
                   <FileSwapIcon className="w-3 h-3" />
                   <span>Alterar comprovante</span>
-                </button>
+                </ActionButton>
               )}
 
               {!evidence && (
-                <button
+                <ActionButton
                   type="button"
                   className="inline-flex items-center justify-center gap-1 px-3 py-1 rounded-full border border-[var(--border-subtle)] text-[11px] font-medium hover:bg-[var(--btn-secondary-hover-bg)]"
                   onClick={() =>
                     openEvidenceModalForItem(item.itemId, "change", null)
                   }
                   disabled={!canEditScores || isLockedByAnother}
-                >
+                 disabledReason={(!canEditScores) ? "A pontuação só pode ser alterada enquanto o processo estiver em rascunho ou devolvido." : (isLockedByAnother) ? "Salve ou cancele a edição do item em andamento antes de continuar." : "Este controle está indisponível na etapa atual."} >
                   <FileSwapIcon className="w-3 h-3" />
                   <span>Anexar comprovante</span>
-                </button>
+                </ActionButton>
               )}
             </div>
           </div>
@@ -1305,6 +1345,9 @@ export default function ProcessoPontuacaoPage() {
   }
 
   function renderNode(node: TreeNode) {
+    if (!searchResults.visibleNodeIds.has(node.nodeId)) return null
+    const visibleItems = node.items.filter(item => searchResults.visibleItemIds.has(item.itemId))
+    const visibleChildren = node.children.filter(child => searchResults.visibleNodeIds.has(child.nodeId))
     const nodeLabel = node.code ? `${node.code} - ${node.name}` : node.name
     const nodeTotal = computeNodeTotal(node)
 
@@ -1326,16 +1369,16 @@ export default function ProcessoPontuacaoPage() {
           </div>
 
           {/* Itens do bloco */}
-          {node.items.length > 0 && (
+          {visibleItems.length > 0 && (
             <div className="space-y-2">
-              {node.items.map(item => renderItemRow(item))}
+              {visibleItems.map(item => renderItemRow(item))}
             </div>
           )}
 
           {/* Filhos do bloco */}
-          {node.children.length > 0 && (
+          {visibleChildren.length > 0 && (
             <div className="mt-4 border-l-2 border-dashed border-[var(--border-subtle)] pl-4 space-y-4">
-              {node.children.map(child => renderNode(child))}
+              {visibleChildren.map(child => renderNode(child))}
             </div>
           )}
 
@@ -1456,7 +1499,7 @@ export default function ProcessoPontuacaoPage() {
               <label className="block text-[11px] text-[var(--text-muted)] mb-1">
                 Enviar novo arquivo ({estrutura?.processTypeCategory === "RSC" ? "PDF" : "PDF ou imagem"} &lt;= 5MB)
               </label>
-              <input
+              <FormInput
                 type="file"
                 accept={
                   estrutura?.processTypeCategory === "RSC"
@@ -1472,7 +1515,7 @@ export default function ProcessoPontuacaoPage() {
                   }
                 }}
                 disabled={uploadingItemId === evidenceModal.itemId}
-              />
+               disabledReason={(uploadingItemId === evidenceModal.itemId) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}  aria-label="Enviar novo arquivo ( &lt;= 5MB)" />
               {uploadingItemId === evidenceModal.itemId && (
                 <p className="text-[11px] text-[var(--text-muted)]">
                   Enviando arquivo, aguarde...
@@ -1528,17 +1571,17 @@ export default function ProcessoPontuacaoPage() {
                                 <EyeIcon className="w-3 h-3" />
                                 <span>Visualizar</span>
                               </button>
-                              <button
+                              <ActionButton
                                 type="button"
                                 className="inline-flex items-center justify-center gap-1 text-[11px] px-3 py-1 rounded-full border border-[var(--border-subtle)] hover:bg-[var(--btn-secondary-hover-bg)]"
                                 onClick={() =>
                                   handleReuseEvidenceFromModal(file.evidenceFileId)
                                 }
                                 disabled={uploadingItemId === evidenceModal.itemId}
-                              >
+                               disabledReason={(uploadingItemId === evidenceModal.itemId) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                                 <FileSwapIcon className="w-3 h-3" />
                                 <span>Usar este comprovante</span>
-                              </button>
+                              </ActionButton>
                             </div>
                           </div>
                         </li>
@@ -1564,16 +1607,10 @@ export default function ProcessoPontuacaoPage() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Link
-              href={id ? `/docente/processos/${id}` : "/docente/processos"}
-              className="px-4 py-2 rounded-full border border-[var(--btn-secondary-border)]
-                         text-sm text-[var(--btn-secondary-text)]
-                         hover:bg-[var(--btn-secondary-hover-bg)] transition"
-            >
-              Voltar aos detalhes do processo
-            </Link>
+            <></>
           </div>
         </header>
+<ProcessSteps steps={[{"title":"Encontrar a atividade","description":"Use a pesquisa para localizar o critério que corresponde à sua atividade."},{"title":"Informar e salvar","description":"Preencha a quantidade ou os pontos permitidos e salve cada item."},{"title":"Anexar o comprovante","description":"Vincule o comprovante ao item e volte aos detalhes para revisar e enviar o processo."}]} />
         <details className="rounded border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4 text-sm">
           <summary className="cursor-pointer font-medium">Como informar a classificação Qualis na tabela de carreira</summary>
           <p className="my-3">Para Progressão e Promoção, use a equivalência orientada pela CPPD para a Resolução 104/2013. Na tabela abaixo, encontre o Qualis atual e selecione o item correspondente da planilha.</p>
@@ -1589,9 +1626,7 @@ export default function ProcessoPontuacaoPage() {
         )}
 
         {!loading && error && (
-          <div className="rounded-2xl border border-[var(--border-strong)] bg-[var(--state-danger-bg)] p-4 text-sm text-[var(--state-danger-text)]">
-            {error}
-          </div>
+          null
         )}
 
         {!loading && !error && estrutura && (
@@ -1678,7 +1713,33 @@ export default function ProcessoPontuacaoPage() {
               </div>
             </section>
 
+            <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4 shadow-sm space-y-3" aria-label="Pesquisa de atividades">
+              <label htmlFor="scoring-search" className="block text-sm font-semibold text-[var(--text-primary)]">Pesquisar atividades de pontuação</label>
+              <div className="flex flex-wrap gap-2">
+                <FormInput
+                  id="scoring-search"
+                  type="search"
+                  value={searchQuery}
+                  onChange={event => setSearchQuery(event.target.value)}
+                  disabled={activeItemId !== null}
+                  placeholder="Ex.: aperfeiçoamento, gestão, RSC_018"
+                  aria-describedby="scoring-search-help scoring-search-results"
+                  className="min-w-0 flex-1 basis-64 rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--input-border-focus)] disabled:opacity-60"
+                 disabledReason={(activeItemId !== null) ? "Salve ou cancele a edição do item em andamento antes de continuar." : "Este controle está indisponível na etapa atual."} />
+                <ActionButton type="button" onClick={() => setSearchQuery("")} disabled={!searchQuery || activeItemId !== null}
+                  className="rounded-xl border border-[var(--btn-secondary-border)] px-4 py-2 text-sm text-[var(--btn-secondary-text)] hover:bg-[var(--btn-secondary-hover-bg)] disabled:opacity-50 disabled:cursor-not-allowed" disabledReason={(!searchQuery) ? "Digite um termo de pesquisa antes de limpar o filtro." : (activeItemId !== null) ? "Salve ou cancele a edição do item em andamento antes de continuar." : "Este controle está indisponível na etapa atual."} >
+                  Limpar pesquisa
+                </ActionButton>
+              </div>
+              <p id="scoring-search-help" className="text-xs text-[var(--text-secondary)]">Pesquise por descrição, código ou nome do bloco, com ou sem acentos. A pesquisa não altera a pontuação total.</p>
+              {activeItemId !== null && <p className="text-xs text-[var(--text-secondary)]">Conclua o item em edição para alterar a pesquisa.</p>}
+              <p id="scoring-search-results" role="status" className="text-xs text-[var(--text-secondary)]">{searchResults.visibleItemIds.size} de {searchResults.totalItems} atividades exibidas.</p>
+            </section>
+
             <section className="space-y-4">
+              {treeRoots.length > 0 && searchResults.visibleItemIds.size === 0 && searchQuery.trim() && (
+                <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4 text-sm text-[var(--text-secondary)]">Nenhuma atividade encontrada. Tente outra palavra ou limpe a pesquisa.</div>
+              )}
               {treeRoots.length === 0 && (
                 <div className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl p-4 shadow-sm text-sm text-[var(--text-secondary)]">
                   Nenhuma estrutura de pontuação definida para esta tabela.

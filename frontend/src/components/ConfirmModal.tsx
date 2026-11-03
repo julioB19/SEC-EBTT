@@ -1,11 +1,16 @@
 "use client"
-
-import { useEffect, useRef } from "react"
+import { ReactNode, useRef } from "react"
+import ActionButton from "@/components/ui/ActionButton"
+import Dialog from "@/components/ui/Dialog"
+import { primaryButtonClass, secondaryButtonClass } from "@/components/ui/systemStyles"
+import { translateBackendError } from "@/utils/translateBackendError"
 
 type Props = {
+  children?: ReactNode
   open: boolean
   title: string
   description?: string
+  error?: string | null
   confirmText?: string
   cancelText?: string
   loading?: boolean
@@ -13,108 +18,13 @@ type Props = {
   onCancel: () => void
 }
 
-export default function ConfirmModal({
-  open,
-  title,
-  description,
-  confirmText = "Confirmar",
-  cancelText = "Cancelar",
-  loading = false,
-  onConfirm,
-  onCancel
-}: Props) {
-  const cancelRef = useRef<HTMLButtonElement | null>(null)
-
-  useEffect(() => {
-    if (open) {
-      const t = setTimeout(() => cancelRef.current?.focus(), 0)
-      return () => clearTimeout(t)
-    }
-  }, [open])
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (!open) return
-      if (e.key === "Escape") onCancel()
-    }
-    document.addEventListener("keydown", onKey)
-    return () => document.removeEventListener("keydown", onKey)
-  }, [open, onCancel])
-
-  if (!open) return null
-
-  return (
-    <div
-      className="
-        fixed inset-0 z-[70]
-        flex items-center justify-center
-        p-4
-        bg-black/40
-      "
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-title"
-      onClick={onCancel}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        className="
-          w-full max-w-md
-          rounded-2xl
-          bg-white
-          bg-[var(--surface-card)]
-          border border-[var(--border-subtle)]
-          shadow-xl
-          p-6
-        "
-      >
-        <h2
-          id="confirm-title"
-          className="text-lg font-semibold text-[var(--text-primary)]"
-        >
-          {title}
-        </h2>
-
-        {description && (
-          <p className="text-sm text-[var(--text-secondary)] mt-2">
-            {description}
-          </p>
-        )}
-
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            ref={cancelRef}
-            type="button"
-            className="
-              px-4 py-2 rounded-xl text-sm
-              border border-[var(--border-subtle)]
-              bg-white bg-[var(--surface-card)]
-              text-[var(--text-primary)]
-              hover:bg-[var(--surface-muted)]
-              disabled:opacity-60
-            "
-            onClick={onCancel}
-            disabled={loading}
-          >
-            {cancelText}
-          </button>
-
-          <button
-            type="button"
-            className="
-              px-4 py-2 rounded-xl text-sm font-medium
-              bg-[var(--btn-primary-bg)]
-              text-[var(--btn-primary-text)]
-              hover:bg-[var(--btn-primary-hover-bg)]
-              disabled:opacity-60
-            "
-            onClick={onConfirm}
-            disabled={loading}
-          >
-            {loading ? "Confirmando..." : confirmText}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
+export default function ConfirmModal({ children, open, title, description, error, confirmText = "Confirmar", cancelText = "Cancelar", loading = false, onConfirm, onCancel }: Props) {
+  const cancelRef = useRef<HTMLButtonElement>(null)
+  return <Dialog open={open} title={title} description={description} initialFocus={cancelRef} closeDisabled={loading} onRequestClose={onCancel} footer={<>
+    <ActionButton ref={cancelRef} type="button" className={secondaryButtonClass} onClick={onCancel} disabled={loading} disabledReason="Aguarde o registro da operação antes de fechar ou confirmar novamente.">{cancelText}</ActionButton>
+    <ActionButton type="button" className={primaryButtonClass} onClick={onConfirm} disabled={loading} disabledReason="Aguarde o registro da operação antes de fechar ou confirmar novamente.">{loading ? "Confirmando..." : confirmText}</ActionButton>
+  </>}>
+    {children}
+    {error && <p role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{translateBackendError({ message: error })}</p>}
+  </Dialog>
 }

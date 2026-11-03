@@ -1,3 +1,4 @@
+import BackButton from "@/components/ui/BackButton"
 import type { ReactNode } from "react"
 import { ProfileMenu } from "@/components/ProfileMenu"
 import { DocenteNavLinks } from "@/components/DocenteNavLinks"
@@ -32,6 +33,7 @@ export default function DocenteLayout({ children }: { children: ReactNode }) {
       {/* CONTEÚDO */}
       <main className="flex-1 w-full">
         <div className="w-full px-4 sm:px-6 py-6">
+          <BackButton />
           {children}
         </div>
       </main>

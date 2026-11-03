@@ -1,4 +1,4 @@
-"use client";
+"use client"
 
 import { useState } from "react";
 import Link from "next/link";
@@ -14,23 +14,27 @@ export function AdminNavLinks() {
   return (
     <div className="relative flex items-center">
       <div className="hidden md:flex items-center gap-2">
-        <Link href="/admin/conformidade" className={desktopLinkClass}>Calendário e documentos</Link>
         <Link href="/admin" className={desktopLinkClass}>
           Início
-        </Link>
-
-        <Link href="/admin/tabelas-pontuacao" className={desktopLinkClass}>
-          Tabelas de Pontuação
         </Link>
 
         <Link href="/admin/usuarios" className={desktopLinkClass}>
           Usuários
         </Link>
 
+        <Link href="/admin/convites" className={desktopLinkClass}>Convites</Link>
+
         <Link href="/admin/campi-comissoes" className={desktopLinkClass}>
           Campi e CPPD
         </Link>
 
+        <Link href="/admin/tabelas-pontuacao" className={desktopLinkClass}>
+          Tabelas de Pontuação
+        </Link>
+
+        <Link href="/admin/conformidade" className={desktopLinkClass}>Calendário e documentos</Link>
+
+        <Link href="/admin/emails-institucionais" className={desktopLinkClass}>E-mails institucionais</Link>
       </div>
 
       <button
@@ -52,21 +56,12 @@ export function AdminNavLinks() {
                      bg-[var(--surface-contrast-bg)] text-[var(--navbar-text)]
                      shadow-xl border border-[var(--border-subtle)] md:hidden overflow-hidden"
         >
-<Link href="/admin/conformidade" className="block px-4 py-2.5 text-sm" onClick={() => setOpen(false)}>Calendário e documentos</Link>
           <Link
             href="/admin"
             className="block px-4 py-2.5 text-sm hover:bg-[var(--navbar-item-hover-bg)]"
             onClick={() => setOpen(false)}
           >
             Início
-          </Link>
-
-          <Link
-            href="/admin/tabelas-pontuacao"
-            className="block px-4 py-2.5 text-sm hover:bg-[var(--navbar-item-hover-bg)]"
-            onClick={() => setOpen(false)}
-          >
-            Tabelas de Pontuação
           </Link>
 
           <Link
@@ -77,6 +72,8 @@ export function AdminNavLinks() {
             Usuários
           </Link>
 
+          <Link href="/admin/convites" className="block px-4 py-2.5 text-sm" onClick={() => setOpen(false)}>Convites de acesso</Link>
+
           <Link
             href="/admin/campi-comissoes"
             className="block px-4 py-2.5 text-sm hover:bg-[var(--navbar-item-hover-bg)]"
@@ -84,6 +81,18 @@ export function AdminNavLinks() {
           >
             Campi e CPPD
           </Link>
+
+          <Link
+            href="/admin/tabelas-pontuacao"
+            className="block px-4 py-2.5 text-sm hover:bg-[var(--navbar-item-hover-bg)]"
+            onClick={() => setOpen(false)}
+          >
+            Tabelas de Pontuação
+          </Link>
+
+          <Link href="/admin/conformidade" className="block px-4 py-2.5 text-sm" onClick={() => setOpen(false)}>Calendário e documentos</Link>
+
+          <Link href="/admin/emails-institucionais" className="block px-4 py-2.5 text-sm" onClick={() => setOpen(false)}>E-mails institucionais</Link>
 
           <div className="my-1 h-px bg-[var(--border-subtle)]" />
 

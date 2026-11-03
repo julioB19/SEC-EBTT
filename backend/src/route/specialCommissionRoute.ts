@@ -3,6 +3,7 @@ import { RoleName } from "@prisma/client"
 import { SpecialCommissionController } from "../controller/specialCommissionController"
 import { IndividualEvaluationController } from "../controller/individualEvaluationController"
 import { authMiddleware } from "../middleware/authMiddleware"
+import { requireEvaluatorAssignment } from "../middleware/evaluatorAccessMiddleware"
 import { requireCppdAccess, requireCppdProcessAccess, requireSelectedRole } from "../middleware/cppdAccessMiddleware"
 import { ParamType, validatorMiddleware } from "../middleware/validatorMiddleware"
 import {
@@ -16,7 +17,8 @@ import { saveIndividualEvaluationSchema } from "../validator/individualEvaluatio
 
 export function specialCommissionRoute() {
   const router = Router()
-  router.use("/external-evaluator", authMiddleware, requireSelectedRole(RoleName.EXTERNAL_EVALUATOR, RoleName.DOCENTE, RoleName.CPPD_MEMBER, RoleName.CPPD_CENTRAL))
+  router.use("/external-evaluator", authMiddleware, requireSelectedRole(RoleName.EXTERNAL_EVALUATOR, RoleName.DOCENTE))
+  router.use("/external-evaluator/assignments/:memberId", requireEvaluatorAssignment)
   const controller = new SpecialCommissionController()
   const evaluationController = new IndividualEvaluationController()
 

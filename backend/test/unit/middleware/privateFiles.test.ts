@@ -6,6 +6,7 @@ import os from "os"
 import path from "path"
 import jwt from "jsonwebtoken"
 import { ProcessRepository } from "../../../src/repository/processoRepository"
+import { prisma } from "../../../src/infra/prismaClient"
 
 async function dispatch(app: any, url: string, token?: string) {
   const socket = new PassThrough()
@@ -36,6 +37,8 @@ describe("Arquivos privados e papel ativo", () => {
   })
 
   test("rotas docentes exigem DOCENTE selecionado", async () => {
+    jest.spyOn(prisma.user, "findUnique").mockResolvedValue({ idUser: 1, active: true, deletedDate: null,
+      roles: [{ role: { name: "ADMIN" } }, { role: { name: "DOCENTE" } }] } as any)
     process.env.JWT_ACCESS_SECRET = "test-private-files-secret"
     jest.spyOn(ProcessRepository.prototype, "listActiveProcessTypeConfigs").mockResolvedValue([])
     const app = (await import("../../../src/app")).default

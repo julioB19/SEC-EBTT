@@ -1,3 +1,4 @@
+import { publicAccessRoute, managedAccessRoute } from "./route/accessRoute";
 import express from "express";
 import { requestActor } from "./util/requestActor";
 import { caseComplianceRoute } from "./route/caseComplianceRoute";
@@ -27,10 +28,12 @@ app.use("/uploads", (_req, res) => { res.sendStatus(404); });
 //rotas publicas
 app.use(publicRegistrationRoute());
 app.use(authRoute());
+app.use(publicAccessRoute());
 
 app.use(authMiddleware);
 app.use((req: any, _res, next) => requestActor.run({ userId: Number(req.user.sub) }, next));
 //rotas protegidas
+app.use(managedAccessRoute());
 app.use(userRoute());
 app.use(meRoute());
 app.use(processoRoute());

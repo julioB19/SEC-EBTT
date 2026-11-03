@@ -1,4 +1,12 @@
-"use client";
+"use client"
+import { FormSelect } from "@/components/ui/FormControls"
+
+import ProcessSteps from "@/components/ProcessSteps"
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+import ActionButton from "@/components/ui/ActionButton"
+import { formatProcessTypeLabel } from "@/utils/processTypeLabels"
 import CaseCompliancePanel from "@/components/CaseCompliancePanel";
 
 import { useEffect, useMemo, useState } from "react";
@@ -233,11 +241,7 @@ function formatPoints(value: string | number | null | undefined) {
 }
 
 function processTypeLabel(process: Processo) {
-  if (process.processTypeCode === "PROGRESSION") return "Progressão";
-  if (process.processTypeCode === "PROMOTION") return "Promoção";
-  if (process.processTypeCode === "RSC") return "RSC";
-  if (process.processTypeCode === "FULL_PROFESSOR") return "Professor Titular";
-  return process.processTypeName;
+  return formatProcessTypeLabel(process.processTypeCode, process.processTypeName)
 }
 
 function buildTreeFromBlocks(blocks: BlockNode[]): TreeNode[] {
@@ -364,7 +368,7 @@ export default function ProcessoDetalhePage() {
 
   const [processo, setProcesso] = useState<Processo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useFeedbackState<string | null>(null, "error");
 
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -1084,16 +1088,10 @@ export default function ProcessoDetalhePage() {
             </p>
           </div>
           <div className="flex gap-3">
-            <Link
-              href="/docente/processos"
-              className="px-4 py-2 rounded-full border border-[var(--btn-secondary-border)]
-                         text-sm text-[var(--btn-secondary-text)]
-                         hover:bg-[var(--btn-secondary-hover-bg)] transition"
-            >
-              Voltar para lista
-            </Link>
+            <></>
           </div>
         </header>
+<ProcessSteps steps={[{"title":"Revisar os dados","description":"Confira as informações gerais e use Editar quando o processo permitir."},{"title":"Preencher e comprovar","description":"Preencha a pontuação e anexe os documentos e comprovantes solicitados."},{"title":"Revisar e enviar","description":"Confira os requisitos e envie à CPPD. Depois, acompanhe o resultado nesta tela."}]} />
 
         {loading && (
           <div className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl p-4 shadow-sm">
@@ -1104,9 +1102,7 @@ export default function ProcessoDetalhePage() {
         )}
 
         {!loading && error && (
-          <div className="rounded-2xl border border-[var(--border-strong)] bg-[var(--state-danger-bg)] p-4 text-sm text-[var(--state-danger-text)]">
-            {error}
-          </div>
+          null
         )}
 
         {!loading && !error && !processo && (
@@ -1253,27 +1249,27 @@ export default function ProcessoDetalhePage() {
                       <label className="text-[var(--text-secondary)]">
                         Campus
                       </label>
-                      <input
+                      <FormInput
                         className="border border-[var(--input-border)] rounded-xl p-2 text-sm
                                    bg-[var(--input-bg)] text-[var(--text-primary)]
                                    placeholder:text-[var(--input-placeholder)]
                                    focus:outline-none focus:border-[var(--input-border-focus)]"
                         value={formCampus}
                         onChange={(e) => setFormCampus(e.target.value)}
-                      />
+                       aria-label="Campus" />
                     </div>
                     <div className="flex flex-col gap-1 text-sm">
                       <label className="text-[var(--text-secondary)]">
                         Cidade/UF
                       </label>
-                      <input
+                      <FormInput
                         className="border border-[var(--input-border)] rounded-xl p-2 text-sm
                                    bg-[var(--input-bg)] text-[var(--text-primary)]
                                    placeholder:text-[var(--input-placeholder)]
                                    focus:outline-none focus:border-[var(--input-border-focus)]"
                         value={formCidadeUF}
                         onChange={(e) => setFormCidadeUF(e.target.value)}
-                      />
+                       aria-label="Cidade/UF" />
                     </div>
                   </div>
 
@@ -1281,14 +1277,14 @@ export default function ProcessoDetalhePage() {
                     <label className="text-[var(--text-secondary)]">
                       Número do processo externo
                     </label>
-                    <input
+                    <FormInput
                       className="border border-[var(--input-border)] rounded-xl p-2 text-sm
                                  bg-[var(--input-bg)] text-[var(--text-primary)]
                                  placeholder:text-[var(--input-placeholder)]
                                  focus:outline-none focus:border-[var(--input-border-focus)]"
                       value={formExternalNumber}
                       onChange={(e) => setFormExternalNumber(e.target.value)}
-                    />
+                     aria-label="Número do processo externo" />
                   </div>
 
                   {isCareerProcess && (
@@ -1298,7 +1294,7 @@ export default function ProcessoDetalhePage() {
                           <label className="text-[var(--text-secondary)]">
                             Início do interstício
                           </label>
-                          <input
+                          <FormInput
                             type="date"
                             className="border border-[var(--input-border)] rounded-xl p-2 text-sm
                                    bg-[var(--input-bg)] text-[var(--text-primary)]
@@ -1307,13 +1303,13 @@ export default function ProcessoDetalhePage() {
                             onChange={(e) =>
                               setFormIntersticioInicio(e.target.value)
                             }
-                          />
+                           aria-label="Início do interstício" />
                         </div>
                         <div className="flex flex-col gap-1 text-sm">
                           <label className="text-[var(--text-secondary)]">
                             Fim do interstício
                           </label>
-                          <input
+                          <FormInput
                             type="date"
                             className="border border-[var(--input-border)] rounded-xl p-2 text-sm
                                    bg-[var(--input-bg)] text-[var(--text-primary)]
@@ -1322,7 +1318,7 @@ export default function ProcessoDetalhePage() {
                             onChange={(e) =>
                               setFormIntersticioFim(e.target.value)
                             }
-                          />
+                           aria-label="Fim do interstício" />
                         </div>
                       </div>
 
@@ -1331,7 +1327,7 @@ export default function ProcessoDetalhePage() {
                           <label className="text-[var(--text-secondary)]">
                             Classe de origem
                           </label>
-                          <input
+                          <FormInput
                             className="border border-[var(--input-border)] rounded-xl p-2 text-sm
                                    bg-[var(--input-bg)] text-[var(--text-primary)]
                                    placeholder:text-[var(--input-placeholder)]
@@ -1340,20 +1336,20 @@ export default function ProcessoDetalhePage() {
                             onChange={(e) =>
                               setFormClasseOrigem(e.target.value.toUpperCase())
                             }
-                          />
+                           aria-label="Classe de origem" />
                         </div>
                         <div className="flex flex-col gap-1 text-sm">
                           <label className="text-[var(--text-secondary)]">
                             Nível de origem
                           </label>
-                          <input
+                          <FormInput
                             className="border border-[var(--input-border)] rounded-xl p-2 text-sm
                                    bg-[var(--input-bg)] text-[var(--text-primary)]
                                    placeholder:text-[var(--input-placeholder)]
                                    focus:outline-none focus:border-[var(--input-border-focus)]"
                             value={formNivelOrigem}
                             onChange={(e) => setFormNivelOrigem(e.target.value)}
-                          />
+                           aria-label="Nível de origem" />
                         </div>
                       </div>
 
@@ -1362,7 +1358,7 @@ export default function ProcessoDetalhePage() {
                           <label className="text-[var(--text-secondary)]">
                             Classe de destino
                           </label>
-                          <input
+                          <FormInput
                             className="border border-[var(--input-border)] rounded-xl p-2 text-sm
                                    bg-[var(--input-bg)] text-[var(--text-primary)]
                                    placeholder:text-[var(--input-placeholder)]
@@ -1371,13 +1367,13 @@ export default function ProcessoDetalhePage() {
                             onChange={(e) =>
                               setFormClasseDestino(e.target.value.toUpperCase())
                             }
-                          />
+                           aria-label="Classe de destino" />
                         </div>
                         <div className="flex flex-col gap-1 text-sm">
                           <label className="text-[var(--text-secondary)]">
                             Nível de destino
                           </label>
-                          <input
+                          <FormInput
                             className="border border-[var(--input-border)] rounded-xl p-2 text-sm
                                    bg-[var(--input-bg)] text-[var(--text-primary)]
                                    placeholder:text-[var(--input-placeholder)]
@@ -1386,7 +1382,7 @@ export default function ProcessoDetalhePage() {
                             onChange={(e) =>
                               setFormNivelDestino(e.target.value)
                             }
-                          />
+                           aria-label="Nível de destino" />
                         </div>
                       </div>
 
@@ -1402,17 +1398,17 @@ export default function ProcessoDetalhePage() {
                     <div className="grid md:grid-cols-2 gap-4">
                       <label className="flex flex-col gap-1 text-sm text-[var(--text-secondary)]">
                         Nível pretendido
-                        <select
+                        <FormSelect
                           value={formRscTargetLevel}
                           onChange={(e) =>
                             setFormRscTargetLevel(e.target.value)
                           }
                           className="border border-[var(--input-border)] rounded-xl p-2 text-sm bg-[var(--input-bg)] text-[var(--text-primary)]"
-                        >
+                         aria-label="Nível pretendido" >
                           <option value="RSC_I">RSC I</option>
                           <option value="RSC_II">RSC II</option>
                           <option value="RSC_III">RSC III</option>
-                        </select>
+                        </FormSelect>
                       </label>
                     </div>
                   )}
@@ -1421,7 +1417,7 @@ export default function ProcessoDetalhePage() {
                     <div className="grid md:grid-cols-2 gap-4">
                       <label className="flex flex-col gap-1 text-sm text-[var(--text-secondary)]">
                         Modalidade de avaliação
-                        <select
+                        <FormSelect
                           value={formEvaluationMode}
                           onChange={(e) =>
                             setFormEvaluationMode(
@@ -1429,14 +1425,14 @@ export default function ProcessoDetalhePage() {
                             )
                           }
                           className="border border-[var(--input-border)] rounded-xl p-2 text-sm bg-[var(--input-bg)] text-[var(--text-primary)]"
-                        >
+                         aria-label="Modalidade de avaliação" >
                           <option value="MEMORIAL">Memorial</option>
                           <option value="THESIS">Tese acadêmica inédita</option>
-                        </select>
+                        </FormSelect>
                       </label>
                       <label className="flex flex-col gap-1 text-sm text-[var(--text-secondary)]">
                         Data de referência final, calculada pelo sistema
-                        <input
+                        <FormInput
                           type="date"
                           disabled
                           value={formFinalReferenceDate}
@@ -1444,7 +1440,7 @@ export default function ProcessoDetalhePage() {
                             setFormFinalReferenceDate(e.target.value)
                           }
                           className="border border-[var(--input-border)] rounded-xl p-2 text-sm bg-[var(--input-bg)] text-[var(--text-primary)]"
-                        />
+                         disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Data de referência final, calculada pelo sistema" />
                       </label>
                     </div>
                   )}
@@ -1462,16 +1458,16 @@ export default function ProcessoDetalhePage() {
                     >
                       Cancelar
                     </button>
-                    <button
+                    <ActionButton
                       type="submit"
                       disabled={saving}
                       className="px-3 py-1.5 rounded-full text-xs font-medium
                                  bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                                  hover:bg-[var(--btn-primary-hover-bg)]
                                  disabled:opacity-50 transition"
-                    >
+                     disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                       {saving ? "Salvando..." : "Salvar alterações"}
-                    </button>
+                    </ActionButton>
                   </div>
                 </form>
               )}
@@ -1573,7 +1569,7 @@ export default function ProcessoDetalhePage() {
                   )}
 
                   {canSendForReview && (
-                    <button
+                    <ActionButton
                       type="button"
                       onClick={() => setConfirmSendOpen(true)}
                       disabled={sending}
@@ -1581,13 +1577,13 @@ export default function ProcessoDetalhePage() {
                                  bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                                  hover:bg-[var(--btn-primary-hover-bg)]
                                  disabled:opacity-50 disabled:cursor-not-allowed transition"
-                    >
+                     disabledReason={(sending) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                       Enviar processo para análise
-                    </button>
+                    </ActionButton>
                   )}
 
                   {canGenerateDocuments && (
-                    <button
+                    <ActionButton
                       type="button"
                       onClick={handleGerarRequerimento}
                       disabled={downloading}
@@ -1595,15 +1591,15 @@ export default function ProcessoDetalhePage() {
                                  bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                                  hover:bg-[var(--btn-primary-hover-bg)]
                                  disabled:opacity-50 disabled:cursor-not-allowed transition"
-                    >
+                     disabledReason={(downloading) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                       {downloading
                         ? "Gerando requerimento..."
                         : "Gerar requerimento"}
-                    </button>
+                    </ActionButton>
                   )}
 
                   {canGenerateDocuments && (
-                    <button
+                    <ActionButton
                       type="button"
                       onClick={handleGerarPlanilha}
                       disabled={downloadingSheet}
@@ -1611,15 +1607,15 @@ export default function ProcessoDetalhePage() {
                                  bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                                  hover:bg-[var(--btn-primary-hover-bg)]
                                  disabled:opacity-50 disabled:cursor-not-allowed transition"
-                    >
+                     disabledReason={(downloadingSheet) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                       {downloadingSheet
                         ? "Gerando planilha..."
                         : "Gerar planilha de pontuação"}
-                    </button>
+                    </ActionButton>
                   )}
 
                   {canGenerateDocuments && (
-                    <button
+                    <ActionButton
                       type="button"
                       onClick={handleBaixarComprovantes}
                       disabled={downloadingEvidence}
@@ -1627,22 +1623,22 @@ export default function ProcessoDetalhePage() {
                                  bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                                  hover:bg-[var(--btn-primary-hover-bg)]
                                  disabled:opacity-50 disabled:cursor-not-allowed transition"
-                    >
+                     disabledReason={(downloadingEvidence) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                       {downloadingEvidence
                         ? "Gerando comprovantes..."
                         : "Baixar comprovantes"}
-                    </button>
+                    </ActionButton>
                   )}
 
                   {canDelete && (
-                    <button
+                    <ActionButton
                       type="button"
                       onClick={handleDeleteClick}
                       disabled={deleting}
                       className="px-4 py-2 rounded-full border border-red-300 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                    >
+                     disabledReason={(deleting) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                       {deleting ? "Excluindo..." : "Excluir processo"}
-                    </button>
+                    </ActionButton>
                   )}
                 </div>
               )}

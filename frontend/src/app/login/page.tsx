@@ -1,5 +1,11 @@
 "use client"
 
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+import ActionButton from "@/components/ui/ActionButton"
+import { GoogleEntry } from "@/components/GoogleEntry"
+
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
@@ -17,7 +23,7 @@ export default function LoginPage() {
   const [cpf, setCpf] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
   const router = useRouter()
 
   async function onSubmit(e: React.FormEvent) {
@@ -25,7 +31,8 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
-    const r = await fetch("/api/auth/login", {
+    try {
+const r = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -64,7 +71,13 @@ export default function LoginPage() {
     }
 
     router.push("/dashboard")
-  }
+
+} catch {
+setError("Não foi possível entrar. Verifique sua conexão e tente novamente.")
+} finally {
+setLoading(false)
+}
+}
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--surface-muted)] p-4">
@@ -84,7 +97,7 @@ export default function LoginPage() {
 
         <div className="space-y-1">
           <label className="block text-sm text-[var(--text-secondary)]">CPF</label>
-          <input
+          <FormInput
             value={cpf}
             onChange={e => setCpf(e.target.value)}
             placeholder="000.000.000-00"
@@ -97,12 +110,12 @@ export default function LoginPage() {
               outline-none
               focus:ring-2 focus:ring-[var(--brand)]
             "
-          />
+           fieldKind={"cpf"}  aria-label="CPF" />
         </div>
 
         <div className="space-y-1">
           <label className="block text-sm text-[var(--text-secondary)]">Senha</label>
-          <input
+          <FormInput
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
@@ -116,12 +129,12 @@ export default function LoginPage() {
               outline-none
               focus:ring-2 focus:ring-[var(--brand)]
             "
-          />
+           aria-label="Senha" />
         </div>
 
-        {error && <p className="text-red-600 text-sm bg-red-50 border border-red-200 p-2 rounded-xl">{error}</p>}
+        {error && null}
 
-        <button
+        <ActionButton
           type="submit"
           disabled={loading}
           className="
@@ -131,10 +144,11 @@ export default function LoginPage() {
             hover:bg-[var(--btn-primary-hover-bg)]
             disabled:opacity-50
           "
-        >
+         disabledReason={(loading) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
           {loading ? "Entrando..." : "Entrar"}
-        </button>
+        </ActionButton>
 
+        <GoogleEntry />
         <div className="pt-2 text-center">
           <a href="/forgot-password" className="text-sm text-[var(--brand)] hover:underline">
             Esqueci minha senha

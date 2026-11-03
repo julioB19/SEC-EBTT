@@ -1,4 +1,8 @@
-"use client";
+"use client"
+
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import ActionButton from "@/components/ui/ActionButton"
+import FormInput from "@/components/ui/FormInput"
 
 import { useState } from "react";
 
@@ -267,16 +271,16 @@ export default function ConfiguredProcessDocuments<TProcess>({
                           : ""}
                       </a>
                       {editable && (
-                        <button
+                        <ActionButton
                           type="button"
                           onClick={() => remove(document)}
                           disabled={busyKey !== null}
                           className="shrink-0 text-xs font-medium text-red-700 hover:underline disabled:opacity-50"
-                        >
+                         disabledReason={(busyKey !== null) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                           {busyKey === `remove:${document.idDocumentProcess}`
                             ? "Removendo..."
                             : "Remover"}
-                        </button>
+                        </ActionButton>
                       )}
                     </li>
                   ))}
@@ -285,7 +289,7 @@ export default function ConfiguredProcessDocuments<TProcess>({
 
               {editable && (
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <input
+                  <FormInput
                     key={`${requirement.code}:${currentDocuments
                       .map((document) => document.file?.idEvidenceFile)
                       .join(",")}`}
@@ -300,19 +304,19 @@ export default function ConfiguredProcessDocuments<TProcess>({
                     }}
                     className="min-w-0 flex-1 text-sm text-[var(--text-secondary)] file:mr-3 file:rounded-md file:border file:border-[var(--btn-secondary-border)] file:bg-[var(--surface-bg)] file:px-3 file:py-2 file:text-xs file:font-medium file:text-[var(--btn-secondary-text)]"
                   />
-                  <button
+                  <ActionButton
                     type="button"
                     onClick={() => upload(requirement)}
                     disabled={busyKey !== null || !selectedFile}
                     className="shrink-0 rounded-md bg-[var(--btn-primary-bg)] px-3 py-2 text-xs font-medium text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover-bg)] disabled:opacity-50"
-                  >
+                   disabledReason={(busyKey !== null) ? "Aguarde a operação em andamento terminar." : (!selectedFile) ? "Selecione o arquivo que deseja anexar antes de continuar." : "Este controle está indisponível na etapa atual."} >
                     {isUploading
                       ? "Enviando..."
                       : !requirement.allowsMultiple &&
                           currentDocuments.length > 0
                         ? "Substituir"
                         : "Anexar"}
-                  </button>
+                  </ActionButton>
                 </div>
               )}
             </div>

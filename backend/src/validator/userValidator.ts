@@ -18,6 +18,7 @@ function validatePhone(v: string, helpers: Joi.CustomHelpers<string>) {
 }
 
 const docenteProfileSchema = Joi.object({
+  campusId: Joi.number().integer().positive().optional(),
   siape: Joi.string().trim().required(),
   classLevel: Joi.string()
     .valid(...Object.values(ClassLevel))
@@ -41,6 +42,7 @@ const externalEvaluatorProfileSchema = Joi.object({
 })
 
 export const createUserSchema = Joi.object({
+  campusId: Joi.number().integer().positive().optional(),
   name: Joi.string().trim().required(),
   email: Joi.string().email().required(),
   cpf: Joi.alternatives()
@@ -142,6 +144,7 @@ const updateDocenteSchema = Joi.object({
 })
 
 export const updateUserSchema = Joi.object({
+  campusId: Joi.number().integer().positive().optional(),
   name: Joi.string().trim().optional(),
   email: Joi.string().email().optional(),
   cpf: Joi.string()
@@ -156,6 +159,7 @@ export const updateUserSchema = Joi.object({
   phone: Joi.string()
     .trim()
     .custom((v, h) => (v === undefined ? v : validatePhone(v, h)))
+    .allow(null, "")
     .messages({ "any.invalid": "Telefone inválido (use 10 ou 11 dígitos)" })
     .optional(),
   city: Joi.string().max(100).allow(null, "").optional(),
@@ -178,7 +182,7 @@ export const userIdQuerySchema = Joi.object({
 
 export const publicDocenteRegisterSchema = Joi.object({
   name: Joi.string().trim().required(),
-  email: Joi.string().email().required(),
+  email: Joi.string().trim().lowercase().email().required(),
   cpf: Joi.string()
     .trim()
     .custom((v, h) => {
@@ -195,7 +199,7 @@ export const publicDocenteRegisterSchema = Joi.object({
   city: Joi.string().max(100).allow(null, ""),
   uf: Joi.string().length(2).uppercase().allow(null, ""),
   password: Joi.string().min(8).required(),
-  docenteProfile: docenteProfileSchema.required(),
+  docenteProfile: docenteProfileSchema.keys({ campusId: Joi.number().integer().positive().required() }).required(),
   roles: Joi.forbidden()
 })
 
@@ -215,6 +219,7 @@ export const updateMyProfileSchema = Joi.object({
   phone: Joi.string()
     .trim()
     .custom((v, h) => (v === undefined ? v : validatePhone(v, h)))
+    .allow(null, "")
     .messages({ "any.invalid": "Telefone inválido (use 10 ou 11 dígitos)" })
     .optional(),
   city: Joi.string().max(100).allow(null, "").optional(),

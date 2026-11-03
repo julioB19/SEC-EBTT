@@ -11,7 +11,7 @@ export class IndividualEvaluationController {
 
   private getAuth(req: any) {
     const userId = Number(req.user?.sub)
-    if (!userId || Number.isNaN(userId) || req.user?.selectedRole !== RoleName.EXTERNAL_EVALUATOR) return null
+    if (!userId || Number.isNaN(userId) || ![RoleName.EXTERNAL_EVALUATOR, RoleName.DOCENTE].includes(req.user?.selectedRole)) return null
     return { userId }
   }
 

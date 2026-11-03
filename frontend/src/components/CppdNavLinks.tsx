@@ -15,7 +15,6 @@ export function CppdNavLinks({ canManageCommissions = false }: { canManageCommis
     <div className="relative flex items-center">
       {/* DESKTOP */}
       <div className="hidden md:flex items-center gap-2">
-        {canManageCommissions && (<Link href="/cppd/conformidade" className={desktopLinkClass}>Calendário e documentos</Link>)}
         <Link href="/cppd" className={desktopLinkClass}>
           Início
         </Link>
@@ -24,20 +23,25 @@ export function CppdNavLinks({ canManageCommissions = false }: { canManageCommis
           Processos
         </Link>
 
-        <Link href="/cppd/tabelas" className={desktopLinkClass}>
-          Tabela de Pontuação
-        </Link>
-
-        {/* 🔹 NOVO LINK */}
         <Link href="/cppd/usuarios" className={desktopLinkClass}>
           Docentes
         </Link>
+
+        <Link href="/cppd/convites" className={desktopLinkClass}>Convites</Link>
 
         {canManageCommissions && (
           <Link href="/cppd/comissoes" className={desktopLinkClass}>
             Campi e comissões
           </Link>
         )}
+
+        <Link href="/cppd/tabelas" className={desktopLinkClass}>
+          Tabela de Pontuação
+        </Link>
+
+        {canManageCommissions && (<Link href="/cppd/conformidade" className={desktopLinkClass}>Calendário e documentos</Link>)}
+
+        <Link href="/cppd/emails-institucionais" className={desktopLinkClass}>E-mails institucionais</Link>
       </div>
 
       {/* BOTÃO MOBILE */}
@@ -61,7 +65,6 @@ export function CppdNavLinks({ canManageCommissions = false }: { canManageCommis
                      bg-[var(--surface-contrast-bg)] text-[var(--navbar-text)]
                      shadow-xl border border-[var(--border-subtle)] md:hidden overflow-hidden"
         >
-{canManageCommissions && (<Link href="/cppd/conformidade" className="block px-4 py-2.5 text-sm" onClick={() => setOpen(false)}>Calendário e documentos</Link>)}
           <Link
             href="/cppd"
             className="block px-4 py-2.5 text-sm hover:bg-[var(--navbar-item-hover-bg)]"
@@ -79,21 +82,14 @@ export function CppdNavLinks({ canManageCommissions = false }: { canManageCommis
           </Link>
 
           <Link
-            href="/cppd/tabelas"
-            className="block px-4 py-2.5 text-sm hover:bg-[var(--navbar-item-hover-bg)]"
-            onClick={() => setOpen(false)}
-          >
-            Tabelas de Pontuação
-          </Link>
-
-          {/* 🔹 NOVO LINK */}
-          <Link
             href="/cppd/usuarios"
             className="block px-4 py-2.5 text-sm hover:bg-[var(--navbar-item-hover-bg)]"
             onClick={() => setOpen(false)}
           >
             Docentes
           </Link>
+
+          <Link href="/cppd/convites" className="block px-4 py-2.5 text-sm" onClick={() => setOpen(false)}>Convites de acesso</Link>
 
           {canManageCommissions && (
             <Link
@@ -104,6 +100,18 @@ export function CppdNavLinks({ canManageCommissions = false }: { canManageCommis
               Campi e comissões
             </Link>
           )}
+
+          <Link
+            href="/cppd/tabelas"
+            className="block px-4 py-2.5 text-sm hover:bg-[var(--navbar-item-hover-bg)]"
+            onClick={() => setOpen(false)}
+          >
+            Tabelas de Pontuação
+          </Link>
+
+          {canManageCommissions && (<Link href="/cppd/conformidade" className="block px-4 py-2.5 text-sm" onClick={() => setOpen(false)}>Calendário e documentos</Link>)}
+
+          <Link href="/cppd/emails-institucionais" className="block px-4 py-2.5 text-sm" onClick={() => setOpen(false)}>E-mails institucionais</Link>
 
           <div className="my-1 h-px bg-[var(--border-subtle)]" />
 

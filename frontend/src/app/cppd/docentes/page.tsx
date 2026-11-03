@@ -1,5 +1,8 @@
 "use client"
 
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+
 import Link from "next/link"
 import { useEffect, useState } from "react"
 
@@ -21,7 +24,7 @@ type DocenteRow = {
 export default function CppdDocentesPage() {
   const [rows, setRows] = useState<DocenteRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [err, setErr] = useState<string | null>(null)
+  const [err, setErr] = useFeedbackState<string | null>(null, "error")
 
   useEffect(() => {
     let alive = true
@@ -66,7 +69,7 @@ export default function CppdDocentesPage() {
         </header>
 
         {loading && <p className="text-sm text-[var(--text-secondary)]">Carregando...</p>}
-        {err && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{err}</div>}
+        {err && null}
 
         {!loading && !err && (
           <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] overflow-hidden">

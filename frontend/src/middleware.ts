@@ -91,10 +91,10 @@ export function middleware(req: NextRequest) {
   }
 
   if (pathname.startsWith("/avaliador")) {
-    if (!hasRole("EXTERNAL_EVALUATOR")) return redirectToForbidden(req)
+    if (!hasRole("EXTERNAL_EVALUATOR") && !hasRole("DOCENTE")) return redirectToForbidden(req)
 
-    if (!selectedRole || selectedRole !== "EXTERNAL_EVALUATOR") {
-      return redirectToEnsureRole(req, "EXTERNAL_EVALUATOR")
+    if (selectedRole !== "EXTERNAL_EVALUATOR" && selectedRole !== "DOCENTE") {
+      return redirectToEnsureRole(req, hasRole("DOCENTE") ? "DOCENTE" : "EXTERNAL_EVALUATOR")
     }
   }
 

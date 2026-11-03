@@ -1,4 +1,10 @@
 "use client"
+import { FormSelect } from "@/components/ui/FormControls"
+
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import ActionButton from "@/components/ui/ActionButton"
+import FormInput from "@/components/ui/FormInput"
 
 import Link from "next/link"
 import { Suspense, useEffect, useMemo, useState } from "react"
@@ -91,7 +97,7 @@ function AdminTabelasPontuacaoContent() {
   const searchParams = useSearchParams()
 
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
   const [rows, setRows] = useState<AdminScoringTableRow[]>([])
 
   const [q, setQ] = useState(searchParams.get("q") ?? "")
@@ -322,7 +328,7 @@ function AdminTabelasPontuacaoContent() {
               Editar estrutura
             </Link>
 
-            <button
+            <ActionButton
               type="button"
               disabled={disabled || savingId === row.idScoringTable || !canToggleStatus}
               onClick={() => {
@@ -362,11 +368,11 @@ function AdminTabelasPontuacaoContent() {
                          border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition
                          disabled:opacity-60 disabled:cursor-not-allowed"
               title={statusActionTitle}
-            >
+             disabledReason={(disabled) ? "Este controle está indisponível na etapa atual. Confira os requisitos de preenchimento e as permissões do seu perfil." : (savingId === row.idScoringTable) ? "Aguarde a operação em andamento terminar." : (!canToggleStatus) ? statusActionTitle : "Este controle está indisponível na etapa atual."} >
               {savingId === row.idScoringTable ? "Salvando..." : statusActionLabel}
-            </button>
+            </ActionButton>
 
-            <button
+            <ActionButton
               type="button"
               disabled={disabled || savingId === row.idScoringTable}
               onClick={() => {
@@ -377,12 +383,12 @@ function AdminTabelasPontuacaoContent() {
                          border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition
                          disabled:opacity-60 disabled:cursor-not-allowed"
               title="Editar datas de vigência"
-            >
+             disabledReason={(disabled) ? "Este controle está indisponível na etapa atual. Confira os requisitos de preenchimento e as permissões do seu perfil." : (savingId === row.idScoringTable) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
               {isEditingVigencia ? "Fechar vigência" : "Editar vigência"}
-            </button>
+            </ActionButton>
 
             {canDelete && (
-              <button
+              <ActionButton
                 type="button"
                 disabled={disabled || savingId === row.idScoringTable}
                 onClick={() => {
@@ -403,9 +409,9 @@ function AdminTabelasPontuacaoContent() {
                            border border-red-200 bg-white text-red-700
                            hover:bg-red-100 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 title="Excluir tabela (somente rascunho)"
-              >
+               disabledReason={(disabled) ? "Este controle está indisponível na etapa atual. Confira os requisitos de preenchimento e as permissões do seu perfil." : (savingId === row.idScoringTable) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                 {savingId === row.idScoringTable ? "Excluindo..." : "Excluir"}
-              </button>
+              </ActionButton>
             )}
           </div>
         </div>
@@ -463,14 +469,7 @@ function AdminTabelasPontuacaoContent() {
           </div>
 
           <div className="flex items-center justify-between">
-            <Link
-              href="/admin"
-              className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
-                         bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
-                         hover:bg-[var(--btn-primary-hover-bg)] transition-[background]"
-            >
-              Voltar
-            </Link>
+            <></>
 
             <Link
               href="/admin/tabelas-pontuacao/nova"
@@ -485,14 +484,14 @@ function AdminTabelasPontuacaoContent() {
 
         <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4 space-y-3">
           <div className="grid sm:grid-cols-3 gap-3">
-            <input
+            <FormInput
               value={q}
               onChange={e => setQ(e.target.value)}
               placeholder="Nome da tabela"
               className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] px-3 py-2 text-sm"
             />
 
-            <select
+            <FormSelect aria-label="Filtrar por situação"
               value={status}
               onChange={e => setStatus(e.target.value)}
               className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] px-3 py-2 text-sm"
@@ -501,7 +500,7 @@ function AdminTabelasPontuacaoContent() {
               <option value="ACTIVE">Ativa</option>
               <option value="DRAFT">Rascunho</option>
               <option value="INACTIVE">Inativada</option>
-            </select>
+            </FormSelect>
 
             <button
               type="button"
@@ -514,9 +513,7 @@ function AdminTabelasPontuacaoContent() {
         </section>
 
         {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 whitespace-pre-wrap">
-            {error}
-          </div>
+          null
         )}
 
         {loading ? (
@@ -569,22 +566,22 @@ function EditVigenciaCard(props: {
       <div className="flex items-center justify-between gap-2">
         <div className="text-sm font-semibold text-[var(--text-primary)]">Editar vigência</div>
 
-        <button
+        <ActionButton
           type="button"
           disabled={props.disabled}
           onClick={props.onCancel}
           className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
                      border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition
                      disabled:opacity-60 disabled:cursor-not-allowed"
-        >
+         disabledReason={(props.disabled) ? "Aguarde a alteração em andamento nesta tabela antes de continuar." : "Este controle está indisponível na etapa atual."} >
           Fechar
-        </button>
+        </ActionButton>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-[var(--text-secondary)]">Data inicial</label>
-          <input
+          <FormInput
             type="date"
             value={startsOn}
             onChange={e => setStartsOn(e.target.value)}
@@ -592,12 +589,12 @@ function EditVigenciaCard(props: {
             className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
                        px-3 py-2 text-sm text-[var(--text-primary)] outline-none
                        disabled:opacity-60 disabled:cursor-not-allowed"
-          />
+           disabledReason={(props.disabled) ? "Aguarde a alteração em andamento nesta tabela antes de continuar." : "Este controle está indisponível na etapa atual."}  aria-label="Data inicial" />
         </div>
 
         <div>
           <label className="text-xs text-[var(--text-secondary)]">Data final (opcional)</label>
-          <input
+          <FormInput
             type="date"
             value={endsOn}
             onChange={e => setEndsOn(e.target.value)}
@@ -605,12 +602,12 @@ function EditVigenciaCard(props: {
             className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-bg)]
                        px-3 py-2 text-sm text-[var(--text-primary)] outline-none
                        disabled:opacity-60 disabled:cursor-not-allowed"
-          />
+           disabledReason={(props.disabled) ? "Aguarde a alteração em andamento nesta tabela antes de continuar." : "Este controle está indisponível na etapa atual."}  aria-label="Data final (opcional)" />
         </div>
       </div>
 
       <div className="flex flex-wrap gap-2 justify-end">
-        <button
+        <ActionButton
           type="button"
           disabled={props.disabled}
           onClick={() => {
@@ -621,11 +618,11 @@ function EditVigenciaCard(props: {
           className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
                      border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition
                      disabled:opacity-60 disabled:cursor-not-allowed"
-        >
+         disabledReason={(props.disabled) ? "Aguarde a alteração em andamento nesta tabela antes de continuar." : "Este controle está indisponível na etapa atual."} >
           Cancelar
-        </button>
+        </ActionButton>
 
-        <button
+        <ActionButton
           type="button"
           disabled={props.disabled}
           onClick={() => props.onSave(startsOn, endsOn)}
@@ -633,9 +630,9 @@ function EditVigenciaCard(props: {
                      bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                      hover:bg-[var(--btn-primary-hover-bg)] transition-[background]
                      disabled:opacity-60 disabled:cursor-not-allowed"
-        >
+         disabledReason={(props.disabled) ? "Aguarde a alteração em andamento nesta tabela antes de continuar." : "Este controle está indisponível na etapa atual."} >
           Salvar
-        </button>
+        </ActionButton>
       </div>
     </div>
   )

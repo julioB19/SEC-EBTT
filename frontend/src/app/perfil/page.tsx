@@ -1,5 +1,11 @@
 "use client"
 
+import BackButton from "@/components/ui/BackButton"
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import ActionButton from "@/components/ui/ActionButton"
+import FormInput from "@/components/ui/FormInput"
+
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -86,8 +92,8 @@ export default function PerfilPage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
-  const [ok, setOk] = useState<string | null>(null)
+  const [err, setErr] = useFeedbackState<string | null>(null, "error")
+  const [ok, setOk] = useFeedbackState<string | null>(null, "success")
 
   const [me, setMe] = useState<ApiMe | null>(null)
 
@@ -205,6 +211,25 @@ export default function PerfilPage() {
     }
   }, [router])
 
+  function cancelEditing() {
+    if (saving) return
+
+    if (window.history.length > 1) {
+      router.back()
+      return
+    }
+
+    const currentRole = me?.selectedRole ?? (me?.roles.length === 1 ? me.roles[0] : null)
+    const homeByRole: Record<Role, string> = {
+      ADMIN: "/admin",
+      CPPD_MEMBER: "/cppd",
+      CPPD_CENTRAL: "/cppd",
+      DOCENTE: "/docente",
+      EXTERNAL_EVALUATOR: "/avaliador"
+    }
+    router.replace(currentRole ? homeByRole[currentRole] : "/select-role")
+  }
+
   async function onSave() {
     if (!me) return
 
@@ -283,14 +308,16 @@ export default function PerfilPage() {
   return (
     <main className="min-h-[60vh]">
       <div className="max-w-2xl mx-auto space-y-6 px-4 md:px-6 lg:px-8 py-6">
-        <header className="space-y-1">
+        <header className="space-y-3">
+
           <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Editar perfil</h1>
+<BackButton />
           <p className="text-sm text-[var(--text-secondary)]">Atualize seus dados. CPF não pode ser alterado.</p>
         </header>
 
-        {err && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{err}</div>}
+        {err && null}
         {ok && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">{ok}</div>
+          null
         )}
 
         <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 space-y-3">
@@ -299,43 +326,43 @@ export default function PerfilPage() {
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">CPF</label>
-              <input className={inputClass(true)} value={cpf} disabled />
+              <FormInput className={inputClass(true)} value={cpf} disabled  fieldKind={"cpf"} disabledReason={"O CPF identifica a conta e não pode ser alterado."}  aria-label="CPF" />
             </div>
 
             <div className="sm:col-span-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">Nome</label>
-              <input className={inputClass()} value={name} onChange={e => setName(e.target.value)} />
+              <FormInput className={inputClass()} value={name} onChange={e => setName(e.target.value)}  aria-label="Nome" />
             </div>
 
             <div className="sm:col-span-2">
               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                 E-mail
               </label>
-              <input className={inputClass()} value={email} onChange={e => setEmail(e.target.value)} />
+              <FormInput className={inputClass()} value={email} onChange={e => setEmail(e.target.value)}  fieldKind={"email"}  aria-label="E-mail" />
             </div>
 
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                 Telefone
               </label>
-              <input className={inputClass()} value={phone} onChange={e => setPhone(e.target.value)} />
+              <FormInput className={inputClass()} value={phone} onChange={e => setPhone(e.target.value)}  fieldKind={"phone"}  aria-label="Telefone" />
             </div>
 
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                 Cidade
               </label>
-              <input className={inputClass()} value={city} onChange={e => setCity(e.target.value)} />
+              <FormInput className={inputClass()} value={city} onChange={e => setCity(e.target.value)}  aria-label="Cidade" />
             </div>
 
             <div>
               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">UF</label>
-              <input
+              <FormInput
                 className={inputClass()}
                 value={uf}
                 onChange={e => setUf(e.target.value.toUpperCase())}
                 maxLength={2}
-              />
+               fieldKind={"uf"}  aria-label="UF" />
             </div>
           </div>
         </section>
@@ -349,112 +376,112 @@ export default function PerfilPage() {
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   SIAPE
                 </label>
-                <input className={inputClass()} value={siape} onChange={e => setSiape(e.target.value)} />
+                <FormInput className={inputClass()} value={siape} onChange={e => setSiape(e.target.value)}  fieldKind={"siape"}  aria-label="SIAPE" />
               </div>
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Classe/Nível
                 </label>
-                <input className={inputClass()} value={classLevel} onChange={e => setClassLevel(e.target.value)} />
+                <FormInput className={inputClass()} value={classLevel} onChange={e => setClassLevel(e.target.value)}  aria-label="Classe/Nível" />
               </div>
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Início do interstício
                 </label>
-                <input
+                <FormInput
                   className={inputClass()}
                   type="date"
                   value={startInterstice}
                   onChange={e => setStartInterstice(e.target.value)}
-                />
+                 aria-label="Início do interstício" />
               </div>
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Nível de formação
                 </label>
-                <input
+                <FormInput
                   className={inputClass()}
                   value={educationLevel}
                   onChange={e => setEducationLevel(e.target.value)}
-                />
+                 aria-label="Nível de formação" />
               </div>
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Aperfeiçoamento
                 </label>
-                <input className={inputClass()} value={improvement} onChange={e => setImprovement(e.target.value)} />
+                <FormInput className={inputClass()} value={improvement} onChange={e => setImprovement(e.target.value)}  aria-label="Aperfeiçoamento" />
               </div>
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Especialização
                 </label>
-                <input
+                <FormInput
                   className={inputClass()}
                   value={specialization}
                   onChange={e => setSpecialization(e.target.value)}
-                />
+                 aria-label="Especialização" />
               </div>
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Mestrado
                 </label>
-                <input
+                <FormInput
                   className={inputClass()}
                   value={mastersDegree}
                   onChange={e => setMastersDegree(e.target.value)}
-                />
+                 aria-label="Mestrado" />
               </div>
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Doutorado
                 </label>
-                <input className={inputClass()} value={doctorate} onChange={e => setDoctorate(e.target.value)} />
+                <FormInput className={inputClass()} value={doctorate} onChange={e => setDoctorate(e.target.value)}  aria-label="Doutorado" />
               </div>
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Lotação
                 </label>
-                <input className={inputClass()} value={assignment} onChange={e => setAssignment(e.target.value)} />
+                <FormInput className={inputClass()} value={assignment} onChange={e => setAssignment(e.target.value)}  aria-label="Lotação" />
               </div>
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Departamento
                 </label>
-                <input className={inputClass()} value={department} onChange={e => setDepartment(e.target.value)} />
+                <FormInput className={inputClass()} value={department} onChange={e => setDepartment(e.target.value)}  aria-label="Departamento" />
               </div>
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Divisão
                 </label>
-                <input className={inputClass()} value={division} onChange={e => setDivision(e.target.value)} />
+                <FormInput className={inputClass()} value={division} onChange={e => setDivision(e.target.value)}  aria-label="Divisão" />
               </div>
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Cargo/Função
                 </label>
-                <input className={inputClass()} value={role} onChange={e => setRole(e.target.value)} />
+                <FormInput className={inputClass()} value={role} onChange={e => setRole(e.target.value)}  aria-label="Cargo/Função" />
               </div>
 
               <div className="sm:col-span-2">
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Chefia imediata
                 </label>
-                <input
+                <FormInput
                   className={inputClass()}
                   value={immediateSupervisor}
                   onChange={e => setImmediateSupervisor(e.target.value)}
-                />
+                 aria-label="Chefia imediata" />
               </div>
             </div>
           </section>
@@ -466,17 +493,26 @@ export default function PerfilPage() {
           <Link href="/docente/perfil" className="text-sm underline">Abrir biblioteca de titulações no perfil Docente</Link>
         </section>}
 
-        <div className="flex justify-end">
-          <button
+        <div className="flex flex-wrap justify-end gap-3">
+          <ActionButton
+            type="button"
+            onClick={cancelEditing}
+            disabled={saving}
+            className="rounded-full border border-[var(--border-subtle)] px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                       text-[var(--text-primary)] hover:bg-[var(--surface-muted)] transition-[background] disabled:opacity-60"
+           disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
+            Cancelar edição
+          </ActionButton>
+          <ActionButton
             type="button"
             onClick={onSave}
             disabled={saving}
             className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
                        bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                        hover:bg-[var(--btn-primary-hover-bg)] transition-[background] disabled:opacity-60"
-          >
+           disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
             {saving ? "Salvando..." : "Salvar"}
-          </button>
+          </ActionButton>
         </div>
       </div>
     </main>

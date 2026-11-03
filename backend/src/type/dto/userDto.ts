@@ -1,6 +1,7 @@
 import { RoleName, ClassLevel } from "@prisma/client"
 
 export interface CreateDocenteProfileDto {
+  campusId?: number
   siape: string
   classLevel: ClassLevel
   startInterstice: Date
@@ -38,6 +39,7 @@ export interface ExternalEvaluatorProfileDto {
 }
 
 export interface CreateUserDto {
+  campusId?: number
   name: string
   email: string
   cpf?: string | null
@@ -51,6 +53,7 @@ export interface CreateUserDto {
 }
 
 export interface UpdateUserDto {
+  campusId?: number
   name?: string
   email?: string
   cpf?: string

@@ -1,3 +1,4 @@
+import { clientFetch as fetch } from "./clientFetch"
 export async function apiFetch(input: RequestInfo, init?: RequestInit) {
   const r = await fetch(input, {
     ...init,

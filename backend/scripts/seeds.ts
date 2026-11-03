@@ -676,6 +676,11 @@ async function main() {
 
   await ensureOfficialRscScoringTable()
 
+  if (process.env.NODE_ENV === "test") {
+    await prisma.campusEmailDomain.upsert({ where: { campusId_domain: { campusId: santaMariaCampus.idCampus, domain: "iffar.edu.br" } },
+      create: { campusId: santaMariaCampus.idCampus, domain: "iffar.edu.br", includeSubdomains: true },
+      update: { active: true, includeSubdomains: true, deletedDate: null } })
+  }
   console.log("Seed concluído. Credenciais de teste:")
   console.log(`ADMIN   CPF ${credentials.admin.cpf} senha ${credentials.admin.password}`)
   console.log(`CPPD    CPF ${credentials.cppd.cpf} senha ${credentials.cppd.password}`)

@@ -1,8 +1,10 @@
 import jwt from "jsonwebtoken"
 import { HttpResponse, StatusCodeDescription } from "../util/httpResponse"
 import { isAccessTokenRevoked } from "../util/tokenBlacklist"
+import { prisma } from "../infra/prismaClient"
+import { activeRoles } from "../util/accessPolicy"
 
-export function authMiddleware(req: any, res: any, next: any) {
+export async function authMiddleware(req: any, res: any, next: any) {
   const header: string | undefined = req.headers?.authorization || req.header("Authorization")
 
   if (!header) {
@@ -37,7 +39,16 @@ export function authMiddleware(req: any, res: any, next: any) {
 
   try {
     const decoded = jwt.verify(token, String(secret))
-    ;(req as any).user = decoded
+    if (typeof decoded === "string") return HttpResponse.unauthorized(res)
+    const userId = Number(decoded.sub ?? decoded.userId)
+    if (!Number.isInteger(userId) || userId <= 0) return HttpResponse.unauthorized(res)
+    const user = await prisma.user.findUnique({ where: { idUser: userId }, include: {
+      roles: { include: { role: true } }, externalEvaluator: true
+    } })
+    if (!user || !user.active || user.deletedDate) return HttpResponse.unauthorized(res)
+    const roles = activeRoles(user)
+    if (!roles.length || (decoded.selectedRole && !roles.includes(decoded.selectedRole))) return HttpResponse.unauthorized(res)
+    req.user = { ...decoded, sub: userId, roles }
     next()
   } catch (error: any) {
     console.log("JWT verify falhou:", error?.message)

@@ -1,4 +1,9 @@
-"use client";
+"use client"
+
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+import ActionButton from "@/components/ui/ActionButton"
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -29,8 +34,8 @@ export default function CppdEditDocentePage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const [ok, setOk] = useState<string | null>(null);
+  const [err, setErr] = useFeedbackState<string | null>(null, "error");
+  const [ok, setOk] = useFeedbackState<string | null>(null, "success");
 
   const [docente, setDocente] = useState<Docente | null>(null);
   const [email, setEmail] = useState("");
@@ -124,14 +129,10 @@ export default function CppdEditDocentePage() {
           <p className="text-sm text-[var(--text-secondary)]">Carregando...</p>
         )}
         {err && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {err}
-          </div>
+          null
         )}
         {ok && (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
-            {ok}
-          </div>
+          null
         )}
 
         {!loading && docente && (
@@ -140,7 +141,7 @@ export default function CppdEditDocentePage() {
               <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                 Nome (somente leitura)
               </label>
-              <input className={inputClass()} value={docente.name} disabled />
+              <FormInput className={inputClass()} value={docente.name} disabled  disabledReason={"Este dado é apenas para consulta neste perfil. A alteração deve ser feita pelo administrador ou pelo titular do cadastro."}  aria-label="Nome (somente leitura)" />
             </div>
 
             <div className="grid sm:grid-cols-2 gap-3">
@@ -148,55 +149,49 @@ export default function CppdEditDocentePage() {
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   Email
                 </label>
-                <input
+                <FormInput
                   className={inputClass()}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                />
+                 fieldKind={"email"}  aria-label="Email" />
               </div>
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   CPF
                 </label>
-                <input
+                <FormInput
                   className={inputClass()}
                   value={cpf}
                   onChange={(e) => setCpf(e.target.value)}
-                />
+                 fieldKind={"cpf"}  aria-label="CPF" />
               </div>
 
               <div className="sm:col-span-2">
                 <label className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
                   SIAPE
                 </label>
-                <input
+                <FormInput
                   className={inputClass()}
                   value={siape}
                   onChange={(e) => setSiape(e.target.value)}
-                />
+                 fieldKind={"siape"}  aria-label="SIAPE" />
               </div>
             </div>
 
             <div className="flex items-center justify-between pt-2">
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)] hover:underline"
-              >
-                Voltar
-              </button>
 
-              <button
+
+              <ActionButton
                 type="button"
                 disabled={saving}
                 onClick={onSave}
                 className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
                            bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                            hover:bg-[var(--btn-primary-hover-bg)] transition-[background] disabled:opacity-60"
-              >
+               disabledReason={(saving) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                 {saving ? "Salvando..." : "Salvar"}
-              </button>
+              </ActionButton>
             </div>
           </section>
         )}

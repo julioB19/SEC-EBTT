@@ -1,4 +1,12 @@
 "use client"
+import { FormSelect } from "@/components/ui/FormControls"
+import { FormTextarea } from "@/components/ui/FormControls"
+
+import ProcessSteps from "@/components/ProcessSteps"
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { ClientRequestInit, clientFetch as fetch } from "@/lib/clientFetch"
+import FormInput from "@/components/ui/FormInput"
+import ActionButton from "@/components/ui/ActionButton"
 import CaseCompliancePanel from "@/components/CaseCompliancePanel"
 
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -50,8 +58,8 @@ export default function CppdParecerPage() {
 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [infoMessage, setInfoMessage] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
+  const [infoMessage, setInfoMessage] = useFeedbackState<string | null>(null, "auto")
 
   const [preview, setPreview] = useState<ParecerPreviewDto | null>(null)
   const [opinion, setOpinion] = useState("")
@@ -63,7 +71,7 @@ export default function CppdParecerPage() {
 
   const [confirmOpen, setConfirmOpen] = useState(false)
 
-  const [copyMessage, setCopyMessage] = useState<string | null>(null)
+  const [copyMessage, setCopyMessage] = useFeedbackState<string | null>(null, "auto")
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -75,7 +83,7 @@ export default function CppdParecerPage() {
     router.push(`/login?next=${encodeURIComponent(nextPath)}`)
   }
 
-  async function fetchApi<T>(url: string, init?: RequestInit) {
+  async function fetchApi<T>(url: string, init?: ClientRequestInit) {
     const res = await fetch(url, {
       credentials: "include",
       ...init,
@@ -106,6 +114,7 @@ export default function CppdParecerPage() {
         `/api/cppd/processos/${processId}/avaliacao/parecer`,
         {
           method: "POST",
+          feedback: "silent",
           body: JSON.stringify(body)
         }
       )
@@ -130,6 +139,7 @@ export default function CppdParecerPage() {
 
       setPreview(payload.data)
       setOpinion(payload.data.suggestedOpinion ?? "")
+      return true
     } catch (err) {
       console.error("Erro ao gerar prévia do parecer:", err)
       setError("Erro inesperado ao gerar a prévia do parecer.")
@@ -154,8 +164,7 @@ export default function CppdParecerPage() {
   const divergentCount = preview?.divergentItems?.length ?? 0
 
   async function handleRefreshPreview() {
-    await loadPreview(opinion)
-    setInfoMessage("Prévia atualizada.")
+    if (await loadPreview(opinion)) setInfoMessage("Prévia atualizada.")
   }
 
   function getConfirmTitle() {
@@ -278,11 +287,13 @@ export default function CppdParecerPage() {
     )
   }
 
-  if (error && !preview) {
+  if (!preview) {
     return (
       <main className="min-h-[60vh]">
         <div className="px-4 py-8 space-y-4">
-          <p className="text-[var(--state-danger-text)] text-sm whitespace-pre-wrap">{error}</p>
+          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Parecer da CPPD</h1>
+          <p className="text-sm text-[var(--text-secondary)]">A prévia do parecer ainda não está disponível para este processo. Confira a situação e conclua as etapas de avaliação antes de finalizar a decisão.</p>
+
           <button
             type="button"
             onClick={() => loadPreview()}
@@ -292,15 +303,7 @@ export default function CppdParecerPage() {
           >
             Tentar novamente
           </button>
-          <Link
-            href={`/cppd/processos/${processId}/avaliacao`}
-            className="inline-flex items-center rounded-full px-4 py-2 text-xs font-semibold
-                       border border-[var(--btn-secondary-border)]
-                       text-[var(--btn-secondary-text)]
-                       hover:bg-[var(--btn-secondary-hover-bg)] transition"
-          >
-            Voltar para avaliação
-          </Link>
+          <></>
         </div>
       </main>
     )
@@ -341,32 +344,19 @@ export default function CppdParecerPage() {
 
           <div className="flex gap-2">
             {finalized ? (
-              <Link
-                href="/cppd/processos"
-                className="px-4 py-2 rounded-full border border-[var(--btn-secondary-border)]
-                           text-xs text-[var(--btn-secondary-text)]
-                           hover:bg-[var(--btn-secondary-hover-bg)] transition"
-              >
-                Voltar para processos
-              </Link>
+              <></>
             ) : (
-              <Link
-                href={`/cppd/processos/${processId}/avaliacao`}
-                className="px-4 py-2 rounded-full border border-[var(--btn-secondary-border)]
-                           text-xs text-[var(--btn-secondary-text)]
-                           hover:bg-[var(--btn-secondary-hover-bg)] transition"
-              >
-                Voltar para avaliação
-              </Link>
+              <></>
             )}
           </div>
         </header>
+<ProcessSteps steps={[{"title":"Revisar a prévia","description":"Confira os totais, os itens divergentes e o resultado sugerido."},{"title":"Fundamentar a decisão","description":"Revise o texto do parecer e confira os documentos exigidos pelo processo."},{"title":"Confirmar e acompanhar","description":"Confirme a decisão no final da tela. O sistema informa se o registro foi concluído."}]} />
 
         {(infoMessage || error || copyMessage) && (
           <div className="space-y-1">
-            {infoMessage && <p className="text-xs text-[var(--state-success-text)]">{infoMessage}</p>}
-            {copyMessage && <p className="text-xs text-[var(--state-success-text)]">{copyMessage}</p>}
-            {error && <p className="text-xs text-[var(--state-danger-text)] whitespace-pre-wrap">{error}</p>}
+            {infoMessage && null}
+            {copyMessage && null}
+            {error && null}
           </div>
         )}
 
@@ -447,7 +437,7 @@ export default function CppdParecerPage() {
               </div>
 
               <div className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl p-4 shadow-sm">
-                <div className="text-sm font-semibold text-[var(--text-primary)] mb-2">Itens divergentes</div>
+                <div className="text-sm font-semibold text-[var(--text-primary)] mb-2">1. Conferir os itens divergentes</div>
 
                 {preview.divergentItems.length === 0 ? (
                   <p className="text-xs text-[var(--text-secondary)]">Nenhuma divergência encontrada.</p>
@@ -496,7 +486,7 @@ export default function CppdParecerPage() {
             <div className="space-y-4 lg:sticky lg:top-4 self-start">
               <div className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl p-4 shadow-sm">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm font-semibold text-[var(--text-primary)]">Texto do parecer</div>
+                  <div className="text-sm font-semibold text-[var(--text-primary)]">2. Revisar o texto do parecer</div>
                   <button
                     type="button"
                     onClick={handleRefreshPreview}
@@ -516,7 +506,7 @@ export default function CppdParecerPage() {
                   </p>
                 </div>
 
-                <textarea
+                <FormTextarea
                   ref={textareaRef}
                   rows={16}
                   value={opinion}
@@ -530,27 +520,27 @@ export default function CppdParecerPage() {
 
               <div className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl p-4 shadow-sm">
                 <CaseCompliancePanel processId={processId} actor="CPPD" />
-                <div className="text-sm font-semibold text-[var(--text-primary)]">Finalizar avaliação</div>
-                <label className="mt-3 block text-sm">Data comprovada de cumprimento dos requisitos de desempenho<input type="date" value={requirementsMetAt} onChange={event => setRequirementsMetAt(event.target.value)} className="ml-2 rounded border p-2" /></label>
+                <div className="text-sm font-semibold text-[var(--text-primary)]">3. Conferir documentos e finalizar</div>
+                <label className="mt-3 block text-sm">Data comprovada de cumprimento dos requisitos de desempenho<FormInput type="date" value={requirementsMetAt} onChange={event => setRequirementsMetAt(event.target.value)} className="ml-2 rounded border p-2"  aria-label="Data comprovada de cumprimento dos requisitos de desempenho" /></label>
 
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-[11px] text-[var(--text-secondary)] mb-1">Decisão</label>
-                    <select
+                    <FormSelect
                       value={decision}
                       onChange={e => setDecision(e.target.value as CppdDecision)}
                       className="w-full text-xs rounded-full border border-[var(--border-subtle)]
                                  bg-[var(--surface-bg)] px-3 py-2
                                  text-[var(--text-primary)]
                                  focus:outline-none focus:border-[var(--border-strong)]"
-                    >
+                     aria-label="Decisão" >
                       <option value="APPROVED">Deferir</option>
                       <option value="REJECTED">Indeferir</option>
-                    </select>
+                    </FormSelect>
                   </div>
 
                   <div className="flex items-end justify-end">
-                    <button
+                    <ActionButton
                       type="button"
                       onClick={() => setConfirmOpen(true)}
                       disabled={submitting}
@@ -558,9 +548,9 @@ export default function CppdParecerPage() {
                                  bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]
                                  hover:bg-[var(--btn-primary-hover-bg)]
                                  disabled:opacity-60 disabled:cursor-not-allowed transition w-full sm:w-auto"
-                    >
+                     disabledReason={(submitting) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
                       {submitting ? "Finalizando..." : "Finalizar"}
-                    </button>
+                    </ActionButton>
                   </div>
                 </div>
 

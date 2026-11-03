@@ -1,5 +1,8 @@
 "use client"
 
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
@@ -38,7 +41,7 @@ export default function ScoringTableSpreadsheetMappingPage() {
   const tableId = Number(params.tableId)
   const [structure, setStructure] = useState<Structure | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
   const [copied, setCopied] = useState<string | null>(null)
 
   useEffect(() => {
@@ -111,13 +114,7 @@ export default function ScoringTableSpreadsheetMappingPage() {
             </p>
           </div>
 
-          <Link
-            href="/admin/tabelas-pontuacao"
-            className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
-                       border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition"
-          >
-            Voltar
-          </Link>
+          <></>
         </header>
 
         <section className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
@@ -128,9 +125,7 @@ export default function ScoringTableSpreadsheetMappingPage() {
         {loading && <p className="text-sm text-[var(--text-secondary)]">Carregando campos...</p>}
 
         {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
+          null
         )}
 
         {!loading && !error && rows.length === 0 && (

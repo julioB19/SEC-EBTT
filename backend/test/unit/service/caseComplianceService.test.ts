@@ -2,7 +2,7 @@ import { describe, expect, jest, test, beforeEach } from "@jest/globals"
 import { prisma } from "../../../src/infra/prismaClient"
 import { assertSignedDecisionDocuments, assertTitularReady, validateNominees, CaseComplianceService } from "../../../src/service/caseComplianceService"
 
-jest.mock("../../../src/infra/prismaClient", () => ({ prisma: { signedProcessArtifact: { findMany: jest.fn() }, careerProcess: { findUnique: jest.fn(), findFirst: jest.fn() } } }))
+jest.mock("../../../src/infra/prismaClient", () => ({ prisma: { signedProcessArtifact: { findMany: jest.fn() }, careerProcess: { findUnique: jest.fn(), findFirst: jest.fn() }, user: { findMany: jest.fn() } } }))
 function nominees() {
   return Array.from({length:7},(_,i)=>({ name:`Indicado ${i}`,email:`indicado${i}@instituicao.edu.br`,phone:"55999999999",origin:i<5?"EXTERNAL":"INTERNAL",membership:i<3||i===5?"PRIMARY":"SUBSTITUTE",doctorateTitle:"Doutor em Educação",institution:"Instituição Federal",federalInstitution:true,careerLevel:"C4",knowledgeArea:"Educação",sameKnowledgeArea:true,priorConsentAt:"2026-01-01" }))
 }
@@ -47,4 +47,30 @@ describe("Indicados e documentos que autorizam a decisão",()=>{
   (prisma.careerProcess.findFirst as jest.Mock).mockResolvedValue({idProcess:1,userId:1,specialCommissions:[{status:"ACTIVE",members:[{acceptanceStatus:"PENDING",person:{users:[{idUser:2,active:true}]}}]}]} as never)
   await expect(new CaseComplianceService().context(1,{userId:2,role:"EXTERNAL_EVALUATOR"})).rejects.toThrow("acesso")
  })
+})
+
+
+describe("Responsáveis no histórico documental", () => {
+  function processWithAudits() {
+    return { idProcess: 15, userId: 4, processTypeConfig: { category: "RSC" }, status: "UNDER_REVIEW", financialEffectsAt: null, compliance: null, specialCommissions: [], fullProfessorDetail: null, nominees: [], signedArtifacts: [], rscAppeals: [], audits: [
+      { idAudit: 1, actorId: 2, action: "SIGNATURE_REVIEWED", occurredAt: new Date() },
+      { idAudit: 2, actorId: 999, action: "DOCUMENT_GENERATED", occurredAt: new Date() }
+    ] }
+  }
+  test("apresenta nome e ID do responsável, sem buscar dados privados da conta", async () => {
+    const service = new CaseComplianceService()
+    jest.spyOn(service, "context").mockResolvedValue(processWithAudits() as never)
+    ;(prisma.user.findMany as jest.Mock).mockResolvedValue([{ idUser: 2, name: "Responsável de teste" }] as never)
+    const data = await service.get(15, { userId: 4, role: "DOCENTE" })
+    expect(prisma.user.findMany).toHaveBeenCalledWith({ where: { idUser: { in: [2, 999] } }, select: { idUser: true, name: true } })
+    expect(data.audits[0].actor).toEqual({ idUser: 2, name: "Responsável de teste" })
+    expect(data.audits[1].actor).toBeNull()
+  })
+  test("avaliador não recebe histórico nem consulta os responsáveis restritos", async () => {
+    const service = new CaseComplianceService()
+    jest.spyOn(service, "context").mockResolvedValue(processWithAudits() as never)
+    const data = await service.get(15, { userId: 7, role: "EXTERNAL_EVALUATOR" })
+    expect(data.audits).toEqual([])
+    expect(prisma.user.findMany).not.toHaveBeenCalled()
+  })
 })

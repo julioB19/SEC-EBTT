@@ -1,5 +1,8 @@
 "use client"
 
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+
 import { useMemo, useState } from "react"
 import RoleDropdown from "@/components/ui/RoleDropdown"
 
@@ -21,7 +24,7 @@ const ROLE_LABEL: Record<Role, string> = {
 export default function RoleSwitcherClient({ roles, selectedRole }: Props) {
   const [value, setValue] = useState<Role | null>(selectedRole)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
 
   const options = useMemo(
     () =>
@@ -92,7 +95,7 @@ export default function RoleSwitcherClient({ roles, selectedRole }: Props) {
           switchTo(r)
         }}
       />
-      {error && <span className="mt-1 text-[11px] text-[var(--danger-text)]">{error}</span>}
+      {error && null}
     </div>
   )
 }

@@ -1,5 +1,9 @@
 "use client"
 
+import { useFeedbackState } from "@/hooks/useFeedbackState"
+import { clientFetch as fetch } from "@/lib/clientFetch"
+import { formatProcessTypeLabel } from "@/utils/processTypeLabels"
+
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -70,11 +74,6 @@ function statusLabel(s: ProcessStatus) {
   return s
 }
 
-function typeLabel(t: ProcessType) {
-  if (t === "PROGRESSAO") return "Progressão"
-  return "Promoção"
-}
-
 function formatDate(iso: string | null) {
   if (!iso) return "—"
   const d = new Date(iso)
@@ -92,7 +91,7 @@ export default function CppdProcessosClient() {
   const [view, setView] = useState<ViewMode>(initialView)
 
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useFeedbackState<string | null>(null, "error")
   const [items, setItems] = useState<ListProcessDto[]>([])
 
   function updateQuery(mode: ViewMode) {
@@ -190,9 +189,7 @@ export default function CppdProcessosClient() {
         </header>
 
         {error && (
-          <p className="text-xs text-[var(--state-danger-text)] whitespace-pre-wrap">
-            {error}
-          </p>
+          null
         )}
 
         {loading ? (
@@ -240,7 +237,7 @@ export default function CppdProcessosClient() {
                       </td>
 
                       <td className="px-4 py-3 text-[var(--text-primary)]">
-                        {p.processTypeConfig?.name ?? typeLabel(p.type)}
+                        {formatProcessTypeLabel(undefined, p.processTypeConfig?.name ?? p.type)}
                       </td>
 
                       <td className="px-4 py-3 text-[var(--text-primary)]">
