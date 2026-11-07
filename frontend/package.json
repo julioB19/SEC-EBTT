@@ -12,7 +12,7 @@
     "check:ux": "node scripts/check-ui-patterns.cjs"
   },
   "dependencies": {
-    "next": "15.5.7",
+    "next": "15.5.29",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-markdown": "^10.1.0",
@@ -26,5 +26,10 @@
     "jsdom": "^26.1.0",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.23"
+    }
   }
 }
