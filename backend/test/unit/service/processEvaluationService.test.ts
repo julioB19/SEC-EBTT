@@ -106,7 +106,7 @@ describe("ProcessEvaluationService", () => {
 
   test("finalização traduz ausência de perfil docente", async () => {
     repository.findProcessWithUserAndTable.mockResolvedValue(process as any)
-    jest.spyOn(service, "getProcessForEvaluation").mockResolvedValue({} as any)
+    jest.spyOn(service, "getProcessForEvaluation").mockResolvedValue({ scores: [] } as any)
     jest.spyOn(service as any, "checkAllFilledItemsEvaluated").mockReturnValue(true)
     jest.spyOn(service as any, "recalculateEvaluationTotals").mockResolvedValue({})
     jest.spyOn(service as any, "computeOverallTotals").mockResolvedValue({ totalsCppd: 120 })

@@ -73,8 +73,8 @@ describe("FullProfessorProcedureService", () => {
       processId: 20,
       stage: FullProfessorProcedureStage.AWAITING_REASSESSMENT,
       outcome: FullProfessorProcedureOutcome.REJECTED,
-      reassessmentDeadlineAt: new Date("2026-10-01T23:59:59.999Z"),
-      oralDefenseDeadlineAt: new Date("2026-10-29T23:59:59.999Z")
+      reassessmentDeadlineAt: new Date("2026-10-02T02:59:59.999Z"),
+      oralDefenseDeadlineAt: new Date("2026-10-30T02:59:59.999Z")
     }))
   })
 
@@ -102,7 +102,7 @@ describe("FullProfessorProcedureService", () => {
       fullProfessorDetail: {
         ...context.fullProfessorDetail,
         procedureStage: FullProfessorProcedureStage.AWAITING_REASSESSMENT,
-        reassessmentDeadlineAt: new Date("2026-10-01T23:59:59.999Z")
+        reassessmentDeadlineAt: new Date("2026-10-02T02:59:59.999Z")
       }
     } as any)
 
@@ -142,7 +142,7 @@ describe("FullProfessorProcedureService", () => {
       fullProfessorDetail: {
         ...context.fullProfessorDetail,
         procedureStage: FullProfessorProcedureStage.REASSESSMENT_REQUESTED,
-        oralDefenseDeadlineAt: new Date("2026-10-29T23:59:59.999Z")
+        oralDefenseDeadlineAt: new Date("2026-10-30T02:59:59.999Z")
       }
     } as any)
 
@@ -174,7 +174,7 @@ describe("FullProfessorProcedureService", () => {
     expect(repository.transition).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
         procedureStage: FullProfessorProcedureStage.AWAITING_APPEAL,
-        appealDeadlineAt: new Date("2026-10-01T23:59:59.999Z")
+        appealDeadlineAt: new Date("2026-10-02T02:59:59.999Z")
       })
     }))
   })

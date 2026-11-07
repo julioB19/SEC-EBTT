@@ -652,6 +652,13 @@ export default function CppdAvaliacaoPage() {
       return
     }
 
+    const declared = scoreByItem.get(itemId)?.awardedPoints
+    if (evaluatorPoints !== null && declared != null &&
+      evaluatorPoints.toFixed(2) !== Number(declared).toFixed(2) && !local.evaluatorCommentInput.trim()) {
+      setError("Informe a justificativa quando a pontuação reconhecida divergir da declarada.")
+      return
+    }
+
     setSavingItem(true)
     setError(null)
     setInfoMessage(null)

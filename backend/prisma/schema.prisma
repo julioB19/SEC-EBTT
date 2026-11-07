@@ -901,6 +901,9 @@ model PasswordResetCode {
 }
 
 model ProcessCompliance {
+  titularAdmissionDate        DateTime?     @db.Date
+  titularWorkRegime           String?       @db.VarChar(120)
+  titularCompetitionArea      String?       @db.VarChar(180)
   deletedDate                  DateTime?
   nomineesValidatedAt          DateTime?
   processId                    Int           @id

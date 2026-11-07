@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, jest, test } from "@jest/globals"
 import {
   MissingDocenteProfileError,
   MissingProcessScoreError,
+  StaleCareerEvaluationError,
   ProcessEvaluationRepository
 } from "../../../src/repository/processEvaluationRepository"
 import { prisma } from "../../../src/infra/prismaClient"
@@ -9,7 +10,7 @@ import { ProcessStatus } from "@prisma/client"
 
 jest.mock("../../../src/infra/prismaClient", () => ({
   prisma: {
-    careerProcess: { findFirst: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+    careerProcess: { findFirst: jest.fn(), findUnique: jest.fn(), findUniqueOrThrow: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
     evidenceFile: { findFirst: jest.fn() }, processScore: { findFirst: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
     scoringNode: { findMany: jest.fn() }, scoringItem: { findMany: jest.fn() },
     processNodeScore: { findMany: jest.fn(), upsert: jest.fn() },
@@ -51,7 +52,7 @@ describe("ProcessEvaluationRepository", () => {
 
   test("finalização registra status e exige perfil para deferimento", async () => {
     ;(prisma.$transaction as jest.Mock).mockImplementation(async (fn: any) => fn(prisma))
-    ;(prisma.careerProcess.update as jest.Mock).mockResolvedValue({ idProcess: 1 } as never)
+    ;(prisma.careerProcess.updateMany as jest.Mock).mockResolvedValue({ count: 1 } as never)
     ;(prisma.docenteProfile.findUnique as jest.Mock).mockResolvedValue(null as never)
     await expect(repository.finalizeEvaluation({
       processId: 1, userId: 2, fromStatus: ProcessStatus.SUBMITTED,
@@ -64,12 +65,24 @@ describe("ProcessEvaluationRepository", () => {
 
   test("indeferimento não altera perfil docente", async () => {
     ;(prisma.$transaction as jest.Mock).mockImplementation(async (fn: any) => fn(prisma))
-    ;(prisma.careerProcess.update as jest.Mock).mockResolvedValue({ idProcess: 1 } as never)
+    ;(prisma.careerProcess.updateMany as jest.Mock).mockResolvedValue({ count: 1 } as never)
     await repository.finalizeEvaluation({
       processId: 1, userId: 2, fromStatus: ProcessStatus.SUBMITTED,
       toStatus: ProcessStatus.REJECTED, finalPoints: "1.00", evaluationOpinion: "não",
       evaluatorUserIds: [3], changedById: 3, targetLevel: null, intersticeEnd: new Date()
     })
     expect(prisma.docenteProfile.findUnique).not.toHaveBeenCalled()
+  })
+
+  test("decisão obsoleta não grava histórico nem altera a classe", async () => {
+    ;(prisma.$transaction as jest.Mock).mockImplementation(async (fn: any) => fn(prisma))
+    ;(prisma.careerProcess.updateMany as jest.Mock).mockResolvedValue({ count: 0 } as never)
+    await expect(repository.finalizeEvaluation({
+      processId: 1, userId: 2, fromStatus: ProcessStatus.SUBMITTED,
+      toStatus: ProcessStatus.REJECTED, finalPoints: "1.00", evaluationOpinion: "não",
+      evaluatorUserIds: [3], changedById: 3, targetLevel: null, intersticeEnd: new Date()
+    })).rejects.toBeInstanceOf(StaleCareerEvaluationError)
+    expect(prisma.processStatusHistory.create).not.toHaveBeenCalled()
+    expect(prisma.docenteProfile.update).not.toHaveBeenCalled()
   })
 })

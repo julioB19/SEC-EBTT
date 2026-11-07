@@ -20,6 +20,9 @@
     "lint": "npx eslint",
     "build": "tsc",
     "seeds": "ts-node scripts/seeds",
+    "seed:demo": "ts-node scripts/seed-demo.ts",
+    "db:reset:demo": "ts-node scripts/reset-demo.ts",
+    "test:demo": "ts-node scripts/verify-demo.ts",
     "migrate:cpf": "ts-node scripts/migrate-cpf-protection",
     "format:prisma": "prisma format"
   },

@@ -34,7 +34,7 @@ describe("Bloqueios regulatórios de decisão", () => {
     const process = { idProcess: 1, userId: 1, status: "SUBMITTED", type: "PROGRESSAO", scoringTableId: 1, table: { minRequiredPoints: 120 }, intersticeStart: new Date("2020-01-01"), intersticeEnd: new Date("2022-01-01"), classeOrigem: "B", nivelOrigem: "1", classeDestino: "B", nivelDestino: "2", user: { name: "Docente", docente: { siape: "1" } }, campus: "Teste", cidadeUF: "Teste/RS" }
     const repository: any = { findProcessWithUserAndTable: jest.fn<() => Promise<any>>().mockResolvedValue(process), finalizeEvaluation: jest.fn<() => Promise<any>>().mockResolvedValue({ idProcess: 1, status: "APPROVED" }) }
     const service = new ProcessEvaluationService(repository)
-    jest.spyOn(service, "getProcessForEvaluation").mockResolvedValue({ items: [{ idScoringItem: 1 }], scores: [{ itemId: 1, quantity: 1, awardedPoints: 150, evaluatorAwardedPoints: points }] } as any)
+    jest.spyOn(service, "getProcessForEvaluation").mockResolvedValue({ items: [{ idScoringItem: 1 }], scores: [{ itemId: 1, quantity: 1, awardedPoints: 150, evaluatorAwardedPoints: points, evaluatorComment: "Pontuação conferida" }] } as any)
     jest.spyOn(service as any, "recalculateEvaluationTotals").mockResolvedValue({})
     jest.spyOn(service as any, "computeOverallTotals").mockResolvedValue({ totalsCppd: points })
     if (points < 120) {
@@ -50,7 +50,7 @@ describe("Bloqueios regulatórios de decisão", () => {
     const process: any = { idProcess: 1, userId: 1, status: "SUBMITTED", type: "PROGRESSAO", scoringTableId: 1, table: { minRequiredPoints: 120 }, intersticeStart: new Date(future ? "2090-01-01" : "2020-01-01"), intersticeEnd: new Date(future ? "2091-12-31" : "2021-12-31"), classeOrigem: "B", nivelOrigem: "1", classeDestino: "B", nivelDestino: "2", user: { name: "Docente", docente: { siape: "1" } }, campus: "Teste", cidadeUF: "Teste/RS" }
     const repository: any = { findProcessWithUserAndTable: jest.fn<() => Promise<any>>().mockResolvedValue(process), finalizeEvaluation: jest.fn<() => Promise<any>>().mockResolvedValue({ idProcess: 1, status: "APPROVED" }) }
     const service = new ProcessEvaluationService(repository)
-    jest.spyOn(service, "getProcessForEvaluation").mockResolvedValue({} as any)
+    jest.spyOn(service, "getProcessForEvaluation").mockResolvedValue({scores: []} as any)
     jest.spyOn(service as any, "checkAllFilledItemsEvaluated").mockReturnValue(true)
     jest.spyOn(service as any, "recalculateEvaluationTotals").mockResolvedValue({})
     jest.spyOn(service as any, "computeOverallTotals").mockResolvedValue({ totalsCppd: 120 })

@@ -2,6 +2,7 @@ import fs from "fs"
 import { RequestHandler } from "express"
 import { RoleName } from "@prisma/client"
 import { ProcessEvaluationService } from "../service/processEvaluationService"
+import { StaleCareerEvaluationError } from "../repository/processEvaluationRepository"
 import { HttpResponse, StatusCodeDescription } from "../util/httpResponse"
 import { BusinessRuleError, NotFoundError } from "../service/processoService"
 import {
@@ -208,6 +209,11 @@ export class ProcessEvaluationController {
       return HttpResponse.ok(res, "CPPD evaluation finalized successfully", updated)
     } catch (error) {
       console.error("Error finalizing CPPD evaluation:", error)
+
+      if (error instanceof StaleCareerEvaluationError) {
+        res.status(409).json({ status: "CONFLICT", message: error.message, data: null })
+        return
+      }
 
       if (error instanceof NotFoundError) {
         HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, null)

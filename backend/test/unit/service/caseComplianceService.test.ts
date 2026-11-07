@@ -34,7 +34,7 @@ describe("Indicados e documentos que autorizam a decisão",()=>{
   await expect(assertSignedDecisionDocuments(1,"FULL_PROFESSOR",commission)).rejects.toThrow("presidente")
  })
  test("Titular não pode seguir sem desempenho, indicação e validação pela CPPD",async()=>{
-  const process:any={fullProfessorDetail:{evaluationMode:"MEMORIAL",doctorateDegree:{countryCode:"BR",evidenceFileId:1,degreeType:"DOCTORATE",teacherId:1}},nominees:nominees(),user:{email:"docente@iffarroupilha.edu.br",docente:{idDocente:1}},compliance:{performanceFileId:1,claimedPerformancePoints:120}}
+  const process:any={fullProfessorDetail:{evaluationMode:"MEMORIAL",doctorateDegree:{countryCode:"BR",evidenceFileId:1,degreeType:"DOCTORATE",teacherId:1}},nominees:nominees(),user:{email:"docente@iffarroupilha.edu.br",docente:{idDocente:1}},compliance:{performanceFileId:1,claimedPerformancePoints:120,titularAdmissionDate:new Date("2015-01-01"),titularWorkRegime:"Dedicação exclusiva",titularCompetitionArea:"Educação"}}
   ;(prisma.careerProcess.findUnique as jest.Mock).mockResolvedValue(process as never)
   await expect(assertTitularReady(1,"SUBMIT")).resolves.toEqual(process)
   await expect(assertTitularReady(1,"ACTIVATE")).rejects.toThrow("CPPD")

@@ -13,7 +13,7 @@ import { BusinessRuleError, NotFoundError } from "./processoService"
 import { FullProfessorProcedureService } from "./fullProfessorProcedureService"
 import { assertTitularReady, assertSignedDecisionDocuments, calculateTitularEffects } from "./caseComplianceService"
 import { prisma } from "../infra/prismaClient"
-import { addCalendarDaysDeadline } from "../util/proceduralDeadline"
+import { addCalendarDaysFromDateLabel } from "../util/proceduralDeadline"
 import {
   AddSpecialCommissionMemberDto,
   FinalizeSpecialCommissionDecisionDto,
@@ -214,7 +214,7 @@ export class SpecialCommissionService {
       changedById: currentUserId,
       evaluationDeadlineAt:
         dto.status === CommissionStatus.ACTIVE && commission.ordinanceDate
-          ? addCalendarDaysDeadline(commission.ordinanceDate, 45, await prisma.academicCalendarPeriod.findMany({ where: { deletedAt: null, OR: [{ campusId: null }, { campusId: process.campusId ?? -1 }] } }))
+          ? addCalendarDaysFromDateLabel(commission.ordinanceDate, 45, await prisma.academicCalendarPeriod.findMany({ where: { deletedAt: null, OR: [{ campusId: null }, { campusId: process.campusId ?? -1 }] } }))
           : undefined
     })
     if (

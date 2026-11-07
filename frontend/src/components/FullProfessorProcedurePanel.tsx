@@ -60,7 +60,7 @@ const procedureEventLabels: Record<string, string> = {
 }
 function formatDate(value: string | null) {
   if (!value) return "Não definido"
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value))
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(value))
 }
 
 const stageLabels: Record<string, string> = {

@@ -14,6 +14,8 @@ import {
   MissingDocenteProfileError,
   StaleDocenteProfileError,
   MissingProcessScoreError,
+  MissingScoreJustificationError,
+  StaleCareerEvaluationError,
   ProcessEvaluationRepository
 } from "../repository/processEvaluationRepository"
 import path from "path"
@@ -144,12 +146,13 @@ export class ProcessEvaluationService {
     }
   }
 
-  async getProcessForEvaluation(processId: number): Promise<ProcessEvaluationViewDto> {
+  async getProcessForEvaluation(processId: number, finalizing = false): Promise<ProcessEvaluationViewDto> {
     const process = await this.repository.findProcessWithUserAndTable(processId)
 
     if (!process || process.deletedDate) throw new NotFoundError("Process not found")
 
     if (process.status !== ProcessStatus.SUBMITTED && process.status !== ProcessStatus.UNDER_REVIEW) {
+      if (finalizing) throw new StaleCareerEvaluationError()
       throw new BusinessRuleError("Process is not available for CPPD evaluation")
     }
 
@@ -244,13 +247,14 @@ export class ProcessEvaluationService {
       .map(u => ({
         itemId: Number(u.itemId),
         evaluatorAwardedPoints: normalizeDecimalString(u.evaluatorAwardedPoints),
-        evaluatorComment: u.evaluatorComment === undefined ? null : u.evaluatorComment
+        evaluatorComment: u.evaluatorComment?.trim() || null
       }))
       .filter(u => Number.isFinite(u.itemId) && u.itemId > 0)
 
     try {
       await this.repository.updateItemScores(processId, normalizedUpdates)
     } catch (error) {
+      if (error instanceof MissingScoreJustificationError) throw new BusinessRuleError(error.message)
       if (!(error instanceof MissingProcessScoreError)) throw error
       throw new BusinessRuleError(
         "Não foi possível avaliar este item porque não existe pontuação registrada pelo docente para ele."
@@ -359,14 +363,18 @@ export class ProcessEvaluationService {
     if (!processFull || processFull.deletedDate) throw new NotFoundError("Process not found")
 
     if (processFull.status !== ProcessStatus.SUBMITTED && processFull.status !== ProcessStatus.UNDER_REVIEW) {
-      throw new BusinessRuleError("Only SUBMITTED or UNDER_REVIEW processes can be evaluated")
+      throw new StaleCareerEvaluationError()
     }
 
     assertScoredCareerProcess(processFull)
 
     if (!dto.decision) throw new BusinessRuleError("CPPD decision is required")
 
-    const view = await this.getProcessForEvaluation(processId)
+    const view = await this.getProcessForEvaluation(processId, true)
+    if (view.scores.some(score => score.evaluatorAwardedPoints != null &&
+      Number(score.evaluatorAwardedPoints) !== Number(score.awardedPoints) && !score.evaluatorComment?.trim())) {
+      throw new BusinessRuleError(new MissingScoreJustificationError().message)
+    }
     if (!this.checkAllFilledItemsEvaluated(view)) {
       throw new BusinessRuleError(
         "Finalize a avaliação de todos os itens preenchidos pelo docente antes de finalizar o processo."
@@ -378,7 +386,7 @@ export class ProcessEvaluationService {
       : []
     const evaluatorUserIds = Array.from(new Set([currentUserId, ...sanitized]))
 
-    await this.recalculateEvaluationTotals(processId)
+    await this.recalculateEvaluationTotals(processId, true)
     const { totalsCppd } = await this.computeOverallTotals(processId)
 
     const minRequiredPoints =
@@ -460,7 +468,7 @@ export class ProcessEvaluationService {
   }
 
 
-  private async recalculateEvaluationTotals(processId: number) {
+  private async recalculateEvaluationTotals(processId: number, finalizing = false) {
     const process = await this.repository.findProcessWithUserAndTable(processId)
     if (!process || process.deletedDate) throw new NotFoundError("Process not found")
     assertScoredCareerProcess(process)
@@ -577,7 +585,7 @@ export class ProcessEvaluationService {
 
     await this.repository.updateFinalPoints(processId, finalCppd.toFixed(2))
 
-    return this.getProcessForEvaluation(processId)
+    return this.getProcessForEvaluation(processId, finalizing)
   }
 
   private evalFormula(

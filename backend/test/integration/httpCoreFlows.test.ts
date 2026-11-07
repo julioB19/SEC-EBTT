@@ -18,6 +18,7 @@ const DOCENTE_CREDENTIALS = {
 
 describe("API HTTP - fluxos funcionais de processos", () => {
   let server: Server
+  let prisma: typeof import("../../src/infra/prismaClient").prisma
   let baseUrl: string
   let docenteAccessToken: string
   let createdProcessId: number | null = null
@@ -31,6 +32,7 @@ describe("API HTTP - fluxos funcionais de processos", () => {
     process.env.APP_URL = "https://sec.test"
     process.env.DATABASE_URL = TEST_DATABASE_URL
     const { prisma: fixtureDb } = await import("../../src/infra/prismaClient")
+    prisma = fixtureDb
     const fixtureCampus = await fixtureDb.campus.findFirstOrThrow({ where: { acronym: "SM" } })
     await fixtureDb.campusEmailDomain.upsert({
       where: { campusId_domain: { campusId: fixtureCampus.idCampus, domain: "iffar.edu.br" } },
@@ -157,6 +159,14 @@ describe("API HTTP - fluxos funcionais de processos", () => {
   }
 
   async function prepareTitular(processId: number, teacherToken: string, externalEmails: string[], internalEmail: string, thesis = false) {
+    const invalidDate = await request(`/cases/${processId}/compliance`, { method: "POST", token: teacherToken, body: { action: "SAVE_TITULAR_APPLICATION", admissionDate: "2015-02-30", workRegime: "Dedicação exclusiva", competitionArea: "Educação" } })
+    expect(invalidDate.status).toBe(400)
+    const application = await request(`/cases/${processId}/compliance`, { method: "POST", token: teacherToken, body: { action: "SAVE_TITULAR_APPLICATION", admissionDate: "2015-01-01", workRegime: "Dedicação exclusiva", competitionArea: "Educação" } })
+    expect(application.status).toBe(200)
+    expect(application.data.data.compliance).toMatchObject({ titularWorkRegime: "Dedicação exclusiva", titularCompetitionArea: "Educação" })
+    const applicationPdf = await request(`/cases/${processId}/documents/APPLICATION`, { token: teacherToken })
+    expect(applicationPdf.status).toBe(200)
+    expect((applicationPdf.data as Buffer).subarray(0, 4).toString()).toBe("%PDF")
     const form = new FormData()
     form.set("file", new Blob([await createPdfBytes("Avaliação de desempenho com 120 pontos")], { type: "application/pdf" }), "desempenho.pdf")
     const file = await request<any>("/teacher/evidence", { method: "POST", token: teacherToken, body: form })
@@ -982,6 +992,14 @@ describe("API HTTP - fluxos funcionais de processos", () => {
       expect(cppdEvidence.status).toBe(200)
       expect((cppdEvidence.data as Buffer).subarray(0, 4).toString()).toBe("%PDF")
 
+      const unexplained = await request(`/processes/${processId}/evaluation/items`, {
+        method: "PATCH",
+        token: cppd.accessToken,
+        body: { scores: [{ itemId: filledScores[0].itemId, evaluatorAwardedPoints: "0", evaluatorComment: "   " }] },
+      })
+      expect(unexplained.status).toBe(400)
+      expect(unexplained.data.message).toMatch(/justificativa/i)
+
       const recognized = await request(`/processes/${processId}/evaluation/items`, {
         method: "PATCH",
         token: cppd.accessToken,
@@ -1013,7 +1031,7 @@ describe("API HTTP - fluxos funcionais de processos", () => {
         suggestedOpinion: expect.stringContaining(`Parecer favorável à ${scenario.label}.`),
       })
 
-      const finalized = await request(`/processes/${processId}/evaluation/finalize`, {
+      const finish = () => request(`/processes/${processId}/evaluation/finalize`, {
         method: "POST",
         token: cppd.accessToken,
         body: {
@@ -1021,6 +1039,9 @@ describe("API HTTP - fluxos funcionais de processos", () => {
           overrideOpinion: `${scenario.label} aprovada após conferência integral.`,
         },
       })
+      const concurrentDecisions = await Promise.all([finish(), finish()])
+      expect(concurrentDecisions.map(result => result.status).sort()).toEqual([200, 409])
+      const finalized = concurrentDecisions.find(result => result.status === 200)!
       expect(finalized.status).toBe(200)
       expect(finalized.data.data).toMatchObject({
         idProcess: processId,
@@ -1035,6 +1056,7 @@ describe("API HTTP - fluxos funcionais de processos", () => {
       const profile = await request("/users/me", { token: teacher.accessToken })
       expect(profile.status).toBe(200)
       expect(profile.data.data.docenteProfile.classLevel).toBe(scenario.destinationCode)
+      expect(await prisma.processStatusHistory.count({ where: { processId, toStatus: "APPROVED" } })).toBe(1)
     }
   }, 120000)
 
@@ -1273,6 +1295,19 @@ describe("API HTTP - fluxos funcionais de processos", () => {
     })
     expect(teacherProcedure.status).toBe(200)
     expect(teacherProcedure.data.data.availableActions).toEqual([])
+
+    const unavailableAppeal = await request(`/cases/${processId}/documents/TITULAR_APPEAL`, { token: teacherLogin.accessToken })
+    expect(unavailableAppeal.status).toBe(400)
+    // Exercise document generation from an already submitted appeal, independently of the approval fixture.
+    await prisma.fullProfessorProcessDetail.update({ where: { processId }, data: { appealSubmittedAt: new Date(), appealReason: "Fundamento de teste para o Anexo X." } })
+    try {
+      const appealPdf = await request(`/cases/${processId}/documents/TITULAR_APPEAL`, { token: teacherLogin.accessToken })
+      expect(appealPdf.status).toBe(200)
+      expect((appealPdf.data as Buffer).subarray(0, 4).toString()).toBe("%PDF")
+      expect(await prisma.documentProcess.count({ where: { processId, documentType: "TITULAR_APPEAL" } })).toBe(1)
+    } finally {
+      await prisma.fullProfessorProcessDetail.update({ where: { processId }, data: { appealSubmittedAt: null, appealReason: null } })
+    }
 
     await signCommission(processId, cppd.accessToken, members, true, false)
     const decision = await request(`/processes/${processId}/special-commission/decision`, {

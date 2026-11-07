@@ -64,6 +64,11 @@ Para popular o banco de dados:
 npm run seeds
 ```
 
+Para preparar os usuários e processos de demonstração do orientador, veja
+[Base demonstrativa](docs/base-demonstrativa.md). No backend, `npm run test:demo`
+valida em um banco temporário, `npm run seed:demo` adiciona exemplos preservando o
+andamento e `npm run db:reset:demo` recria o banco local após conferir o backup.
+
 Inicie o frontend em modo de desenvolvimento:
 ```bash
 npm run dev

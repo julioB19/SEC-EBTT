@@ -5,6 +5,16 @@ import { prisma } from "../infra/prismaClient"
 export class MissingProcessScoreError extends Error {}
 export class MissingDocenteProfileError extends Error {}
 export class StaleDocenteProfileError extends Error {}
+export class StaleCareerEvaluationError extends Error {
+  constructor() {
+    super("O processo mudou ou já foi concluído. Atualize a página antes de decidir.")
+  }
+}
+export class MissingScoreJustificationError extends Error {
+  constructor() {
+    super("Informe a justificativa quando a pontuação reconhecida divergir da declarada.")
+  }
+}
 
 export class ProcessEvaluationRepository {
   async findProcess(processId: number) {
@@ -54,6 +64,9 @@ export class ProcessEvaluationRepository {
           where: { processId_itemId: { processId, itemId: update.itemId } }
         })
         if (!existing || existing.deletedDate) throw new MissingProcessScoreError()
+        if (update.evaluatorAwardedPoints !== null && !existing.awardedPoints.equals(update.evaluatorAwardedPoints) && !update.evaluatorComment?.trim()) {
+          throw new MissingScoreJustificationError()
+        }
         const process = await tx.careerProcess.findUniqueOrThrow({ where: { idProcess: processId } })
         await tx.processAudit.create({ data: { processId, actorId: auditActor(process.userId), action: "CPPD_SCORE_CHANGED", details: { itemId: update.itemId, previousPoints: String(existing.evaluatorAwardedPoints ?? ""), previousComment: existing.evaluatorComment, points: update.evaluatorAwardedPoints, comment: update.evaluatorComment } } })
         await tx.processScore.update({
@@ -82,7 +95,10 @@ export class ProcessEvaluationRepository {
   }
 
   async updateFinalPoints(processId: number, finalPoints: string) {
-    return prisma.careerProcess.update({ where: { idProcess: processId }, data: { finalPoints } })
+    return prisma.careerProcess.updateMany({
+      where: { idProcess: processId, deletedDate: null, status: { in: [ProcessStatus.SUBMITTED, ProcessStatus.UNDER_REVIEW] } },
+      data: { finalPoints }
+    })
   }
 
   async finalizeEvaluation(params: {
@@ -100,8 +116,8 @@ export class ProcessEvaluationRepository {
     financialEffectsAt?: Date | null
   }) {
     return prisma.$transaction(async tx => {
-      const updated = await tx.careerProcess.update({
-        where: { idProcess: params.processId },
+      const { count } = await tx.careerProcess.updateMany({
+        where: { idProcess: params.processId, deletedDate: null, status: params.fromStatus },
         data: {
           status: params.toStatus,
           finalPoints: params.finalPoints,
@@ -110,6 +126,7 @@ export class ProcessEvaluationRepository {
           financialEffectsAt: params.financialEffectsAt
         }
       })
+      if (count !== 1) throw new StaleCareerEvaluationError()
       await tx.processStatusHistory.create({
         data: {
           processId: params.processId,
@@ -128,7 +145,7 @@ export class ProcessEvaluationRepository {
           data: { classLevel: params.targetLevel, start_interstice: params.financialEffectsAt ?? params.intersticeEnd }
         })
       }
-      return updated
+      return tx.careerProcess.findUniqueOrThrow({ where: { idProcess: params.processId } })
     })
   }
 

@@ -78,7 +78,8 @@ export class CaseComplianceService {
       appeals: applicant || reviewer ? process.rscAppeals : [], audits: auditEvents.map(event => ({ ...event, actor: actorsById.get(event.actorId) ?? null })),
       canEdit: applicant && ["DRAFT", "RETURNED"].includes(process.status), canReview: reviewer && !finalStatuses.has(process.status),
       documents: process.processTypeConfig?.category === "CAREER" ? [] : process.processTypeConfig?.category === "FULL_PROFESSOR"
-        ? ["APPLICATION", "PERFORMANCE", "NOMINEES", "CPPD_ELIGIBILITY_OPINION", "PRESIDENT_OPINION", "MEMORIAL_DEFENSE_MINUTES", "THESIS_DEFENSE_MINUTES", "CONSOLIDATED_OPINION", "THESIS_ORIGINALITY"]
+        ? ["APPLICATION", "PERFORMANCE", "NOMINEES", "CPPD_ELIGIBILITY_OPINION", "PRESIDENT_OPINION", "MEMORIAL_DEFENSE_MINUTES", "THESIS_DEFENSE_MINUTES", "CONSOLIDATED_OPINION", "THESIS_ORIGINALITY",
+          ...((applicant || reviewer) && process.fullProfessorDetail?.appealSubmittedAt ? ["TITULAR_APPEAL"] : [])]
         : ["APPLICATION", "PERFORMANCE", "CONSOLIDATED_OPINION"]
     }
   }
@@ -93,6 +94,18 @@ export class CaseComplianceService {
     let nominees: ReturnType<typeof validateNominees> | undefined
     let selectedDoctorate: number | undefined
     switch (input.action) {
+      case "SAVE_TITULAR_APPLICATION": {
+        if (!editing || !process.fullProfessorDetail) throw new BusinessRuleError("Os dados do requerimento só podem ser alterados pelo docente enquanto o processo estiver editável")
+        const raw = input.admissionDate
+        if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) throw new BusinessRuleError("Informe uma data de admissão válida")
+        const admissionDate = this.pastDate(raw, "Data de admissão")
+        if (admissionDate.toISOString().slice(0, 10) !== raw) throw new BusinessRuleError("Informe uma data de admissão válida")
+        changes.titularAdmissionDate = admissionDate
+        if (typeof input.workRegime !== "string" || typeof input.competitionArea !== "string") throw new BusinessRuleError("Informe o regime de trabalho e a área de concurso")
+        changes.titularWorkRegime = this.requiredText(input.workRegime, 120, "o regime de trabalho")
+        changes.titularCompetitionArea = this.requiredText(input.competitionArea, 180, "a área de concurso")
+        break
+      }
       case "SELECT_DOCTORATE": {
         if (!editing || !process.fullProfessorDetail) throw new BusinessRuleError("Selecione o diploma no rascunho de Classe Titular")
         const degree = await prisma.teacherDegree.findFirst({ where: { idTeacherDegree: Number(input.degreeId), teacher: { userId: actor.userId }, degreeType: { in: ["DOCTORATE", "DOUTORADO"] } } })
@@ -269,6 +282,9 @@ export async function assertTitularReady(processId: number, phase: "SUBMIT" | "A
   if (!process?.fullProfessorDetail) throw new BusinessRuleError("Processo de Classe Titular incompleto")
   const compliance = process.compliance
   if (!compliance?.performanceFileId || Number(compliance.claimedPerformancePoints) < 120) throw new BusinessRuleError("Anexe a avaliação de desempenho com pelo menos 120 pontos antes do envio")
+  if (phase === "SUBMIT" && (!compliance.titularAdmissionDate || !compliance.titularWorkRegime || !compliance.titularCompetitionArea)) {
+    throw new BusinessRuleError("Preencha os dados do requerimento: data de admissão, regime de trabalho e área de concurso")
+  }
   validateNominees(process.nominees.map(value => ({ ...value, sameKnowledgeArea: !value.relatedAreaJustification })), process.user.email)
   const degree = process.fullProfessorDetail.doctorateDegree
   if (!degree?.evidenceFileId || degree.teacherId !== process.user.docente?.idDocente || !["DOCTORATE", "DOUTORADO"].includes(degree.degreeType)) throw new BusinessRuleError("Selecione o doutorado comprovado do próprio docente")

@@ -1,0 +1,21 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.sample
+!.env.template
+
+# User uploads and database backups
+uploads/
+backups/
+
+# Temporary files and logs
+tmp/
+temp/
+*.tmp
+*.log
+*.bak
+
+# Root dependencies
+/node_modules/

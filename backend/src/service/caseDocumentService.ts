@@ -3,9 +3,11 @@ import path from "path"
 import fs from "fs/promises"
 import { createHash } from "crypto"
 import { prisma } from "../infra/prismaClient"
+import { RoleName } from "@prisma/client"
 import { CaseActor, CaseComplianceService, calculateTitularEffects } from "./caseComplianceService"
 import { BusinessRuleError } from "./processoService"
 import { textDocumentPdf } from "../util/processDocuments"
+import { institutionalCivilDate } from "../util/proceduralDeadline"
 
 const date = (value: Date | null | undefined) => value ? value.toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "Não registrado"
 const result = (value: string | null | undefined) => ["APPROVED", "DEFERRED"].includes(value ?? "") ? "APROVADO" : "REPROVADO"
@@ -25,15 +27,37 @@ export class CaseDocumentService {
     const decided = detail?.currentOutcome ?? (favorable >= 3 ? "APPROVED" : "REJECTED")
     const reference = process.externalNumber || `SEC-EBTT ${processId}`
     const common = [`Processo: ${reference}`, `Interessado(a): ${process.user.name}. SIAPE: ${process.user.docente?.siape ?? "Não registrado"}.`, `Campus: ${process.campus}. Local: ${process.cidadeUF}.`, `Data de emissão: ${date(new Date())}.`]
-    const financialDate = process.financialEffectsAt ?? (detail?.initialOpinionAt && detail.currentOutcome === "APPROVED" ? await calculateTitularEffects(processId) : null)
     const lines: string[] = [...common]
     let title: string
     switch (kind) {
       case "APPLICATION":
+        if (detail && ["DRAFT", "RETURNED"].includes(process.status) &&
+          (!compliance?.titularAdmissionDate || !compliance.titularWorkRegime || !compliance.titularCompetitionArea)) {
+          throw new BusinessRuleError("Preencha a data de admissão, o regime de trabalho e a área de concurso antes de gerar o requerimento")
+        }
         title = detail ? "REQUERIMENTO DE PROMOÇÃO À CLASSE TITULAR" : "REQUERIMENTO DE RECONHECIMENTO DE SABERES E COMPETÊNCIAS"
         lines.push("À Reitoria do Instituto Federal de Educação, Ciência e Tecnologia Farroupilha.", detail
           ? `Eu, ${process.user.name}, atualmente na Classe C, nível 04, requeiro a abertura dos procedimentos necessários à promoção à Classe de Professor Titular, mediante ${detail.evaluationMode === "THESIS" ? "defesa de tese acadêmica inédita" : "avaliação de memorial descritivo"}, nos termos da Resolução Consup/IFFar nº 11/2024, homologada pela Resolução nº 40/2024.`
           : `Eu, ${process.user.name}, requeiro a concessão do ${process.rscDetail?.targetLevel?.replace(/_/g, " ")}, conforme o Regulamento Consup/IFFar nº 7/2025. Apresento o memorial e os documentos comprobatórios das atividades realizadas entre ${date(process.rscDetail?.activityPeriodStart)} e ${date(process.rscDetail?.activityPeriodEnd)}.`, "Nestes termos, pede deferimento.", `Signatário: ${process.user.name}.`)
+        if (detail) lines.splice(lines.length - 2, 0,
+          `Data de admissão: ${date(compliance?.titularAdmissionDate)}.`,
+          `Regime de trabalho: ${compliance?.titularWorkRegime ?? "Não registrado"}.`,
+          `Área de concurso: ${compliance?.titularCompetitionArea ?? "Não registrada"}.`)
+        break
+      case "TITULAR_APPEAL":
+        if (!(actor.role === RoleName.DOCENTE && actor.userId === process.userId) &&
+          actor.role !== RoleName.CPPD_MEMBER && actor.role !== RoleName.CPPD_CENTRAL) {
+          throw new BusinessRuleError("Somente o requerente e a CPPD podem acessar o requerimento de recurso")
+        }
+        if (!detail?.appealSubmittedAt || !detail.appealReason) throw new BusinessRuleError("Apresente o recurso antes de gerar o requerimento do Anexo X")
+        title = "ANEXO X - REQUERIMENTO DE RECURSO"
+        lines.push("À Comissão Permanente de Pessoal Docente do Instituto Federal Farroupilha.",
+          `Eu, ${process.user.name}, SIAPE nº ${process.user.docente?.siape ?? "não registrado"}, venho interpor recurso contra o resultado da Comissão Especial no processo de promoção à Classe Titular indicado acima.`,
+          `Fundamentos do recurso: ${detail.appealReason}`,
+          "Nestes termos, pede deferimento.",
+          `${process.cidadeUF}, ${date(new Date(institutionalCivilDate(detail.appealSubmittedAt)))}.`,
+          "________________________________________",
+          `Assinatura do(a) requerente: ${process.user.name}.`)
         break
       case "NOMINEES":
         if (!detail || process.nominees.length !== 7) throw new BusinessRuleError("Cadastre a lista completa de sete indicados")
@@ -46,11 +70,13 @@ export class CaseDocumentService {
         lines.push(`O título de doutor foi conferido administrativamente em ${date(compliance.doctorateValidatedAt)}. Conclusão do doutorado: ${date(detail?.doctorateDegree?.conclusionDate)}.`, `A avaliação de desempenho obteve ${Number(compliance.performancePoints).toFixed(2)} pontos, atendendo ao mínimo de 120. Data de cumprimento dos requisitos de desempenho: ${date(compliance.performanceRequirementsMetAt)}.`, compliance.performanceOpinion ?? "", "Encaminha-se para constituição da Comissão Especial e prosseguimento do rito.")
         break
       case "PRESIDENT_OPINION":
-      case "CONSOLIDATED_OPINION":
+      case "CONSOLIDATED_OPINION": {
         if (members.length !== 4 || members.some(member => member.individualEvaluations[0]?.status !== "SUBMITTED")) throw new BusinessRuleError("São necessários os quatro pareceres enviados")
+        const financialDate = process.financialEffectsAt ?? (detail?.initialOpinionAt && detail.currentOutcome === "APPROVED" ? await calculateTitularEffects(processId) : null)
         title = kind === "PRESIDENT_OPINION" ? "PARECER DO PRESIDENTE DA COMISSÃO ESPECIAL" : "PARECER CONSOLIDADO DA CPPD"
         lines.push(`Comissão instituída pela Portaria ${commission?.ordinance}, de ${date(commission?.ordinanceDate)}.`, ...opinions, `Pareceres favoráveis: ${favorable} de 4. Resultado do rito: ${result(decided)}.`, detail ? `Foram apreciados o doutorado, o desempenho acadêmico e ${detail.evaluationMode === "THESIS" ? "a tese acadêmica inédita" : "o memorial descritivo"}, conforme a Resolução Consup/IFFar nº 11/2024.` : "A decisão observa o Regulamento Consup/IFFar nº 7/2025 e o mínimo de três pareceres favoráveis.", `Efeitos financeiros, quando deferido: ${date(financialDate ?? detail?.finalReferenceDate)}.`, "Encaminha-se à Coordenação de Gestão de Pessoas para os trâmites cabíveis. É o parecer.")
         break
+      }
       case "MEMORIAL_DEFENSE_MINUTES":
       case "THESIS_DEFENSE_MINUTES":
         if (!detail?.oralDefenseHeldAt || !detail.oralDefenseRecordingUrl) throw new BusinessRuleError("Registre a realização e a gravação da sessão antes de gerar a ata")
