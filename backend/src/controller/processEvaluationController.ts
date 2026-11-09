@@ -168,7 +168,7 @@ export class ProcessEvaluationController {
         body
       )
 
-      return HttpResponse.ok(res, "Parecer preview generated", result)
+      return HttpResponse.ok(res, "Prévia do parecer gerada com sucesso.", result)
     } catch (error) {
       console.error("Error generating parecer preview:", error)
 
