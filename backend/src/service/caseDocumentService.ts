@@ -10,7 +10,12 @@ import { textDocumentPdf } from "../util/processDocuments"
 import { institutionalCivilDate } from "../util/proceduralDeadline"
 
 const date = (value: Date | null | undefined) => value ? value.toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "Não registrado"
-const result = (value: string | null | undefined) => ["APPROVED", "DEFERRED"].includes(value ?? "") ? "APROVADO" : "REPROVADO"
+const eventDate = (value: Date | null | undefined) => value ? date(new Date(institutionalCivilDate(value))) : "Não registrado"
+const result = (value: string | null | undefined) => {
+  if (["APPROVED", "DEFERRED"].includes(value ?? "")) return "APROVADO"
+  if (["REJECTED", "DENIED"].includes(value ?? "")) return "REPROVADO"
+  return "NÃO REGISTRADO"
+}
 
 export class CaseDocumentService {
   constructor(private readonly access = new CaseComplianceService()) {}
@@ -26,7 +31,7 @@ export class CaseDocumentService {
     const favorable = members.filter(member => ["APPROVED", "DEFERRED"].includes(member.individualEvaluations[0]?.result ?? "")).length
     const decided = detail?.currentOutcome ?? (favorable >= 3 ? "APPROVED" : "REJECTED")
     const reference = process.externalNumber || `SEC-EBTT ${processId}`
-    const common = [`Processo: ${reference}`, `Interessado(a): ${process.user.name}. SIAPE: ${process.user.docente?.siape ?? "Não registrado"}.`, `Campus: ${process.campus}. Local: ${process.cidadeUF}.`, `Data de emissão: ${date(new Date())}.`]
+    const common = [`Processo: ${reference}`, `Interessado(a): ${process.user.name}. SIAPE: ${process.user.docente?.siape ?? "Não registrado"}.`, `Campus: ${process.campus}. Local: ${process.cidadeUF}.`, `Data de emissão: ${eventDate(new Date())}.`]
     const lines: string[] = [...common]
     let title: string
     switch (kind) {
@@ -79,11 +84,13 @@ export class CaseDocumentService {
       }
       case "MEMORIAL_DEFENSE_MINUTES":
       case "THESIS_DEFENSE_MINUTES":
+        if (detail?.evaluationMode !== (kind === "THESIS_DEFENSE_MINUTES" ? "THESIS" : "MEMORIAL")) throw new BusinessRuleError("A ata solicitada não corresponde à modalidade do processo")
         if (!detail?.oralDefenseHeldAt || !detail.oralDefenseRecordingUrl) throw new BusinessRuleError("Registre a realização e a gravação da sessão antes de gerar a ata")
         title = kind === "THESIS_DEFENSE_MINUTES" ? "ATA DE DEFESA DE TESE ACADÊMICA INÉDITA" : "ATA DE REAVALIAÇÃO DO MEMORIAL DESCRITIVO"
-        lines.push(`Em ${date(detail.oralDefenseHeldAt)}, realizou-se a sessão pública virtual do(a) docente ${process.user.name}, perante a Comissão Especial instituída pela Portaria ${commission?.ordinance}.`, `Membros: ${members.map(member => member.person.name).join("; ")}.`, `Interlocutor da CPPD: usuário ${compliance?.interlocutorUserId ?? "não registrado"}.`, detail.oralDefenseNotes ?? "", `Gravação: ${detail.oralDefenseRecordingUrl}.`, `Resultado: ${result(detail.currentOutcome)}.`, "A ata será assinada pelo presidente da Comissão, interlocutor da CPPD e docente avaliado, conforme a modalidade e o modelo institucional aplicável.")
+        lines.push(`Em ${eventDate(detail.oralDefenseHeldAt)}, realizou-se a sessão pública virtual do(a) docente ${process.user.name}, perante a Comissão Especial instituída pela Portaria ${commission?.ordinance}.`, `Membros: ${members.map(member => member.person.name).join("; ")}.`, `Interlocutor da CPPD: usuário ${compliance?.interlocutorUserId ?? "não registrado"}.`, detail.oralDefenseNotes ?? "", `Gravação: ${detail.oralDefenseRecordingUrl}.`, `Resultado: ${result(detail.currentOutcome)}.`, "A ata será assinada pelo presidente da Comissão, interlocutor da CPPD e docente avaliado, conforme a modalidade e o modelo institucional aplicável.")
         break
       case "THESIS_ORIGINALITY":
+        if (detail?.evaluationMode !== "THESIS") throw new BusinessRuleError("A declaração de ineditismo é exclusiva da modalidade de tese")
         if (!compliance?.thesisOriginalityDeclaredAt) throw new BusinessRuleError("Confirme a declaração de ineditismo antes de gerar o documento")
         title = "DECLARAÇÃO DE INEDITISMO DA TESE"
         lines.push(`Eu, ${process.user.name}, declaro, sob minha responsabilidade, que a tese acadêmica apresentada para promoção à Classe Titular é inédita, nos termos do Regulamento Consup/IFFar nº 11/2024.`, `Declaração registrada em ${date(compliance.thesisOriginalityDeclaredAt)}.`, `Signatário: ${process.user.name}.`)

@@ -73,4 +73,15 @@ describe("Responsáveis no histórico documental", () => {
     expect(data.audits).toEqual([])
     expect(prisma.user.findMany).not.toHaveBeenCalled()
   })
+
+  test.each(["MEMORIAL", "THESIS"])("oferece apenas documentos compatíveis com a modalidade %s", async evaluationMode => {
+    const service = new CaseComplianceService()
+    jest.spyOn(service, "context").mockResolvedValue({ ...processWithAudits(), audits: [],
+      processTypeConfig: { category: "FULL_PROFESSOR" }, fullProfessorDetail: { evaluationMode },
+    } as never)
+    const data = await service.get(15, { userId: 4, role: "DOCENTE" })
+    expect(data.documents).toContain(evaluationMode === "THESIS" ? "THESIS_DEFENSE_MINUTES" : "MEMORIAL_DEFENSE_MINUTES")
+    expect(data.documents).not.toContain(evaluationMode === "THESIS" ? "MEMORIAL_DEFENSE_MINUTES" : "THESIS_DEFENSE_MINUTES")
+    expect(data.documents.includes("THESIS_ORIGINALITY")).toBe(evaluationMode === "THESIS")
+  })
 })

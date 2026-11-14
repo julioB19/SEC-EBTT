@@ -78,7 +78,8 @@ export class CaseComplianceService {
       appeals: applicant || reviewer ? process.rscAppeals : [], audits: auditEvents.map(event => ({ ...event, actor: actorsById.get(event.actorId) ?? null })),
       canEdit: applicant && ["DRAFT", "RETURNED"].includes(process.status), canReview: reviewer && !finalStatuses.has(process.status),
       documents: process.processTypeConfig?.category === "CAREER" ? [] : process.processTypeConfig?.category === "FULL_PROFESSOR"
-        ? ["APPLICATION", "PERFORMANCE", "NOMINEES", "CPPD_ELIGIBILITY_OPINION", "PRESIDENT_OPINION", "MEMORIAL_DEFENSE_MINUTES", "THESIS_DEFENSE_MINUTES", "CONSOLIDATED_OPINION", "THESIS_ORIGINALITY",
+        ? ["APPLICATION", "PERFORMANCE", "NOMINEES", "CPPD_ELIGIBILITY_OPINION", "PRESIDENT_OPINION", "CONSOLIDATED_OPINION",
+          ...(process.fullProfessorDetail?.evaluationMode === "THESIS" ? ["THESIS_DEFENSE_MINUTES", "THESIS_ORIGINALITY"] : ["MEMORIAL_DEFENSE_MINUTES"]),
           ...((applicant || reviewer) && process.fullProfessorDetail?.appealSubmittedAt ? ["TITULAR_APPEAL"] : [])]
         : ["APPLICATION", "PERFORMANCE", "CONSOLIDATED_OPINION"]
     }
