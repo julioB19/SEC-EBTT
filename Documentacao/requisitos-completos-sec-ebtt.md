@@ -1,14 +1,17 @@
 # Requisitos completos do SEC-EBTT
 
-**Versão:** 1.2
-**Atualizado em:** 30/09/2026
-**Escopo validado:** Progressão/Promoção, Reconhecimento de Saberes e Competências (RSC), Promoção à Classe Titular, administração, autenticação e avaliadores internos/externos.
+**Versão:** 1.4 — revisão do TCC II
+**Atualizado em:** 17/11/2026
+**Referência técnica:** revisão 4572155 do repositório julioB19/SEC-EBTT, que inclui a correção da ata.
+**Escopo descrito:** Progressão/Promoção, RSC, Classe Titular, administração, autenticação e avaliações.
 
 ## 1. Objetivo
 
 O SEC-EBTT deve apoiar a abertura, instrução, avaliação, decisão e auditoria de processos funcionais docentes do IFFar, respeitando o papel ativo do usuário, a legislação aplicável e os documentos oficiais da CPPD.
 
-Este documento consolida os requisitos funcionais e não funcionais confirmados até 29/09/2026. O estado de implementação é acompanhado em `checklist-adequacao-cppd.md`.
+Este documento consolida os requisitos. A versão 1.4 acrescenta os requisitos de acesso, administração e proteção de dados já implementados que não constavam da versão anterior (RF-GER-09 a RF-GER-14, RF-ADM-03 a RF-ADM-06 e RNF-11). O quadro da seção 12 indica as evidências e os limites dos pontos revisados para o TCC II. A numeração mantém os identificadores usados no artigo e nos registros de teste.
+
+O levantamento inicial, `Documento_Requisitos_CPPD_RSC_Titular_v2.docx`, usa identificadores próprios. Sua exigência RF-043, que reúne portaria, defesa, reavaliação e recurso, aparece aqui em RF-TIT-11 e RF-TIT-16 a RF-TIT-20. O requisito condicional RF-003 do levantamento trata do acesso pelo Google, cujo alcance de validação é indicado na seção 12.
 
 ## 2. Perfis e autorização
 
@@ -16,15 +19,25 @@ Este documento consolida os requisitos funcionais e não funcionais confirmados 
 - **RF-GER-02:** renovar e revogar sessões com segurança.
 - **RF-GER-03:** permitir que um usuário com mais de um papel selecione o papel ativo.
 - **RF-GER-04:** autorizar cada operação pelo papel atualmente selecionado, e não apenas pelos papéis cadastrados.
-- **RF-GER-05:** oferecer os papéis `DOCENTE`, `CPPD`, `ADMIN` e `EXTERNAL_EVALUATOR`.
+- **RF-GER-05:** oferecer os papéis `DOCENTE`, `CPPD_MEMBER` (CPPD local), `CPPD_CENTRAL`, `ADMIN` e `EXTERNAL_EVALUATOR`. A CPPD local opera segundo seus vínculos por campus.
 - **RF-GER-06:** manter perfil docente com SIAPE, classe/nível, formação, lotação e início de interstício.
 - **RF-GER-07:** registrar alterações relevantes em histórico auditável.
 - **RF-GER-08:** impedir acesso direto e público aos arquivos enviados.
+- **RF-GER-09:** permitir redefinição de senha por código temporário enviado ao e-mail cadastrado, com prazo de expiração.
+- **RF-GER-10:** permitir o autocadastro de docente com CPF e senha, funcionalidade herdada da versão anterior.
+- **RF-GER-11:** permitir acesso pela conta Google quando o e-mail pertencer a domínio aceito pelo campus ou tiver convite vigente.
+- **RF-GER-12:** convidar usuários por e-mail, confirmar o endereço por código e exigir aprovação administrativa antes de ativar o avaliador externo.
+- **RF-GER-13:** manter as titulações do docente com instituição, data de conclusão e comprovante, incluindo o reconhecimento do diploma obtido no exterior.
+- **RF-GER-14:** permitir reutilizar um comprovante já enviado em outros itens e processos do mesmo docente.
 
 ## 3. Administração e tabelas de pontuação
 
 - **RF-ADM-01:** cadastrar, consultar, editar, ativar e desativar usuários.
 - **RF-ADM-02:** atribuir papéis e manter os dados específicos de docente e avaliador externo.
+- **RF-ADM-03:** cadastrar campi e as comissões da CPPD de cada campus, com portaria, vigência e membros.
+- **RF-ADM-04:** configurar os domínios de e-mail institucionais aceitos em cada campus.
+- **RF-ADM-05:** cadastrar o calendário institucional, com feriados, férias e recessos aplicados aos prazos.
+- **RF-ADM-06:** manter modelos de documentos e exigências documentais por categoria de processo, com versões que preservam os registros já utilizados.
 - **RF-TAB-01:** criar tabelas de pontuação em rascunho.
 - **RF-TAB-02:** separar tabelas destinadas à carreira das tabelas destinadas ao RSC.
 - **RF-TAB-03:** organizar tabelas em blocos, sub-blocos e itens.
@@ -32,7 +45,7 @@ Este documento consolida os requisitos funcionais e não funcionais confirmados 
 - **RF-TAB-05:** impedir alterações estruturais depois da ativação.
 - **RF-TAB-06:** impedir vigências ativas sobrepostas para a mesma finalidade.
 - **RF-TAB-07:** permitir exclusão lógica somente de tabelas em rascunho e sem processos vinculados.
-- **RF-TAB-08:** exigir, para tabela RSC ativa, mínimo de 60 pontos totais e 36 pontos no nível pretendido.
+- **RF-TAB-08:** aplicar o piso de 60 pontos na configuração de tabelas de RSC. Na submissão e na avaliação individual, exigir também 36 pontos no nível pretendido (RF-RSC-11 e RF-RSC-22).
 
 ## 4. Progressão e Promoção
 
@@ -47,7 +60,7 @@ Este documento consolida os requisitos funcionais e não funcionais confirmados 
 - **RF-CAR-09:** preencher a tabela oficial, calcular pontuação e aplicar teto e fórmulas.
 - **RF-CAR-10:** orientar e registrar a equivalência Qualis vigente.
 - **RF-CAR-11:** anexar um comprovante PDF por item pontuado.
-- **RF-CAR-12:** gerar a planilha oficial em PDF.
+- **RF-CAR-12:** gerar o requerimento e a planilha oficial em PDF.
 - **RF-CAR-13:** gerar arquivo consolidado de comprovantes, com índice, separadores e paginação global.
 - **RF-CAR-14:** permitir avaliação item a item pela CPPD, com pontuação reconhecida e justificativa de divergência.
 - **RF-CAR-15:** gerar parecer, registrar avaliadores e validar o conjunto documental.
@@ -95,7 +108,7 @@ Este documento consolida os requisitos funcionais e não funcionais confirmados 
 - **RF-TIT-07:** exigir memorial e comprovantes em arquivo PDF único ou tese e declaração de ineditismo.
 - **RF-TIT-08:** registrar lista de sete indicados: 3 externos titulares, 2 externos suplentes, 1 interno titular e 1 interno suplente.
 - **RF-TIT-09:** validar doutorado, posição na carreira, instituição, área ou área afim e ciência prévia.
-- **RF-TIT-10:** constituir Comissão Especial com três membros externos e um interno.
+- **RF-TIT-10:** constituir a Comissão Especial ordinária com três membros externos e um interno na presidência. A hipótese de quatro membros externos prevista no art. 5º, §7º, está fora do fluxo implementado e depende de validação da CPPD.
 - **RF-TIT-11:** registrar portaria da Comissão e interlocutor da CPPD.
 - **RF-TIT-12:** controlar prazo de até 45 dias após a portaria para conclusão da avaliação.
 - **RF-TIT-13:** registrar quatro pareceres individuais e o parecer do presidente.
@@ -105,7 +118,7 @@ Este documento consolida os requisitos funcionais e não funcionais confirmados 
 - **RF-TIT-17:** agendar defesa oral da reavaliação em até 30 dias, perante a mesma Comissão Especial, com ata.
 - **RF-TIT-18:** permitir recurso por reprovação em até dois dias úteis.
 - **RF-TIT-19:** suspender prazos durante férias e recessos acadêmicos do IFFar.
-- **RF-TIT-20:** gerar os documentos previstos nos Anexos IV, V, VII, IX e X do Regulamento.
+- **RF-TIT-20:** gerar documentos de apoio correspondentes aos Anexos IV, V, VII, IX e X do Regulamento. A ata deve registrar o resultado da sessão da modalidade correspondente. Um eventual recurso acrescenta uma decisão própria ao histórico.
 - **RF-TIT-21:** calcular efeitos financeiros pela data em que doutorado, desempenho, memorial/tese e interstício estiverem cumpridos.
 - **RF-TIT-22:** atualizar a classe para D1 somente após deferimento e quando os requisitos temporais permitirem.
 
@@ -116,7 +129,7 @@ Este documento consolida os requisitos funcionais e não funcionais confirmados 
 - **Limites RSC-II:** diretrizes I=30, II=10, III=10, IV=20, V=10, VI=10 e VII=10.
 - **Limites RSC-III:** diretrizes I=10, II=10, III=20, IV=10, V=20, VI=20 e VII=10.
 - **Regra ativa:** mínimo de 60 pontos totais e 36 pontos no nível pretendido.
-- **Regra histórica:** a planilha IFFar 2021 aplicava 50 pontos totais e 25 no nível; essa versão só pode ser usada para reprodução de processos antigos, com vigência explícita.
+- **Regra histórica:** a planilha IFFar 2021 aplicava 50 pontos totais e 25 no nível. Essa regra fica registrada apenas como referência e não foi implementada; o sistema aplica somente a regra ativa.
 - **Catálogo:** os fatores, unidades, limites de quantidade e pesos dos 82 critérios estão preservados em `Documentacao/reference/rsc/formulario-oficial-avaliacao-rsc-iffar-2025.xlsx` e carregados pela versão oficial da tabela.
 
 ## 8. Fora do escopo
@@ -138,6 +151,7 @@ Este documento consolida os requisitos funcionais e não funcionais confirmados 
 - **RNF-08:** exibir datas e valores conforme o padrão brasileiro sem perder precisão no banco.
 - **RNF-09:** manter interface utilizável por docente, CPPD, administrador e avaliador externo.
 - **RNF-10:** não alterar regras oficiais de pontuação sem fonte normativa verificável.
+- **RNF-11:** armazenar o CPF com cifragem autenticada e usar identificador derivado para busca.
 
 ## 10. Critérios gerais de aceite
 
@@ -160,3 +174,17 @@ Um fluxo é considerado concluído quando:
 - Resolução ad referendum Consup/IFFar nº 11/2024 — regulamento da Classe Titular;
 - Resolução Consup/IFFar nº 40/2024 — homologação da Resolução 11/2024;
 - formulários, memoriais, planilha RSC e orientações fornecidos pela CPPD.
+
+## 12. Evidências e limites da revisão
+
+| Requisito | Evidência e alcance |
+| --- | --- |
+| RF-RSC-08 | O catálogo carregado tem 82 critérios, distribuídos em 37, 16 e 29. A contagem comprova a extensão do catálogo. A equivalência de cada fator e teto com a planilha oficial requer conferência específica. |
+| RF-RSC-22 e RF-RSC-25 | A Tabela 4 do artigo aponta os casos de parecer individual, consolidação e bloqueio de membro repetido no recurso. O material complementar indica os registros da execução isolada. |
+| RF-TIT-10 | A configuração implementada e testada é a ordinária, com presidência interna. |
+| RF-TIT-17, RF-TIT-18, RF-TIT-20 e RNF-06 | O teste da ata de reavaliação registra defesa reprovada, recurso aprovado e compara o resultado das atas geradas nas duas etapas. O modelo lógico registra os eventos separadamente do estado corrente. |
+| RF-RSC-24 e RF-TIT-15 | As verificações técnicas exercitaram o envio, o registro de metadados, a integridade do PDF e a conferência administrativa com dados fictícios. A conferência da assinatura na plataforma competente faz parte do procedimento institucional. |
+| RNF-02 | O requisito mantém o alvo de 80% para o backend. Os 88,06% de linhas e instruções da rodada de 03/11 referem-se aos seis arquivos do núcleo regulatório. A evidência citada tem esse alcance. |
+| RNF-05 | Os cenários isolados verificaram arquivo privado, processo alheio e abrangência da CPPD por campus. |
+
+A autenticação pelo Google e a entrega de e-mail foram exercitadas com serviços simulados nos testes citados. A validação institucional dos fluxos e dos documentos gerados permanece pendente.
