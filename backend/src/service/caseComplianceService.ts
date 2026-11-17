@@ -43,7 +43,14 @@ export class CaseComplianceService {
   async context(processId: number, actor: CaseActor) {
     const process = await prisma.careerProcess.findFirst({ where: { idProcess: processId, deletedDate: null }, include: {
       user: { include: { docente: true } }, processTypeConfig: true, compliance: true, nominees: { where: { deletedDate: null } },
-      fullProfessorDetail: { include: { doctorateDegree: { include: { evidenceFile: true, recognitionFile: true } } } }, rscDetail: true,
+      fullProfessorDetail: { include: {
+        doctorateDegree: { include: { evidenceFile: true, recognitionFile: true } },
+        procedureEvents: {
+          where: { deletedDate: null, type: { in: ["ORAL_DEFENSE_RECORDED", "INITIAL_OUTCOME_RECORDED"] } },
+          orderBy: [{ occurredAt: "desc" }, { idFullProfessorProcedureEvent: "desc" }],
+          select: { type: true, details: true }
+        }
+      } }, rscDetail: true,
       signedArtifacts: { orderBy: { version: "desc" }, include: { evidenceFile: true } },
       audits: { orderBy: { occurredAt: "desc" }, take: 100 }, rscAppeals: { orderBy: { submittedAt: "asc" } },
       specialCommissions: { where: { deletedDate: null }, orderBy: { createdAt: "desc" }, include: { members: { where: { deletedDate: null }, include: { person: { include: { users: true } }, individualEvaluations: { where: { deletedDate: null }, orderBy: { createdAt: "desc" }, take: 1 } } } } }

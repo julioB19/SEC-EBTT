@@ -3,7 +3,7 @@ import path from "path"
 import fs from "fs/promises"
 import { createHash } from "crypto"
 import { prisma } from "../infra/prismaClient"
-import { RoleName } from "@prisma/client"
+import { FullProfessorProcedureEventType, FullProfessorProcedureOutcome, RoleName } from "@prisma/client"
 import { CaseActor, CaseComplianceService, calculateTitularEffects } from "./caseComplianceService"
 import { BusinessRuleError } from "./processoService"
 import { textDocumentPdf } from "../util/processDocuments"
@@ -83,12 +83,31 @@ export class CaseDocumentService {
         break
       }
       case "MEMORIAL_DEFENSE_MINUTES":
-      case "THESIS_DEFENSE_MINUTES":
-        if (detail?.evaluationMode !== (kind === "THESIS_DEFENSE_MINUTES" ? "THESIS" : "MEMORIAL")) throw new BusinessRuleError("A ata solicitada não corresponde à modalidade do processo")
+      case "THESIS_DEFENSE_MINUTES": {
+        const isThesis = kind === "THESIS_DEFENSE_MINUTES"
+        if (detail?.evaluationMode !== (isThesis ? "THESIS" : "MEMORIAL")) throw new BusinessRuleError("A ata solicitada não corresponde à modalidade do processo")
         if (!detail?.oralDefenseHeldAt || !detail.oralDefenseRecordingUrl) throw new BusinessRuleError("Registre a realização e a gravação da sessão antes de gerar a ata")
-        title = kind === "THESIS_DEFENSE_MINUTES" ? "ATA DE DEFESA DE TESE ACADÊMICA INÉDITA" : "ATA DE REAVALIAÇÃO DO MEMORIAL DESCRITIVO"
-        lines.push(`Em ${eventDate(detail.oralDefenseHeldAt)}, realizou-se a sessão pública virtual do(a) docente ${process.user.name}, perante a Comissão Especial instituída pela Portaria ${commission?.ordinance}.`, `Membros: ${members.map(member => member.person.name).join("; ")}.`, `Interlocutor da CPPD: usuário ${compliance?.interlocutorUserId ?? "não registrado"}.`, detail.oralDefenseNotes ?? "", `Gravação: ${detail.oralDefenseRecordingUrl}.`, `Resultado: ${result(detail.currentOutcome)}.`, "A ata será assinada pelo presidente da Comissão, interlocutor da CPPD e docente avaliado, conforme a modalidade e o modelo institucional aplicável.")
+        const defenseAt = detail.oralDefenseHeldAt
+        const event = detail.procedureEvents.find(({ type, details }) => {
+          if (isThesis) return type === FullProfessorProcedureEventType.INITIAL_OUTCOME_RECORDED
+          return type === FullProfessorProcedureEventType.ORAL_DEFENSE_RECORDED
+            && details !== null && typeof details === "object" && !Array.isArray(details)
+            && typeof details.heldAt === "string" && Date.parse(details.heldAt) === defenseAt.getTime()
+        })
+        const eventDetails = event?.details
+        const recordedOutcome = eventDetails !== null && typeof eventDetails === "object" && !Array.isArray(eventDetails)
+          ? eventDetails.outcome
+          : null
+        const legacyOutcome = !event && !detail.appealDecidedAt && (!isThesis || detail.initialOpinionAt)
+          ? detail.currentOutcome
+          : null
+        const defenseOutcome = recordedOutcome === FullProfessorProcedureOutcome.APPROVED || recordedOutcome === FullProfessorProcedureOutcome.REJECTED
+          ? recordedOutcome
+          : legacyOutcome
+        title = isThesis ? "ATA DE DEFESA DE TESE ACADÊMICA INÉDITA" : "ATA DE REAVALIAÇÃO DO MEMORIAL DESCRITIVO"
+        lines.push(`Em ${eventDate(defenseAt)}, realizou-se a sessão pública virtual do(a) docente ${process.user.name}, perante a Comissão Especial instituída pela Portaria ${commission?.ordinance}.`, `Membros: ${members.map(member => member.person.name).join("; ")}.`, `Interlocutor da CPPD: usuário ${compliance?.interlocutorUserId ?? "não registrado"}.`, detail.oralDefenseNotes ?? "", `Gravação: ${detail.oralDefenseRecordingUrl}.`, `Resultado: ${result(defenseOutcome)}.`, "A ata será assinada pelo presidente da Comissão, interlocutor da CPPD e docente avaliado, conforme a modalidade e o modelo institucional aplicável.")
         break
+      }
       case "THESIS_ORIGINALITY":
         if (detail?.evaluationMode !== "THESIS") throw new BusinessRuleError("A declaração de ineditismo é exclusiva da modalidade de tese")
         if (!compliance?.thesisOriginalityDeclaredAt) throw new BusinessRuleError("Confirme a declaração de ineditismo antes de gerar o documento")
