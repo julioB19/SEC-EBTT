@@ -437,7 +437,8 @@ export class UserService {
           department: user.docente.department ?? null,
           division: user.docente.division ?? null,
           role: user.docente.role ?? null,
-          immediateSupervisor: user.docente.immediate_supervisor ?? null
+          immediateSupervisor: user.docente.immediate_supervisor ?? null,
+          campusId: user.docente.campusId ?? undefined
         }
       : null
 

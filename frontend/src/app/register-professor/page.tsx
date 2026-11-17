@@ -81,7 +81,8 @@ export default function RegisterProfessorPage() {
   const router = useRouter()
 
   const [campusId, setCampusId] = useState("")
-  const [campuses, setCampuses] = useState<{ idCampus: number; name: string }[]>([])
+  const [campuses, setCampuses] = useState<{ idCampus: number; name: string; hasActiveCppd?: boolean }[]>([])
+  const campusWithoutCppd = campuses.find(campus => String(campus.idCampus) === campusId)?.hasActiveCppd === false
   useEffect(() => { void fetch("/api/acesso/campuses", { cache: "no-store" }).then(response => response.json()).then(json => { if (Array.isArray(json.data)) { setCampuses(json.data); if (json.data.length === 1) setCampusId(String(json.data[0].idCampus)) } }).catch(() => {}) }, [])
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -301,6 +302,7 @@ export default function RegisterProfessorPage() {
           "
         >
           <label className="block text-sm">Campus<FormSelect aria-label="Campus" className="mt-1 w-full rounded-xl border border-[var(--border-subtle)] bg-white px-3 py-2 text-sm" value={campusId} onChange={event => setCampusId(event.target.value)} required><option value="">Selecione o campus</option>{campuses.map(campus => <option key={campus.idCampus} value={campus.idCampus}>{campus.name}</option>)}</FormSelect></label>
+          {campusWithoutCppd && <p role="status" className="mt-2 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Este campus ainda não tem CPPD local vigente. Seus processos serão analisados pela CPPD Central até que uma comissão seja cadastrada.</p>}
           <h1 className="text-2xl font-semibold mb-2 text-[var(--text-primary)]">
             Cadastro de Docente
           </h1>

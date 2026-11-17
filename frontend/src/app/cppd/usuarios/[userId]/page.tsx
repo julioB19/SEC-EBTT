@@ -3,6 +3,7 @@
 import { useFeedbackState } from "@/hooks/useFeedbackState"
 import { clientFetch as fetch } from "@/lib/clientFetch"
 import ConfirmModal from "@/components/ConfirmModal"
+import CppdMembershipsSection from "@/components/CppdMembershipsSection"
 import FormInput from "@/components/ui/FormInput"
 import ActionButton from "@/components/ui/ActionButton"
 
@@ -373,6 +374,8 @@ export default function CppdEditDocentePage({ params }: { params: Promise<{ user
                 </ActionButton>
               </div>
             </section>
+
+            <CppdMembershipsSection userId={userId} manageHref="/cppd/comissoes" isCppdMember={roles.includes("CPPD_MEMBER")} />
 
             <section className="bg-[var(--surface-bg)] border border-[var(--border-subtle)] rounded-2xl p-5 shadow-sm space-y-3">
               <h2 className="text-base font-semibold text-[var(--text-primary)]">Perfil docente</h2>

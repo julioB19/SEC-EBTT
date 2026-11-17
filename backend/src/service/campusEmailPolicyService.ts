@@ -39,8 +39,15 @@ export class CampusEmailPolicyService {
 
   async campuses(actor?: CampusActor) {
     const restricted = actor && ![RoleName.ADMIN, RoleName.CPPD_CENTRAL].includes(actor.role as "ADMIN" | "CPPD_CENTRAL")
-    return this.db.campus.findMany({ where: { active: true, ...(restricted ? { idCampus: { in: actor.campusIds ?? [] } } : {}) },
-      select: { idCampus: true, name: true, acronym: true }, orderBy: { name: "asc" } })
+    const now = new Date()
+    const rows = await this.db.campus.findMany({ where: { active: true, ...(restricted ? { idCampus: { in: actor.campusIds ?? [] } } : {}) },
+      select: { idCampus: true, name: true, acronym: true,
+        // Mesma vigência usada no escopo da CPPD local (CppdAccessRepository).
+        cppdCommissions: { where: { deletedDate: null,
+          AND: [{ OR: [{ validityStart: null }, { validityStart: { lte: now } }] }, { OR: [{ validityEnd: null }, { validityEnd: { gte: now } }] }],
+          members: { some: { active: true, deletedDate: null } } }, select: { idCppdCommission: true }, take: 1 } },
+      orderBy: { name: "asc" } })
+    return rows.map(({ cppdCommissions, ...campus }) => ({ ...campus, hasActiveCppd: (cppdCommissions?.length ?? 0) > 0 }))
   }
 
   async list(actor: CampusActor, campusId: number) {

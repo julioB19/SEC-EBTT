@@ -8,6 +8,7 @@ import ActionButton from "@/components/ui/ActionButton"
 import { useEffect, useMemo, useState, use } from "react"
 import { useRouter } from "next/navigation"
 import ConfirmModal from "@/components/ui/ConfirmModal"
+import CppdMembershipsSection from "@/components/CppdMembershipsSection"
 
 type Role = "DOCENTE" | "CPPD_MEMBER" | "CPPD_CENTRAL" | "ADMIN" | "EXTERNAL_EVALUATOR"
 
@@ -473,6 +474,8 @@ export default function AdminEditUsuarioPage({ params }: { params: Promise<{ use
                 </label>
               </div>
             </section>
+
+            <CppdMembershipsSection userId={userId} manageHref="/admin/campi-comissoes" isCppdMember={roles.includes("CPPD_MEMBER")} />
 
             {hasExternalEvaluator && (
               <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-5 space-y-3">

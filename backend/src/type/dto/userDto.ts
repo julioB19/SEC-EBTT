@@ -96,6 +96,7 @@ export interface DocenteProfileResponseDto {
   division: string | null
   role: string | null
   immediateSupervisor: string | null
+  campusId?: number | null
 }
 
 export interface ExternalEvaluatorProfileResponseDto {
