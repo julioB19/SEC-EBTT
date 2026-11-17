@@ -25,6 +25,8 @@ Os processos RSC exemplificam RSC-I, RSC-II e RSC-III, respectivamente. A Classe
 
 A pontuação de carreira usa o recorte da seed de desenvolvimento, sua fórmula de docência e os nove itens de equivalência Qualis já usados no material do projeto. Não é a transcrição integral da tabela institucional. O catálogo RSC contém os 82 critérios oficiais, com seus fatores, pesos, tetos e regra de 60 pontos totais e 36 no nível pretendido. Classe Titular usa avaliação de desempenho e pareceres, conforme o fluxo atual, sem inventar uma tabela adicional.
 
+Para permitir um cadastro novo pela tela de acesso, os dois campi aceitam e-mails `iffarroupilha.edu.br` e `iffar.edu.br`, com subdomínios. Outro domínio precisa ser liberado antes: entre como ADMIN, abra **E-mails institucionais**, escolha o campus e adicione o domínio, sem `@`. A reexecução da seed não altera regras já existentes.
+
 As datas são calculadas na primeira carga de cada cenário, com interstício completo e prazos de comissão futuros. A reexecução preserva essas datas e o trabalho do orientador. Para renovar prazos e voltar aos cenários iniciais, execute o reset.
 
 ## Guia e reexecução

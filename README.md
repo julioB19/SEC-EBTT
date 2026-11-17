@@ -84,6 +84,8 @@ A carga prepara a base (perfis, campus, tipos de processo e catálogos), cria 22
 - **DEMO-RSC-3:** processo de RSC-III em avaliação pela Comissão Especial.
 - **DEMO-FULL_PROFESSOR-2:** processo de Classe Titular por memorial, com análise prévia, comissão, defesa, ata e recurso.
 
+Para criar uma conta nova, use um e-mail `iffarroupilha.edu.br` ou `iffar.edu.br`, que a demonstração já aceita nos dois campi. Para outro domínio, entre como ADMIN e cadastre-o em **E-mails institucionais**.
+
 O guia [Base demonstrativa](docs/base-demonstrativa.md) explica os dados carregados, o reset (`npm run db:reset:demo`) e os backups. O [manual de uso](docs/manual-uso/Manual_de_Uso_SEC_EBTT.pdf) mostra as tarefas de cada perfil. Os dados, documentos e assinaturas da demonstração são fictícios.
 
 ## Testes

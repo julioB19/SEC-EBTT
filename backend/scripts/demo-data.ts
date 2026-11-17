@@ -22,6 +22,7 @@ import { addMonthsClamped } from "../src/util/careerDates"
 
 export const DEMO_PASSWORD = process.env.SEED_DEMO_PASSWORD ?? "Demo@123456"
 export const DEMO_VERSION = "orientador-v1"
+export const DEMO_EMAIL_DOMAINS = ["iffarroupilha.edu.br", "iffar.edu.br"]
 export const kinds = ["PROGRESSION", "PROMOTION", "RSC", "FULL_PROFESSOR"] as const
 const labels = { PROGRESSION: "Progressão", PROMOTION: "Promoção", RSC: "RSC", FULL_PROFESSOR: "Classe Titular" }
 const stages = ["Rascunho", "Enviado à CPPD", "Avaliação pendente"]
@@ -79,6 +80,11 @@ async function pdf(prisma: PrismaClient, userId: number, scenario: string, title
 export async function seedDemo(prisma: PrismaClient) {
   assertDemoTarget()
   const base = await seedBase(prisma, { preserveExisting: true })
+  // Libera o cadastro público na demonstração; regras alteradas depois pelo ADMIN são preservadas.
+  for (const campus of await prisma.campus.findMany({ where: { acronym: { in: ["SM", "FW"] } } }))
+    for (const domain of DEMO_EMAIL_DOMAINS)
+      await prisma.campusEmailDomain.upsert({ where: { campusId_domain: { campusId: campus.idCampus, domain } },
+        create: { campusId: campus.idCampus, domain, includeSubdomains: true }, update: {} })
   const api = services(), now = new Date()
   const intersticeStart = addMonthsClamped(now, -26), intersticeEnd = addMonthsClamped(intersticeStart, 24)
   const accountRows: { name: string; cpf: string; password: string; role: string; id: number }[] = []
@@ -212,7 +218,8 @@ export async function seedDemo(prisma: PrismaClient) {
     const next = row.stage === 0 ? "Docente: conferir anexos e pontuação/desempenho e enviar à CPPD" : row.stage === 1 ? "CPPD: conferir documentação e iniciar análise/comissão" : row.kind === "RSC" || row.kind === "FULL_PROFESSOR" ? "Avaliadores: abrir tarefas, salvar parecer e enviar avaliação" : "CPPD: continuar conferência dos itens e preparar parecer"
     lines.push(`| ${row.key} | ${row.processId} | ${account.cpf} | ${stages[row.stage]} | ${row.status} | ${next} |`)
   }
-  lines.push("", "## Roteiro", "", "1. Entre como docente e abra o processo indicado; os anexos podem ser baixados pelas telas autenticadas.", "2. Use a conta CPPD local para os processos do Campus Santa Maria, ou a CPPD Central para a visão geral.", "3. Para avaliar RSC/Classe Titular, use o avaliador interno 1 e os três primeiros externos. O interno acessa suas tarefas no perfil Docente.", "4. Pareceres e decisões finais estão pendentes. Assinaturas e conferências posteriores seguem o procedimento normal do sistema.", "5. O catálogo de carreira é o recorte existente na seed; o RSC contém os 82 critérios oficiais.", "", "Para repetir a demonstração sem perder andamento: npm run seed:demo. Para voltar ao início: npm run db:reset:demo.", "O reset cria e verifica um novo backup. O guia não é publicado na tela de login.")
+  lines.push("", "## Roteiro", "", "1. Entre como docente e abra o processo indicado; os anexos podem ser baixados pelas telas autenticadas.", "2. Use a conta CPPD local para os processos do Campus Santa Maria, ou a CPPD Central para a visão geral.", "3. Para avaliar RSC/Classe Titular, use o avaliador interno 1 e os três primeiros externos. O interno acessa suas tarefas no perfil Docente.", "4. Pareceres e decisões finais estão pendentes. Assinaturas e conferências posteriores seguem o procedimento normal do sistema.", "5. O catálogo de carreira é o recorte existente na seed; o RSC contém os 82 critérios oficiais.", "", "", "## Novo cadastro", "", `O cadastro público aceita e-mails de ${DEMO_EMAIL_DOMAINS.join(" e ")}, com subdomínios, nos dois campi. Para usar outro domínio, entre como ADMIN, abra E-mails institucionais, escolha o campus e adicione o domínio.`, "",
+    "Para repetir a demonstração sem perder andamento: npm run seed:demo. Para voltar ao início: npm run db:reset:demo.", "O reset cria e verifica um novo backup. O guia não é publicado na tela de login.")
   const dir = path.join(process.cwd(), "tmp", "demo")
   await fs.mkdir(dir, { recursive: true })
   await fs.writeFile(path.join(dir, "GUIA-ORIENTADOR.md"), lines.join("\n") + "\n")
