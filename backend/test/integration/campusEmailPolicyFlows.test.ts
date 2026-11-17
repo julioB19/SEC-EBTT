@@ -37,12 +37,13 @@ describe("API HTTP e MySQL — política institucional por campus", () => {
     expect(accessible.body.data.map((campus: any) => campus.idCampus)).not.toContain(frederico)
     const denied = await request(`/access/campus-policy/${frederico}/domains`, { domain: "aceito-campus.edu.br" }, local)
     expect(denied.status).toBe(403)
-    const rule = await request(`/access/campus-policy/${santaMaria}/domains`, { domain: "aceito-campus.edu.br", includeSubdomains: true }, local)
+    const domain = `aceito-${runId}.edu.br`
+    const rule = await request(`/access/campus-policy/${santaMaria}/domains`, { domain, includeSubdomains: true }, local)
     expect(rule.status).toBe(200)
     const digits = String(100000000 + Number(runId.slice(-8)))
     const digit = (text: string) => { const r = [...text].reduce((sum, value, i) => sum + Number(value) * (text.length + 1 - i), 0) * 10 % 11; return r === 10 ? 0 : r }
     const first = digit(digits), cpf = `${digits}${first}${digit(digits + first)}`
-    const email = `docente.${runId}@aluno.aceito-campus.edu.br`
+    const email = `docente.${runId}@aluno.${domain}`
     const body = { name: "Docente Política Campus", email, cpf, phone: "55999994444", password: "Campus@123456", docenteProfile: { campusId: frederico, siape: runId.slice(-7), classLevel: "B1", startInterstice: "2025-01-01", educationLevel: "Graduação" } }
     expect((await request("/register/docente", body)).status).toBe(400)
     body.docenteProfile.campusId = santaMaria
