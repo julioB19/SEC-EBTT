@@ -10,6 +10,10 @@ export function translateBackendError(json: any, contexto: ContextoErro = "defau
     "Process is not available for CPPD view": "Este processo ainda não está disponível para consulta da CPPD. Aguarde o envio pelo docente.",
     "Only SUBMITTED or UNDER_REVIEW processes can have scores updated": "Só é possível alterar a pontuação de processos enviados ou em análise.",
     "Process not found": "Processo não encontrado.",
+    "User not found": "Usuário não encontrado.",
+    "CPPD decision is required": "Informe a decisão da CPPD antes de concluir o parecer.",
+    "Unauthorized": "Sua sessão expirou. Entre novamente no sistema.",
+    "Internal error": "Ocorreu um erro inesperado no servidor. Tente novamente em instantes.",
     "Failed to fetch": "Não foi possível comunicar com o sistema. Verifique sua conexão e tente novamente.",
     "NetworkError when attempting to fetch resource.": "Não foi possível comunicar com o sistema. Verifique sua conexão e tente novamente."
   }

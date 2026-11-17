@@ -138,8 +138,6 @@ export default function PerfilPage() {
         })
         const data = await r.json().catch(() => null)
 
-        console.log("[/api/me] status:", r.status, "payload:", data)
-
         if (!alive) return
 
         if (r.status === 401 || r.status === 403) {

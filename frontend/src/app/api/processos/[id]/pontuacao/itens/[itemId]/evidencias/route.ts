@@ -9,7 +9,7 @@ type RouteContext = {
 }
 
 function buildBackendUrl(id: string, itemId: string) {
-  const base = process.env.BACKEND_URL || "http://localhost:3000"
+  const base = process.env.BACKEND_URL || "http://localhost:3333"
   return `${base}/processos/${id}/pontuacao/itens/${itemId}/evidencias`
 }
 

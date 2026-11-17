@@ -40,10 +40,7 @@ export async function GET() {
   const auth = await getAccessTokenFromCookies()
   if (!auth.ok) {
     return NextResponse.json(
-      {
-        message: "Usuário não autenticado",
-        cookieKeys: auth.cookieKeys
-      },
+      { message: "Usuário não autenticado" },
       { status: 401 }
     )
   }
@@ -65,14 +62,6 @@ export async function GET() {
       json = { raw: text }
     }
 
-    if (json && typeof json === "object") {
-      json._debug = {
-        usedCookieKey: auth.usedKey,
-        backendUrl: backend,
-        path: ME_PATH
-      }
-    }
-
     return NextResponse.json(json, { status: r.status })
   } catch (e: any) {
     return NextResponse.json(
@@ -90,10 +79,7 @@ export async function PUT(req: NextRequest) {
   const auth = await getAccessTokenFromCookies()
   if (!auth.ok) {
     return NextResponse.json(
-      {
-        message: "Usuário não autenticado",
-        cookieKeys: auth.cookieKeys
-      },
+      { message: "Usuário não autenticado" },
       { status: 401 }
     )
   }

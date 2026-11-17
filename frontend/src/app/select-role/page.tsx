@@ -17,24 +17,25 @@ export default function SelectRolePage() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("roles")
-      const parsed = raw ? JSON.parse(raw) : []
-      const valid = Array.isArray(parsed)
-        ? parsed.filter((r: string) =>
-            ["DOCENTE", "CPPD_MEMBER", "CPPD_CENTRAL", "ADMIN", "EXTERNAL_EVALUATOR"].includes(r)
-          )
-        : []
+    const onlyKnown = (list: unknown) => Array.isArray(list)
+      ? list.filter((r: string) => ["DOCENTE", "CPPD_MEMBER", "CPPD_CENTRAL", "ADMIN", "EXTERNAL_EVALUATOR"].includes(r)) as Role[]
+      : []
+    let stored: Role[] = []
+    try { stored = onlyKnown(JSON.parse(sessionStorage.getItem("roles") || "[]")) } catch { stored = [] }
+    if (stored.length) { setRoles(stored); return }
 
-      if (!valid.length) {
-        router.replace("/login")
-        return
-      }
-
-      setRoles(valid as Role[])
-    } catch {
-      router.replace("/login")
-    }
+    // Sem a lista salva no login (outra aba, link direto): consulta os perfis da sessão atual.
+    let alive = true
+    void fetch("/api/me", { credentials: "include", cache: "no-store" })
+      .then(async response => {
+        if (!response.ok) throw new Error()
+        const fromSession = onlyKnown((await response.json())?.data?.roles)
+        if (!alive) return
+        if (!fromSession.length) router.replace("/login")
+        else setRoles(fromSession)
+      })
+      .catch(() => { if (alive) router.replace("/login") })
+    return () => { alive = false }
   }, [router])
 
   const label = useMemo(

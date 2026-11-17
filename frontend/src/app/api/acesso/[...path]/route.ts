@@ -9,6 +9,20 @@ const publicRoutes: Record<string, string> = {
 }
 const attemptCookie = { httpOnly: true, sameSite: "strict" as const, secure: process.env.NODE_ENV === "production", path: "/api/acesso" }
 
+// Atrás de um proxy (ex.: túnel do VS Code), req.url mantém localhost; o host público chega nos cabeçalhos.
+// Navegadores não deixam outro site forjar Host nem X-Forwarded-Host sem preflight CORS.
+function sameOrigin(req: Request) {
+  const origin = req.headers.get("origin")
+  if (!origin) return false
+  const forwardedHost = req.headers.get("x-forwarded-host")?.split(",")[0].trim()
+  const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0].trim() || "https"
+  const host = req.headers.get("host")
+  const allowed = [new URL(req.url).origin]
+  if (forwardedHost) allowed.push(`${forwardedProto}://${forwardedHost}`)
+  if (host) allowed.push(`http://${host}`, `https://${host}`)
+  return allowed.includes(origin)
+}
+
 async function proxy(req: Request, context: { params: Promise<{ path: string[] }> }) {
   const parts = (await context.params).path
   const action = parts.join("/")
@@ -19,7 +33,7 @@ async function proxy(req: Request, context: { params: Promise<{ path: string[] }
     (req.method === "GET" && action !== "config" && action !== "campuses" && !policy && !(management && (parts.length === 1 || parts[2] === "review")))) {
     return NextResponse.json({ message: "Operação inválida" }, { status: 404 })
   }
-  if (req.method !== "GET" && req.headers.get("origin") !== new URL(req.url).origin) {
+  if (req.method !== "GET" && !sameOrigin(req)) {
     return NextResponse.json({ message: "Origem da solicitação inválida" }, { status: 403 })
   }
   const backend = process.env.BACKEND_URL
