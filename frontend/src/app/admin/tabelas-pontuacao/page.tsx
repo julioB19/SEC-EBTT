@@ -29,6 +29,9 @@ type ApiResponse<T = any> = {
   details?: any
 }
 
+const LOCKED_TABLE_REASON =
+  "Tabelas ativas ou inativadas não podem ser alteradas. Para mudar itens, vigência ou pontuação mínima, crie uma nova tabela."
+
 const STATUS_LABEL: Record<ScoringTableStatus, string> = {
   DRAFT: "Rascunho",
   ACTIVE: "Ativa",
@@ -314,19 +317,27 @@ function AdminTabelasPontuacaoContent() {
               Campos da planilha
             </Link>
 
-            <Link
-              href={canEditStructure ? `/admin/tabelas-pontuacao/nova/${row.idScoringTable}/builder` : "#"}
-              aria-disabled={!canEditStructure}
-              className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
-                         border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition
-                         disabled:opacity-60 disabled:cursor-not-allowed"
-              onClick={e => {
-                if (!canEditStructure) e.preventDefault()
-              }}
-              title={canEditStructure ? "Editar estrutura da tabela" : "Só é possível editar estrutura em rascunho"}
-            >
-              Editar estrutura
-            </Link>
+            {canEditStructure ? (
+              <Link
+                href={`/admin/tabelas-pontuacao/nova/${row.idScoringTable}/builder`}
+                className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                           border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition"
+                title="Editar estrutura da tabela"
+              >
+                Editar estrutura
+              </Link>
+            ) : (
+              <ActionButton
+                type="button"
+                disabled
+                className="rounded-full px-5 py-2 text-xs font-semibold uppercase tracking-wide
+                           border border-[var(--border-subtle)] transition
+                           disabled:opacity-60 disabled:cursor-not-allowed"
+                disabledReason={LOCKED_TABLE_REASON}
+              >
+                Editar estrutura
+              </ActionButton>
+            )}
 
             <ActionButton
               type="button"
@@ -374,7 +385,7 @@ function AdminTabelasPontuacaoContent() {
 
             <ActionButton
               type="button"
-              disabled={disabled || savingId === row.idScoringTable}
+              disabled={disabled || savingId === row.idScoringTable || !canEditStructure}
               onClick={() => {
                 setError(null)
                 setVigenciaEditingId(prev => (prev === row.idScoringTable ? null : row.idScoringTable))
@@ -383,7 +394,7 @@ function AdminTabelasPontuacaoContent() {
                          border border-[var(--border-subtle)] hover:bg-[var(--surface-bg-2)] transition
                          disabled:opacity-60 disabled:cursor-not-allowed"
               title="Editar datas de vigência"
-             disabledReason={(disabled) ? "Este controle está indisponível na etapa atual. Confira os requisitos de preenchimento e as permissões do seu perfil." : (savingId === row.idScoringTable) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
+             disabledReason={(!canEditStructure) ? LOCKED_TABLE_REASON : (disabled) ? "Este controle está indisponível na etapa atual. Confira os requisitos de preenchimento e as permissões do seu perfil." : (savingId === row.idScoringTable) ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."} >
               {isEditingVigencia ? "Fechar vigência" : "Editar vigência"}
             </ActionButton>
 

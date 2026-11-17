@@ -8,8 +8,6 @@ import {
 import path from "path"
 import fs from "fs"
 import os from "os"
-import { execFile } from "child_process"
-import { promisify } from "util"
 import ExcelJS from "exceljs"
 import { PDFDocument } from "pdf-lib"
 import { evidenceDossier } from "../util/processDocuments"
@@ -22,9 +20,8 @@ import { ProcessNodeScoreRepository } from "../repository/processNodeScoreReposi
 import { UpdateItemScoreDto } from "../type/dto/processScoreDto"
 import { BusinessRuleError, NotFoundError } from "./processoService"
 import { calculateRscItemPoints, capScore } from "../util/rscScoring"
-import { resolveLibreOfficeBinary } from "../util/libreOffice"
+import { convertFileToPdf } from "../util/libreOffice"
 
-const execFileAsync = promisify(execFile)
 
 type DecimalLike = Prisma.Decimal | string | number | null | undefined
 
@@ -700,8 +697,6 @@ export class ProcessScoreService {
   }
 
   private async converterXlsxBufferParaPdfBuffer(xlsxBuffer: Buffer, baseName: string) {
-    const sofficeBin = resolveLibreOfficeBinary()
-
     const tmpRoot = path.join(os.tmpdir(), "sec-ebtt-score-spreadsheets")
     await ensureDir(tmpRoot)
 
@@ -714,21 +709,7 @@ export class ProcessScoreService {
     await fs.promises.writeFile(inputPath, xlsxBuffer)
 
     try {
-      await execFileAsync(sofficeBin, [
-        "--headless",
-        "--nologo",
-        "--nolockcheck",
-        "--norestore",
-        "--convert-to",
-        "pdf",
-        "--outdir",
-        outDir,
-        inputPath
-      ])
-
-      if (!fs.existsSync(expectedPdf)) {
-        throw new Error("PDF não gerado pelo LibreOffice")
-      }
+      await convertFileToPdf(inputPath, outDir)
 
       const pdfBuffer = await fs.promises.readFile(expectedPdf)
       return pdfBuffer

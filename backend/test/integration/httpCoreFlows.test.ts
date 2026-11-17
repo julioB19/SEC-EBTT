@@ -1783,11 +1783,17 @@ describe("API HTTP - fluxos funcionais de processos", () => {
     expect((await request(configPath, { method: "POST", token: admin.accessToken, body: { action: "SAVE_TEMPLATE", code, name: "Reutilização proibida", version: "2", text: "Não pode sobrescrever" } })).status).toBe(400)
     const type = state.data.data.processTypes.find((value: any) => value.code === "RSC")
     expect((await request(configPath, { method: "POST", token: admin.accessToken, body: { action: "SAVE_REQUIREMENT", processTypeId: type.idProcessType, code: "NOVO", name: "Documento", required: true } })).status).toBe(400)
-    const versioned = await request<any>(configPath, { method: "POST", token: admin.accessToken, body: { action: "VERSION_PROCESS_TYPE", processTypeId: type.idProcessType } })
-    expect(versioned.status).toBe(200)
-    const fresh = versioned.data.data.processTypes.find((value: any) => value.code === "RSC")
-    expect(fresh.idProcessType).not.toBe(type.idProcessType)
-    expect((await request(configPath, { method: "POST", token: admin.accessToken, body: { action: "SAVE_REQUIREMENT", processTypeId: fresh.idProcessType, code: "NOVO", name: "Documento de teste", required: false } })).status).toBe(200)
+    try {
+      const versioned = await request<any>(configPath, { method: "POST", token: admin.accessToken, body: { action: "VERSION_PROCESS_TYPE", processTypeId: type.idProcessType } })
+      expect(versioned.status).toBe(200)
+      const fresh = versioned.data.data.processTypes.find((value: any) => value.code === "RSC")
+      expect(fresh.idProcessType).not.toBe(type.idProcessType)
+      expect((await request(configPath, { method: "POST", token: admin.accessToken, body: { action: "SAVE_REQUIREMENT", processTypeId: fresh.idProcessType, code: "NOVO", name: "Documento de teste", required: false } })).status).toBe(200)
+    } finally {
+      // O banco de teste é reaproveitado: a versão criada aqui não pode virar o RSC vigente das próximas execuções.
+      await prisma.processTypeConfig.updateMany({ where: { code: "RSC", idProcessType: { not: type.idProcessType } }, data: { active: false } })
+      await prisma.processTypeConfig.update({ where: { idProcessType: type.idProcessType }, data: { active: true, validUntil: null } })
+    }
   })
 
   it("cadastra diploma estrangeiro somente com reconhecimento e arquivos do próprio docente", async () => {
