@@ -809,6 +809,8 @@ export class ProcessEvaluationService {
   private withOfficialFinancialDate(opinion: string, decision: CppdDecision, financialEffectsAt: Date | null) {
     const canonical = opinion.replace(/, com efeitos financeiros a contar de \*\*[^*]+\*\*/g, "")
       .replace(/\n\nData oficial de efeitos financeiros: [^\n]+\./g, "")
+      .replace(/\*\*(?:in)?deferimento da solicitação\*\*/g,
+        decision === "APPROVED" ? "**deferimento da solicitação**" : "**indeferimento da solicitação**")
     return decision === "APPROVED" && financialEffectsAt
       ? `${canonical}\n\nData oficial de efeitos financeiros: ${formatCalendarDate(financialEffectsAt)}.` : canonical
   }

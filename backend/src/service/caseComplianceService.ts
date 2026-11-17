@@ -166,7 +166,7 @@ export class CaseComplianceService {
         changes.validatedById = actor.userId
         break
       case "SAVE_REFERENCES":
-        if (!editing && !reviewer) throw new BusinessRuleError("A referência não pode ser alterada nesta etapa")
+        if (!reviewer) throw new BusinessRuleError("As referências do SIMEC são registradas pela CPPD")
         changes.simecReference = this.optionalText(input.simecReference, 120)
         changes.simecSelectionReference = this.optionalText(input.simecSelectionReference, 500)
         break

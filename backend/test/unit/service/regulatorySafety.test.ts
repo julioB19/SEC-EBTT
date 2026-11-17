@@ -67,6 +67,15 @@ describe("Bloqueios regulatórios de decisão", () => {
     }
   })
 
+  test("parecer editado acompanha a decisão final da CPPD", () => {
+    const service = new ProcessEvaluationService({} as any)
+    const preview = "a CPPD opina pelo **deferimento da solicitação** para **promoção**, com efeitos financeiros a contar de **01/11/2026**. É o parecer."
+    expect((service as any).withOfficialFinancialDate(preview, "REJECTED", null))
+      .toBe("a CPPD opina pelo **indeferimento da solicitação** para **promoção**. É o parecer.")
+    expect((service as any).withOfficialFinancialDate("opina pelo **indeferimento da solicitação**.", "APPROVED", null))
+      .toBe("opina pelo **deferimento da solicitação**.")
+  })
+
   test("C4 para D1 exige o processo próprio de Classe Titular", () => {
     const service = new ProcessoService({} as any, {} as any, {} as any)
     expect(() => (service as any).validarCombinacaoProgressaoOuPromocao("PROMOCAO", "C4", "D1")).toThrow("Classe Titular")
