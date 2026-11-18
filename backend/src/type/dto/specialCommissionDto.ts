@@ -16,6 +16,13 @@ export interface AddSpecialCommissionMemberDto {
   role?: SpecialCommissionMemberRole
 }
 
+export interface InviteSpecialCommissionMemberDto {
+  email: string
+  name: string
+  role?: SpecialCommissionMemberRole
+  institutionalExternal?: boolean
+}
+
 export interface UpdateSpecialCommissionStatusDto {
   status: CommissionStatus
 }

@@ -7,6 +7,7 @@ import { SpecialCommissionService } from "../service/specialCommissionService"
 import {
   AddSpecialCommissionMemberDto,
   FinalizeSpecialCommissionDecisionDto,
+  InviteSpecialCommissionMemberDto,
   RespondSpecialCommissionInvitationDto,
   SaveSpecialCommissionDto,
   UpdateSpecialCommissionStatusDto
@@ -35,7 +36,8 @@ export class SpecialCommissionController {
   private handleError(res: any, error: unknown) {
     console.error("Special commission request failed:", error)
     if (error instanceof NotFoundError || error instanceof BusinessRuleError) {
-      HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, null)
+      const details = error instanceof BusinessRuleError ? error.details ?? null : null
+      HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, error.message, details)
       return
     }
     HttpResponse.internalError(res)
@@ -84,6 +86,41 @@ export class SpecialCommissionController {
         req.body as AddSpecialCommissionMemberDto
       )
       return HttpResponse.created(res, "Special commission member added", result)
+    } catch (error) {
+      this.handleError(res, error)
+    }
+  }
+
+  public inviteMember: RequestHandler = async (req, res) => {
+    try {
+      const auth = this.getAuth(req, RoleName.CPPD_MEMBER)
+      if (!auth) return HttpResponse.unauthorized(res)
+      const processId = this.getPositiveId(req.params.id)
+      if (!processId) {
+        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Invalid process id", null)
+      }
+      const actor = {
+        id: auth.userId,
+        role: (req as any).user.selectedRole as RoleName,
+        campusIds: (req as any).cppdAccess?.campusIds
+      }
+      const result = await this.service.inviteExternalMember(processId, actor, req.body as InviteSpecialCommissionMemberDto)
+      return HttpResponse.created(res, "Special commission seat reserved", result)
+    } catch (error) {
+      this.handleError(res, error)
+    }
+  }
+
+  public removeInvite: RequestHandler = async (req, res) => {
+    try {
+      const auth = this.getAuth(req, RoleName.CPPD_MEMBER)
+      if (!auth) return HttpResponse.unauthorized(res)
+      const processId = this.getPositiveId(req.params.id)
+      const inviteId = this.getPositiveId(req.params.inviteId)
+      if (!processId || !inviteId) {
+        return HttpResponse.badRequest(res, StatusCodeDescription.INVALID_INPUT, "Invalid identifier", null)
+      }
+      return HttpResponse.ok(res, "Special commission seat removed", await this.service.removeInvite(processId, inviteId))
     } catch (error) {
       this.handleError(res, error)
     }

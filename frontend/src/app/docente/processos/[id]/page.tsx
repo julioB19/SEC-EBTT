@@ -473,6 +473,15 @@ export default function ProcessoDetalhePage() {
       processo.status === "UNDER_REVIEW" ||
       processo.status === "APPROVED");
 
+  // Na Classe Titular a avaliação de desempenho é a planilha de pontuação da Promoção:
+  // o docente gera a planilha e os comprovantes; os demais documentos ficam no painel do rito.
+  const canGenerateScoringDocuments =
+    canGenerateDocuments ||
+    (!!processo &&
+      !isRejectedFinal &&
+      requiresScoring &&
+      processo.processTypeCategory === "FULL_PROFESSOR");
+
   const movementOrigem = useMemo(() => {
     const c = (formClasseOrigem || "").toUpperCase();
     const n = (formNivelOrigem || "").toUpperCase();
@@ -494,7 +503,7 @@ export default function ProcessoDetalhePage() {
 
   const showAnyAction =
     (id && canFillScores) ||
-    canGenerateDocuments ||
+    canGenerateScoringDocuments ||
     canSendForReview ||
     canDelete;
 
@@ -1598,7 +1607,7 @@ export default function ProcessoDetalhePage() {
                     </ActionButton>
                   )}
 
-                  {canGenerateDocuments && (
+                  {canGenerateScoringDocuments && (
                     <ActionButton
                       type="button"
                       onClick={handleGerarPlanilha}
@@ -1614,7 +1623,7 @@ export default function ProcessoDetalhePage() {
                     </ActionButton>
                   )}
 
-                  {canGenerateDocuments && (
+                  {canGenerateScoringDocuments && (
                     <ActionButton
                       type="button"
                       onClick={handleBaixarComprovantes}

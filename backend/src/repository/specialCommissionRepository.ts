@@ -7,6 +7,7 @@ import {
   ProcessStatus,
   RoleName,
   SpecialCommissionMemberOrigin,
+  SpecialCommissionInviteStatus,
   SpecialCommissionMemberRole,
   SpecialCommissionType
 } from "@prisma/client"
@@ -24,6 +25,15 @@ const commissionInclude = {
         where: { deletedDate: null },
         orderBy: { createdAt: "desc" as const },
         take: 1
+      }
+    }
+  },
+  invites: {
+    where: { deletedDate: null, status: SpecialCommissionInviteStatus.WAITING },
+    orderBy: [{ sortOrder: "asc" as const }, { createdAt: "asc" as const }],
+    include: {
+      accessInvitation: {
+        select: { id: true, status: true, expiresAt: true, deliveryError: true, deliveredAt: true }
       }
     }
   }
@@ -103,6 +113,76 @@ export class SpecialCommissionRepository {
         }
       },
       include: { person: true, externalEvaluator: true }
+    })
+  }
+
+  async findAccessInvitationByEmail(email: string) {
+    return prisma.accessInvitation.findUnique({ where: { email } })
+  }
+
+  async findPersonIdsByEmail(email: string) {
+    const users = await prisma.user.findMany({
+      where: { email, deletedDate: null, personId: { not: null } },
+      select: { personId: true }
+    })
+    return users.map(user => user.personId!)
+  }
+
+  async createInvite(params: {
+    specialCommissionId: number
+    accessInvitationId: string
+    email: string
+    name: string
+    role: SpecialCommissionMemberRole
+    sortOrder: number
+    createdById: number
+  }) {
+    return prisma.specialCommissionInvite.create({
+      data: { ...params, origin: SpecialCommissionMemberOrigin.EXTERNAL }
+    })
+  }
+
+  async findInvite(inviteId: number) {
+    return prisma.specialCommissionInvite.findFirst({
+      where: { idSpecialCommissionInvite: inviteId, deletedDate: null },
+      include: { specialCommission: true }
+    })
+  }
+
+  async findWaitingInvitesByAccessInvitation(accessInvitationId: string) {
+    return prisma.specialCommissionInvite.findMany({
+      where: { accessInvitationId, status: SpecialCommissionInviteStatus.WAITING, deletedDate: null },
+      include: { specialCommission: true }
+    })
+  }
+
+  /** Marca a vaga como convertida somente se ainda estiver aguardando (evita conversão dupla). */
+  async claimInvite(inviteId: number) {
+    const result = await prisma.specialCommissionInvite.updateMany({
+      where: { idSpecialCommissionInvite: inviteId, status: SpecialCommissionInviteStatus.WAITING, deletedDate: null },
+      data: { status: SpecialCommissionInviteStatus.CONVERTED }
+    })
+    return result.count === 1
+  }
+
+  async finishInvite(inviteId: number, memberId: number) {
+    return prisma.specialCommissionInvite.update({
+      where: { idSpecialCommissionInvite: inviteId },
+      data: { memberId }
+    })
+  }
+
+  async releaseInvite(inviteId: number) {
+    return prisma.specialCommissionInvite.update({
+      where: { idSpecialCommissionInvite: inviteId },
+      data: { status: SpecialCommissionInviteStatus.WAITING }
+    })
+  }
+
+  async cancelInvite(inviteId: number) {
+    return prisma.specialCommissionInvite.update({
+      where: { idSpecialCommissionInvite: inviteId },
+      data: { status: SpecialCommissionInviteStatus.CANCELED, deletedDate: new Date() }
     })
   }
 
@@ -349,6 +429,10 @@ export class SpecialCommissionRepository {
         await tx.specialCommissionMember.updateMany({
           where: { specialCommissionId: params.commissionId, deletedDate: null },
           data: { acceptanceStatus: AcceptanceStatus.CANCELED, deletedDate: new Date() }
+        })
+        await tx.specialCommissionInvite.updateMany({
+          where: { specialCommissionId: params.commissionId, status: SpecialCommissionInviteStatus.WAITING, deletedDate: null },
+          data: { status: SpecialCommissionInviteStatus.CANCELED, deletedDate: new Date() }
         })
         await tx.individualEvaluation.updateMany({
           where: {

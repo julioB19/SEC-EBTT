@@ -9,6 +9,7 @@ import { ParamType, validatorMiddleware } from "../middleware/validatorMiddlewar
 import {
   addSpecialCommissionMemberSchema,
   finalizeSpecialCommissionDecisionSchema,
+  inviteSpecialCommissionMemberSchema,
   respondSpecialCommissionInvitationSchema,
   saveSpecialCommissionSchema,
   updateSpecialCommissionStatusSchema
@@ -44,6 +45,21 @@ export function specialCommissionRoute() {
     requireCppdProcessAccess(),
     validatorMiddleware(ParamType.BODY, addSpecialCommissionMemberSchema),
     controller.addMember
+  )
+  router.post(
+    "/processes/:id/special-commission/invites",
+    authMiddleware,
+    requireCppdAccess,
+    requireCppdProcessAccess(),
+    validatorMiddleware(ParamType.BODY, inviteSpecialCommissionMemberSchema),
+    controller.inviteMember
+  )
+  router.delete(
+    "/processes/:id/special-commission/invites/:inviteId",
+    authMiddleware,
+    requireCppdAccess,
+    requireCppdProcessAccess(),
+    controller.removeInvite
   )
   router.delete(
     "/processes/:id/special-commission/members/:memberId",

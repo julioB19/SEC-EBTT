@@ -158,6 +158,32 @@ describe("API HTTP - fluxos funcionais de processos", () => {
     expect(check.status).toBe(200)
   }
 
+  // Classe Titular usa a mesma planilha de pontuação de Progressão/Promoção (mínimo de 120 pontos).
+  async function fillTitularPerformanceSheet(processId: number, teacherToken: string) {
+    const structure = await request<any>(`/processos/${processId}/pontuacao/estrutura`, { token: teacherToken })
+    expect(structure.status).toBe(200)
+    const items = structure.data.data.blocks
+      .flatMap((block: any) => block.items)
+      .filter((item: any) => ["MNP", "MND", "NT", "NSI"].includes(item.formulaKey))
+    expect(items).toHaveLength(4)
+    const quantities: Record<string, number> = { MNP: 20, MND: 20, NT: 20, NSI: 2 }
+    const evidenceForm = new FormData()
+    evidenceForm.append("file", new Blob([await createPdfBytes("Comprovante da avaliação de desempenho")], { type: "application/pdf" }), "comprovante-desempenho.pdf")
+    const firstEvidence = await request<any>(`/processos/${processId}/pontuacao/itens/${items[0].itemId}/evidencias`, { method: "POST", token: teacherToken, body: evidenceForm })
+    expect(firstEvidence.status).toBe(200)
+    const evidenceFileId = firstEvidence.data.data.evidence.evidenceFileId as number
+    for (let index = 0; index < items.length; index += 1) {
+      if (index > 0) {
+        const reuse = await request(`/processos/${processId}/pontuacao/itens/${items[index].itemId}/evidencias/reusar`, { method: "POST", token: teacherToken, body: { evidenceFileId } })
+        expect(reuse.status).toBe(200)
+      }
+      const score = await request(`/processos/${processId}/itens/${items[index].itemId}/pontuacao`, { method: "PATCH", token: teacherToken, body: { quantity: quantities[items[index].formulaKey] } })
+      expect(score.status).toBe(200)
+    }
+    const spreadsheet = await request(`/processos/${processId}/pontuacao/planilha`, { token: teacherToken })
+    expect(spreadsheet.status).toBe(200)
+  }
+
   async function prepareTitular(processId: number, teacherToken: string, externalEmails: string[], internalEmail: string, thesis = false) {
     const invalidDate = await request(`/cases/${processId}/compliance`, { method: "POST", token: teacherToken, body: { action: "SAVE_TITULAR_APPLICATION", admissionDate: "2015-02-30", workRegime: "Dedicação exclusiva", competitionArea: "Educação" } })
     expect(invalidDate.status).toBe(400)
@@ -167,12 +193,12 @@ describe("API HTTP - fluxos funcionais de processos", () => {
     const applicationPdf = await request(`/cases/${processId}/documents/APPLICATION`, { token: teacherToken })
     expect(applicationPdf.status).toBe(200)
     expect((applicationPdf.data as Buffer).subarray(0, 4).toString()).toBe("%PDF")
-    const form = new FormData()
-    form.set("file", new Blob([await createPdfBytes("Avaliação de desempenho com 120 pontos")], { type: "application/pdf" }), "desempenho.pdf")
-    const file = await request<any>("/teacher/evidence", { method: "POST", token: teacherToken, body: form })
-    expect(file.status).toBe(200)
-    const claim = await request(`/cases/${processId}/compliance`, { method: "POST", token: teacherToken, body: { action: "SET_PERFORMANCE_CLAIM", points: 120, evidenceFileId: file.data.data.idEvidenceFile } })
-    expect(claim.status).toBe(200)
+    await fillTitularPerformanceSheet(processId, teacherToken)
+    const applicantDocuments = await request<any>(`/cases/${processId}/compliance`, { token: teacherToken })
+    expect(applicantDocuments.status).toBe(200)
+    expect(applicantDocuments.data.data.documents).toEqual(thesis ? ["APPLICATION", "NOMINEES", "THESIS_ORIGINALITY"] : ["APPLICATION", "NOMINEES"])
+    const blockedOpinion = await request(`/cases/${processId}/documents/CPPD_ELIGIBILITY_OPINION`, { token: teacherToken })
+    expect(blockedOpinion.status).toBe(400)
     const emails = [...Array.from({ length: 3 }, (_, i) => externalEmails[i] || `externo-${processId}-${i}@federal.edu.br`), `suplente-${processId}-1@federal.edu.br`, `suplente-${processId}-2@federal.edu.br`, internalEmail, `interno-${processId}-suplente@iffarroupilha.edu.br`]
     const nominees = emails.map((email, i) => ({ name: `Indicado ${i}`, email, phone: "55999999999", origin: i < 5 ? "EXTERNAL" : "INTERNAL", membership: i < 3 || i === 5 ? "PRIMARY" : "SUBSTITUTE", doctorateTitle: "Doutor em Educação", institution: "Instituição Federal de Ensino", federalInstitution: true, careerLevel: "C4", knowledgeArea: "Educação", sameKnowledgeArea: true, priorConsentAt: new Date(Date.now() - 86400000).toISOString() }))
     const saved = await request(`/cases/${processId}/compliance`, { method: "POST", token: teacherToken, body: { action: "SAVE_NOMINEES", nominees } })
@@ -1195,7 +1221,8 @@ describe("API HTTP - fluxos funcionais de processos", () => {
     })
     expect(submission.status).toBe(200)
     await reviewTitular(processId, cppd.accessToken)
-    expect(submission.data.data).toMatchObject({ processId, status: "SUBMITTED", totalPoints: null })
+    expect(submission.data.data).toMatchObject({ processId, status: "SUBMITTED" })
+    expect(Number(submission.data.data.totalPoints)).toBeGreaterThanOrEqual(120)
 
     const savedCommission = await request(`/processes/${processId}/special-commission`, {
       method: "PUT",

@@ -4,7 +4,7 @@ import fs from "fs/promises"
 import { createHash } from "crypto"
 import { prisma } from "../infra/prismaClient"
 import { FullProfessorProcedureEventType, FullProfessorProcedureOutcome, RoleName } from "@prisma/client"
-import { CaseActor, CaseComplianceService, calculateTitularEffects } from "./caseComplianceService"
+import { CaseActor, CaseComplianceService, applicantTitularDocuments, calculateTitularEffects, validateNominees } from "./caseComplianceService"
 import { BusinessRuleError } from "./processoService"
 import { textDocumentPdf } from "../util/processDocuments"
 import { institutionalCivilDate } from "../util/proceduralDeadline"
@@ -23,6 +23,10 @@ export class CaseDocumentService {
   async generate(processId: number, actor: CaseActor, kind: string) {
     const process = await this.access.context(processId, actor)
     if (process.processTypeConfig?.category === "CAREER") throw new BusinessRuleError("Use os requerimentos, planilhas e pareceres da avaliação de carreira")
+    const applicantOnly = actor.role === RoleName.DOCENTE && actor.userId === process.userId
+    if (process.processTypeConfig?.category === "FULL_PROFESSOR" && applicantOnly && !applicantTitularDocuments.has(kind)) {
+      throw new BusinessRuleError("Este documento é gerado pela CPPD ou pela comissão especial. O docente gera o requerimento, a lista de indicados, a planilha de pontuação e os comprovantes")
+    }
     const commission = process.specialCommissions.find(value => value.status !== "CANCELED")
     const detail = process.fullProfessorDetail
     const compliance = process.compliance
@@ -66,6 +70,7 @@ export class CaseDocumentService {
         break
       case "NOMINEES":
         if (!detail || process.nominees.length !== 7) throw new BusinessRuleError("Cadastre a lista completa de sete indicados")
+        try { validateNominees(process.nominees.map(value => ({ ...value, sameKnowledgeArea: !value.relatedAreaJustification })), process.user.email) } catch { throw new BusinessRuleError("Complete os dados dos sete indicados antes de gerar a lista") }
         title = "LISTA DE INDICAÇÃO DE MEMBROS DA COMISSÃO ESPECIAL"
         lines.push(...process.nominees.map(value => `${value.name}; ${value.origin === "INTERNAL" ? "Interno" : "Externo"}; ${value.membership === "PRIMARY" ? "Titular" : "Suplente"}; ${value.doctorateTitle}; ${value.careerLevel}; ${value.institution}; área ${value.knowledgeArea}; ${value.email}; ${value.phone}; ciência em ${date(value.priorConsentAt)}.`))
         break

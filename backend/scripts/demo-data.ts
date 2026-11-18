@@ -157,16 +157,16 @@ export async function seedDemo(prisma: PrismaClient) {
         else await prisma.fullProfessorProcessDetail.update({ where: { processId }, data: { memorialFileId: memorial.idEvidenceFile } })
       }
       if (kind === "FULL_PROFESSOR") {
-        const performance = await pdf(prisma, user.idUser, key, "Desempenho demonstrativo 158 pontos")
         const actor = { userId: user.idUser, role: RoleName.DOCENTE }
         await api.compliance.save(processId, actor, { action: "SAVE_TITULAR_APPLICATION", admissionDate: addMonthsClamped(now, -180).toISOString().slice(0, 10), workRegime: "Dedicação exclusiva", competitionArea: "Educação - DEMONSTRAÇÃO" })
-        await api.compliance.save(processId, actor, { action: "SET_PERFORMANCE_CLAIM", points: 158, evidenceFileId: performance.idEvidenceFile })
         await api.compliance.save(processId, actor, { action: "SAVE_NOMINEES", nominees: evaluators.map((evaluator, position) => ({
           name: evaluator.user.name, email: evaluator.user.email, phone: "55999990000", institution: "Instituição Federal - DEMONSTRAÇÃO", doctorateTitle: "Doutorado em Educação - DEMO",
           federalInstitution: true, careerLevel: "D1", knowledgeArea: "Educação", sameKnowledgeArea: true, priorConsentAt: now.toISOString(),
           origin: evaluator.internal ? "INTERNAL" : "EXTERNAL", membership: position === 1 || position >= 5 ? "SUBSTITUTE" : "PRIMARY"
         })) })
-      } else {
+      }
+      {
+        // Classe Titular usa a mesma planilha de Progressão/Promoção para a avaliação de desempenho.
         const tableId = kind === "RSC" ? base.rscTable.idScoringTable : base.careerTable.idScoringTable
         const items = await prisma.scoringItem.findMany({ where: { scoringTableId: tableId, active: true, deletedDate: null }, include: { node: { include: { parent: true } } }, orderBy: { idScoringItem: "asc" } })
         const selected = kind === "RSC"

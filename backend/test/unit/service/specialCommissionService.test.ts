@@ -376,4 +376,132 @@ describe("SpecialCommissionService", () => {
     ).rejects.toThrow("24 meses completos em C4")
     expect(repository.finalizeDecision).not.toHaveBeenCalled()
   })
+
+  describe("convite com reserva de vaga", () => {
+    const cppdActor = { id: 2, role: "CPPD_MEMBER" as any, campusIds: [1] }
+    const processWithCampus = { ...process, campusId: 1, user: { ...process.user, personId: 1, email: "docente@iffar.edu.br" } }
+    const invite = (overrides: Record<string, unknown> = {}) => ({
+      idSpecialCommissionInvite: 50,
+      specialCommissionId: commission.idSpecialCommission,
+      accessInvitationId: "inv-1",
+      email: "novo@outra.edu.br",
+      name: "Avaliador Novo",
+      origin: SpecialCommissionMemberOrigin.EXTERNAL,
+      role: SpecialCommissionMemberRole.MEMBER,
+      sortOrder: 1,
+      createdById: 2,
+      specialCommission: { ...commission, processId: process.idProcess },
+      ...overrides
+    })
+    let access: { inviteExternalForCommission: jest.Mock<any> }
+
+    beforeEach(() => {
+      Object.assign(repository, {
+        findPersonIdsByEmail: jest.fn(async () => []),
+        createInvite: jest.fn(),
+        findInvite: jest.fn(),
+        findWaitingInvitesByAccessInvitation: jest.fn(),
+        claimInvite: jest.fn(async () => true),
+        finishInvite: jest.fn(),
+        releaseInvite: jest.fn(),
+        cancelInvite: jest.fn()
+      })
+      access = { inviteExternalForCommission: jest.fn(async () => ({ id: "inv-1", delivered: true, reused: false })) }
+      repository.findProcess.mockResolvedValue(processWithCampus as any)
+      repository.findCurrentByProcess.mockResolvedValue({ ...commission, invites: [] } as any)
+      repository.findExternalEvaluatorByEmail.mockResolvedValue(null)
+    })
+
+    test("sinaliza externo sem cadastro para a tela oferecer o convite", async () => {
+      await expect(service.addExternalMember(process.idProcess, 2, { email: "novo@outra.edu.br" })).rejects.toMatchObject({
+        details: { code: "EVALUATOR_NOT_FOUND", email: "novo@outra.edu.br" }
+      })
+      expect(repository.addExternalMember).not.toHaveBeenCalled()
+    })
+
+    test("envia o convite de acesso e reserva a vaga na comissão", async () => {
+      const result: any = await service.inviteExternalMember(
+        process.idProcess,
+        cppdActor,
+        { email: " Novo@Outra.edu.br ", name: "Avaliador Novo", institutionalExternal: true },
+        access
+      )
+
+      expect(access.inviteExternalForCommission).toHaveBeenCalledWith(cppdActor, expect.objectContaining({
+        email: "novo@outra.edu.br", campusId: 1, institutionalExternal: true
+      }))
+      expect((repository as any).createInvite).toHaveBeenCalledWith(expect.objectContaining({
+        specialCommissionId: commission.idSpecialCommission,
+        accessInvitationId: "inv-1",
+        email: "novo@outra.edu.br",
+        role: SpecialCommissionMemberRole.MEMBER,
+        createdById: 2
+      }))
+      expect(result.invite).toEqual({ delivered: true, reused: false })
+    })
+
+    test("conta as vagas reservadas no limite de quatro membros", async () => {
+      repository.findCurrentByProcess.mockResolvedValue({
+        ...commission,
+        members: acceptedRscMembers().slice(0, 3),
+        invites: [invite({ email: "outro@outra.edu.br" })]
+      } as any)
+
+      await expect(service.inviteExternalMember(process.idProcess, cppdActor, { email: "novo@outra.edu.br", name: "Avaliador Novo" }, access))
+        .rejects.toThrow("quatro membros")
+      expect(access.inviteExternalForCommission).not.toHaveBeenCalled()
+    })
+
+    test("não reserva vaga para o próprio docente interessado", async () => {
+      await expect(service.inviteExternalMember(process.idProcess, cppdActor, { email: "docente@iffar.edu.br", name: "Docente" }, access))
+        .rejects.toThrow("não pode integrar a própria comissão")
+    })
+
+    test("não ativa a comissão com vaga aguardando cadastro", async () => {
+      repository.findCurrentByProcess.mockResolvedValue({
+        ...commission,
+        ordinance: "Portaria 10/2026",
+        ordinanceDate: new Date(),
+        members: acceptedRscMembers().slice(0, 3),
+        invites: [invite()]
+      } as any)
+
+      await expect(service.updateStatus(process.idProcess, 2, { status: CommissionStatus.ACTIVE })).rejects.toThrow("vagas reservadas")
+      expect(repository.updateStatus).not.toHaveBeenCalled()
+    })
+
+    test("converte a vaga em membro quando o cadastro é aprovado", async () => {
+      ;(repository as any).findWaitingInvitesByAccessInvitation.mockResolvedValue([invite()])
+      repository.findExternalEvaluatorByEmail.mockResolvedValue({ personId: 44, person: { idPerson: 44 } } as any)
+      repository.findActiveMember.mockResolvedValue(null)
+      repository.addExternalMember.mockResolvedValue({ idSpecialCommissionMember: 77 } as any)
+
+      await expect(service.convertInvitesForAccessInvitation("inv-1", 9)).resolves.toBe(1)
+      expect(repository.addExternalMember).toHaveBeenCalledWith(expect.objectContaining({
+        personId: 44, origin: SpecialCommissionMemberOrigin.EXTERNAL, sortOrder: 1, changedById: 9
+      }))
+      expect((repository as any).finishInvite).toHaveBeenCalledWith(50, 77)
+    })
+
+    test("devolve a vaga para aguardando se a conversão falhar", async () => {
+      ;(repository as any).findWaitingInvitesByAccessInvitation.mockResolvedValue([invite()])
+      repository.findExternalEvaluatorByEmail.mockResolvedValue({ personId: 44, person: { idPerson: 44 } } as any)
+      repository.findActiveMember.mockResolvedValue(null)
+      repository.addExternalMember.mockRejectedValue(new Error("falha"))
+      jest.spyOn(console, "error").mockImplementation(() => undefined)
+
+      await expect(service.convertInvitesForAccessInvitation("inv-1", 9)).resolves.toBe(0)
+      expect((repository as any).releaseInvite).toHaveBeenCalledWith(50)
+    })
+
+    test("cancela a vaga se a comissão já saiu do rascunho", async () => {
+      ;(repository as any).findWaitingInvitesByAccessInvitation.mockResolvedValue([
+        invite({ specialCommission: { ...commission, status: CommissionStatus.CANCELED } })
+      ])
+
+      await expect(service.convertInvitesForAccessInvitation("inv-1", 9)).resolves.toBe(0)
+      expect((repository as any).cancelInvite).toHaveBeenCalledWith(50)
+      expect(repository.addExternalMember).not.toHaveBeenCalled()
+    })
+  })
 })

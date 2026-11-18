@@ -5,7 +5,11 @@ import { AccessService } from "../service/accessService"
 import { AccessError } from "../util/accessPolicy"
 import { requireSelectedRole as requireAnyRole, requireCppdAccess } from "../middleware/cppdAccessMiddleware"
 
-const service = new AccessService()
+const service = new AccessService(undefined, undefined, undefined, async (invitationId, actorId) => {
+  // Import tardio: o serviço da comissão também usa o AccessService.
+  const { SpecialCommissionService } = await import("../service/specialCommissionService")
+  return new SpecialCommissionService().convertInvitesForAccessInvitation(invitationId, actorId)
+})
 const policy = new CampusEmailPolicyService()
 function handle(action: (req: any) => Promise<unknown>): RequestHandler {
   return async (req, res) => {

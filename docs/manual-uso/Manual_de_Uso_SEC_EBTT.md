@@ -138,7 +138,7 @@ A Progressão movimenta o docente entre níveis da mesma classe. O exemplo prepa
 
 **Quem faz:** Docente.
 
-Nos detalhes do rascunho, abra Preencher pontuação. Os mesmos controles de pontuação são usados em Progressão e Promoção.
+Nos detalhes do rascunho, abra Preencher pontuação. Os mesmos controles e a mesma tabela de pontuação são usados em Progressão, Promoção e na avaliação de desempenho da Classe Titular.
 
 ![Pesquisa de atividades, resumo e itens de um bloco com cálculo automático.](capturas/10-pontuacao-carreira.jpg)
 
@@ -417,10 +417,11 @@ RSC e Classe Titular usam uma Comissão Especial por processo. Ela é diferente 
 
 1. Em Processos, localize a solicitação e abra Comissão. Confira docente, número e tipo.
 2. Registre o número e a data da portaria e clique em Salvar dados.
-3. Em Membros, informe o e-mail de uma conta ativa e elegível, escolha a origem e a função e clique em Adicionar.
-4. Complete exatamente um interno e três externos. Na Classe Titular, o interno exerce a presidência e os quatro membros devem corresponder aos titulares da lista validada.
-5. Acompanhe os aceites. Depois de todos aceitarem e de as verificações exigidas estarem concluídas, use a ação de ativar a comissão.
-6. Confira a situação Ativa e o prazo da comissão. Na Classe Titular, a análise de desempenho, doutorado e indicados deve estar aprovada antes dessa ativação.
+3. Em Membros, informe o e-mail do avaliador, escolha a origem e a função e clique em Adicionar. Se o avaliador já tiver conta ativa e elegível, ele entra na comissão na hora.
+4. Se for um avaliador externo sem cadastro aprovado, o sistema abre o quadro Convidar avaliador externo e reservar a vaga. Informe o nome, confirme o vínculo institucional quando o e-mail não for de um domínio aceito pelo campus e clique em Convidar e reservar vaga. A vaga aparece na lista com a situação do convite (aguardando cadastro, expirado ou aguardando sua aprovação). O link vale por sete dias; use Reenviar convite para renovar. Quando o cadastro estiver em revisão, use Conferir e aprovar cadastro: ao aprovar em Convites de acesso, o avaliador entra automaticamente na comissão com a função escolhida.
+5. Complete exatamente um interno e três externos, contando as vagas reservadas. Na Classe Titular, o interno exerce a presidência e os quatro membros devem corresponder aos titulares da lista validada.
+6. Acompanhe os aceites. Depois de todos aceitarem e de as verificações exigidas estarem concluídas, use a ação de ativar a comissão. A ativação fica bloqueada enquanto houver vaga reservada aguardando cadastro ou aprovação.
+7. Confira a situação Ativa e o prazo da comissão. Na Classe Titular, a análise de desempenho, doutorado e indicados deve estar aprovada antes dessa ativação.
 
 **Resultado esperado:** Os quatro avaliadores aceitos recebem acesso às avaliações individuais da comissão ativa.
 
@@ -583,7 +584,7 @@ A Classe Titular tem processo próprio para docente em C4. O sistema permite ini
 2. Escolha Promoção à Classe Titular e confira identificação, campus e contato.
 3. Em Modalidade de avaliação, selecione Memorial ou Tese acadêmica inédita de acordo com o trabalho que será apresentado.
 4. Crie o rascunho e confira a modalidade nos detalhes. Cadastre previamente o doutorado na biblioteca do perfil para poder selecioná-lo.
-5. Complete os dados do requerimento, a avaliação de desempenho, o diploma, os sete indicados e o arquivo do trabalho antes de enviar.
+5. Complete os dados do requerimento, a planilha de pontuação da avaliação de desempenho, o doutorado, os sete indicados e o arquivo do trabalho antes de enviar.
 
 **Resultado esperado:** O processo fica preparado para os requisitos próprios de Classe Titular.
 
@@ -594,7 +595,7 @@ A Classe Titular tem processo próprio para docente em C4. O sistema permite ini
 
 **Quem faz:** Docente.
 
-Nos detalhes, expanda as seções de dados do requerimento e de avaliação de desempenho e diploma.
+Nos detalhes, expanda as seções de dados do requerimento e de avaliação de desempenho e doutorado.
 
 ![Campos de desempenho e seleção do doutorado cadastrado.](capturas/20-titular-desempenho.jpg)
 
@@ -603,14 +604,14 @@ Nos detalhes, expanda as seções de dados do requerimento e de avaliação de d
 ### Como fazer
 
 1. Em Dados do requerimento de Classe Titular, informe data de admissão, regime de trabalho e área de concurso. Clique em Salvar dados do requerimento.
-2. Em Avaliação de desempenho e diploma, informe a pontuação e anexe o formulário e seus comprovantes em PDF. A pontuação declarada deve ser de pelo menos 120.
-3. Clique em Salvar desempenho. Confira o arquivo e o resumo de pendências apresentado pelo processo.
-4. Selecione o doutorado cadastrado na biblioteca. Confirme instituição, conclusão e diploma; para diploma estrangeiro, inclua o reconhecimento nacional.
-5. Em Documentação específica, anexe o memorial ou a tese da modalidade selecionada. Abra os links para revisar os documentos antes do envio.
+2. Em Avaliação de desempenho e doutorado, clique em Preencher pontuação. A avaliação de desempenho usa a mesma planilha da Promoção, que a CPPD publica como Formulário de avaliação de desempenho, com mínimo de 120 pontos. Anexe os comprovantes e informe as quantidades de cada item, como descrito no capítulo 5.
+3. Ainda nessa seção, selecione o doutorado cadastrado em Titulações e diplomas, no perfil. O sistema mostra curso, instituição, conclusão e o link do diploma. Para corrigir algum dado ou incluir o reconhecimento nacional de diploma estrangeiro, edite a titulação no perfil e selecione-a de novo.
+4. Em Documentação específica, anexe o memorial ou a tese da modalidade selecionada. O doutorado aparece ali apenas para conferência; não é preciso anexar o diploma outra vez.
+5. A planilha e os comprovantes seguem junto com o processo no envio, que só é liberado com pelo menos 120 pontos.
 
-**Resultado esperado:** O requerimento, o desempenho e o título estão disponíveis para a análise prévia da CPPD.
+**Resultado esperado:** O requerimento, a planilha de desempenho e o título estão disponíveis para a análise prévia da CPPD.
 
-**Orientação:** O valor 158 dos exemplos serve apenas à demonstração. Em uma solicitação efetiva, informe a pontuação do documento comprobatório.
+**Orientação:** Em Gerar documentos para conferência e assinatura, o docente gera o Requerimento e a Lista dos sete indicados (e, na modalidade tese, a declaração de ineditismo). A planilha de pontuação e os comprovantes são gerados nos botões do resumo de pontuação. Pareceres e atas são gerados pela CPPD ou pela comissão especial.
 
 
 ## 26 Cadastrar os sete indicados
@@ -630,7 +631,8 @@ A indicação contém sete pessoas. A comissão que efetivamente avalia o proces
 3. Para cada pessoa, informe nome, e-mail, telefone, título de doutorado, instituição, área de conhecimento e posição na carreira.
 4. Confirme o vínculo federal e a posição elegível: C4, Titular ou equivalente/superior, conforme o campo. Registre a data da ciência prévia.
 5. Se a área for afim, apresente a justificativa solicitada. Confira se os e-mails são distintos e se correspondem às contas que serão escolhidas para a comissão.
-6. Clique em Salvar lista de indicados e verifique o resumo de 7 de 7 cadastrados. Complete os demais documentos e envie o processo à CPPD.
+6. Não é preciso ter todos os nomes de uma vez: preencha quem já tiver (ao menos o nome) e clique em Salvar lista (rascunho). Cada indicado mostra o que ainda falta, e você pode voltar depois para completar.
+7. Quando os sete estiverem completos, o botão passa a Salvar lista de indicados e o resumo mostra 7 de 7 completos. Só então o processo pode ser enviado à CPPD, junto com os demais documentos.
 
 **Resultado esperado:** A lista completa fica disponível para a conferência da CPPD e para a composição da comissão.
 

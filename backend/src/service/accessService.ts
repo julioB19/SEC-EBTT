@@ -23,7 +23,9 @@ const html = (value: string) => value.replace(/[&<>"']/g, c => ({ "&": "&amp;", 
 
 export class AccessService {
   constructor(private readonly db = prisma, private readonly google = new GoogleIdentityService(),
-    private readonly mail = sendMail) {}
+    private readonly mail = sendMail,
+    // Executado após aprovar um avaliador externo (ex.: converter vagas reservadas em comissões).
+    private readonly afterExternalApproval: (invitationId: string, actorId: number) => Promise<unknown> = async () => undefined) {}
 
   private get emailPolicy() { return new CampusEmailPolicyService(this.db) }
 
@@ -443,7 +445,38 @@ export class AccessService {
       await tx.userRole.upsert({ where: { userId_roleId: { userId: user.idUser, roleId: role.idRole } },
         create: { userId: user.idUser, roleId: role.idRole }, update: { deletedDate: null } })
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
-    return { approved: true }
+    let commissionSeats = 0
+    try {
+      const converted = await this.afterExternalApproval(id, actor.id)
+      commissionSeats = typeof converted === "number" ? converted : 0
+    } catch (error) {
+      // A aprovação já foi gravada; a vaga reservada é convertida de novo ao abrir a comissão.
+      console.error("Falha ao converter vagas reservadas após aprovação:", error)
+    }
+    return { approved: true, commissionSeats }
+  }
+
+  /**
+   * Convite de avaliador externo feito pela tela da comissão. Reaproveita um convite
+   * pendente ou em revisão para o mesmo e-mail em vez de recusar a operação.
+   */
+  async inviteExternalForCommission(actor: Actor, body: { name?: unknown; email?: unknown; institutionalExternal?: unknown; campusId: number }) {
+    const email = normalizedEmail(body.email)
+    const previous = await this.db.accessInvitation.findUnique({ where: { email } })
+    if (previous && (previous.status === "PENDING" || previous.status === "REVIEW")) {
+      if (!externalOnly(invitationRoles(previous.roles))) {
+        throw new AccessError("Este e-mail já possui convite de acesso para outro perfil. Consulte Convites de acesso", 409)
+      }
+      if (previous.campusId) this.emailPolicy.assertAccess(actor, previous.campusId)
+      else if (actor.role === RoleName.CPPD_MEMBER) throw new AccessError("Convite sem campus; solicite ajuste à administração", 403)
+      return { id: previous.id, delivered: !previous.deliveryError, reused: true }
+    }
+    if (previous?.status === "ACCEPTED") {
+      throw new AccessError("Este e-mail já tem cadastro aprovado, mas o perfil de avaliador externo não está ativo. Regularize o usuário antes de adicioná-lo", 409)
+    }
+    const result = await this.invite(actor, { name: body.name, email, roles: [RoleName.EXTERNAL_EVALUATOR],
+      institutionalExternal: body.institutionalExternal, campusId: body.campusId })
+    return { ...result, reused: false }
   }
 
   async reviewDetails(actor: Actor, id: string) {

@@ -2,7 +2,7 @@
 
 import ProcessSteps from "@/components/ProcessSteps"
 import { useFeedbackState } from "@/hooks/useFeedbackState"
-import { clientFetch as fetch } from "@/lib/clientFetch"
+import { clientFetch as fetch, type ClientRequestInit } from "@/lib/clientFetch"
 import FormInput from "@/components/ui/FormInput"
 import ActionButton from "@/components/ui/ActionButton"
 import { FormSelect } from "@/components/ui/FormControls"
@@ -38,6 +38,20 @@ interface CommissionMember {
     opinionText: string | null
     submittedAt: string | null
   } | null
+}
+
+type InviteAccessStatus = "AWAITING_REGISTRATION" | "EXPIRED" | "AWAITING_APPROVAL" | "APPROVED" | "CANCELLED"
+
+interface PendingInvite {
+  idSpecialCommissionInvite: number
+  name: string
+  email: string
+  origin: "INTERNAL" | "EXTERNAL"
+  role: MemberRole
+  accessInvitationId: string
+  accessStatus: InviteAccessStatus
+  expiresAt: string | null
+  deliveryError: string | null
 }
 
 interface CommissionConsolidation {
@@ -79,6 +93,7 @@ interface CommissionData {
     evaluationDeadlineAt: string | null
     evaluationOverdue: boolean
     members: CommissionMember[]
+    pendingInvites?: PendingInvite[]
     consolidation: CommissionConsolidation
   } | null
 }
@@ -111,6 +126,16 @@ function acceptanceLabel(status: AcceptanceStatus) {
   if (status === "DECLINED") return "Convite recusado"
   if (status === "CANCELED") return "Cancelado"
   return "Aguardando resposta"
+}
+
+function inviteStatusLabel(invite: PendingInvite) {
+  if (invite.accessStatus === "EXPIRED") return "Convite expirado – reenvie para renovar"
+  if (invite.accessStatus === "AWAITING_APPROVAL") return "Cadastro aguardando sua aprovação"
+  if (invite.accessStatus === "APPROVED") return "Cadastro aprovado – incluindo na comissão"
+  if (invite.accessStatus === "CANCELLED") return "Convite de acesso cancelado – remova a vaga"
+  return invite.expiresAt
+    ? `Convite enviado – aguardando cadastro até ${new Date(invite.expiresAt).toLocaleDateString("pt-BR")}`
+    : "Convite enviado – aguardando cadastro"
 }
 
 function commissionStatusLabel(status: CommissionStatus) {
@@ -148,6 +173,9 @@ export default function SpecialCommissionPage() {
   const [memberEmail, setMemberEmail] = useState("")
   const [memberOrigin, setMemberOrigin] = useState<"INTERNAL" | "EXTERNAL">("EXTERNAL")
   const [memberRole, setMemberRole] = useState<MemberRole>("MEMBER")
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [inviteName, setInviteName] = useState("")
+  const [inviteInstitutional, setInviteInstitutional] = useState(false)
   const [decisionOpinion, setDecisionOpinion] = useState("")
   const [decisionError, setDecisionError] = useState<string | null>(null)
   const [pendingDecision, setPendingDecision] = useState<"APPROVED" | "REJECTED" | null>(null)
@@ -183,7 +211,13 @@ export default function SpecialCommissionPage() {
     if (Number.isInteger(processId) && processId > 0) load()
   }, [load, processId])
 
-  async function mutate(url: string, init: RequestInit, successMessage: string, onFailure?: (message: string) => void) {
+  async function mutate(
+    url: string,
+    init: ClientRequestInit,
+    successMessage: string | ((payload: ApiResponse<any> | null) => string),
+    // Retornar true indica que a falha foi tratada na tela e não deve abrir o aviso de erro.
+    onFailure?: (message: string, payload: ApiResponse<any> | null) => boolean | void
+  ) {
     setBusy(true)
     setError(null)
     setMessage(null)
@@ -196,16 +230,15 @@ export default function SpecialCommissionPage() {
       const payload = (await response.json().catch(() => null)) as ApiResponse<CommissionData> | null
       if (!response.ok || !applyResponse(payload)) {
         const failureMessage = payload?.message ?? "Não foi possível concluir a operação."
-        setError(failureMessage)
-        onFailure?.(failureMessage)
+        if (onFailure?.(failureMessage, payload) !== true) setError(failureMessage)
         return false
       }
-      setMessage(successMessage)
+      setMessage(typeof successMessage === "function" ? successMessage(payload) : successMessage)
       return true
     } catch {
       const failureMessage = "Não foi possível concluir a operação. Verifique sua conexão e tente novamente."
       setError(failureMessage)
-      onFailure?.(failureMessage)
+      onFailure?.(failureMessage, null)
       return false
     } finally {
       setBusy(false)
@@ -228,10 +261,93 @@ export default function SpecialCommissionPage() {
     event.preventDefault()
     const saved = await mutate(
       `/api/cppd/processos/${processId}/comissao/membros`,
-      { method: "POST", body: JSON.stringify({ email: memberEmail, origin: memberOrigin, role: memberRole }) },
-      "Avaliador adicionado e avaliação individual criada."
+      {
+        method: "POST",
+        body: JSON.stringify({ email: memberEmail, origin: memberOrigin, role: memberRole }),
+        // A página mostra o próprio retorno; evita o aviso automático quando oferece o convite.
+        feedback: "silent"
+      },
+      "Avaliador adicionado e avaliação individual criada.",
+      (_message, payload) => {
+        // Externo sem cadastro aprovado: oferece o convite com reserva de vaga.
+        if (payload?.data?.code === "EVALUATOR_NOT_FOUND") {
+          setInviteOpen(true)
+          return true
+        }
+        return false
+      }
     )
-    if (saved) setMemberEmail("")
+    if (saved) {
+      setMemberEmail("")
+      setInviteOpen(false)
+    }
+  }
+
+  async function inviteMember(event: FormEvent) {
+    event.preventDefault()
+    if (memberRole !== "MEMBER" && memberRole !== "PRIMARY") {
+      setError("Vagas reservadas para avaliador externo aceitam a função Membro ou Titular.")
+      return
+    }
+    const saved = await mutate(
+      `/api/cppd/processos/${processId}/comissao/convites`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          email: memberEmail,
+          name: inviteName,
+          role: memberRole,
+          institutionalExternal: inviteInstitutional
+        })
+      },
+      payload => {
+        const invite = payload?.data?.invite as { delivered?: boolean; reused?: boolean } | undefined
+        if (invite?.reused) return "Vaga reservada usando o convite de acesso já existente para este e-mail."
+        if (invite?.delivered === false) return "Vaga reservada, mas o e-mail não foi enviado. Confira a configuração e use Reenviar convite."
+        return "Convite enviado e vaga reservada. O avaliador entra na comissão quando você aprovar o cadastro."
+      }
+    )
+    if (saved) {
+      setMemberEmail("")
+      setInviteName("")
+      setInviteInstitutional(false)
+      setInviteOpen(false)
+    }
+  }
+
+  async function removeInvite(inviteId: number) {
+    await mutate(
+      `/api/cppd/processos/${processId}/comissao/convites/${inviteId}`,
+      { method: "DELETE" },
+      "Vaga reservada removida. O convite de acesso continua em Convites de acesso."
+    )
+  }
+
+  async function resendInvite(accessInvitationId: string) {
+    setBusy(true)
+    setError(null)
+    setMessage(null)
+    try {
+      const response = await fetch(`/api/acesso/invitations/${accessInvitationId}/resend`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: "{}"
+      })
+      const payload = (await response.json().catch(() => null)) as ApiResponse<{ delivered?: boolean }> | null
+      if (!response.ok) {
+        setError(payload?.message ?? "Não foi possível reenviar o convite.")
+        return
+      }
+      setMessage(payload?.data?.delivered === false
+        ? "Convite renovado, mas o e-mail não foi enviado. Confira a configuração."
+        : "Convite reenviado. O link anterior deixou de valer e o novo vale por sete dias.")
+    } catch {
+      setError("Não foi possível reenviar o convite. Verifique sua conexão e tente novamente.")
+    } finally {
+      setBusy(false)
+    }
+    await load()
   }
 
   async function removeMember(memberId: number) {
@@ -402,7 +518,7 @@ export default function SpecialCommissionPage() {
           <div>
             <h2 className="text-base font-semibold text-[var(--text-primary)]">Membros</h2>
             <p className="text-sm text-[var(--text-secondary)]">
-              Informe uma conta ativa: docente para membro interno ou avaliador externo aprovado para membro externo. A comissão deve ter um interno e três externos.
+              Informe o e-mail do docente (membro interno) ou do avaliador externo. Se o externo ainda não tiver cadastro aprovado, você pode convidá-lo daqui e a vaga fica reservada até a aprovação. A comissão deve ter um interno e três externos.
             </p>
           </div>
 
@@ -427,6 +543,7 @@ export default function SpecialCommissionPage() {
                   onChange={event => {
                     const origin = event.target.value as "INTERNAL" | "EXTERNAL"
                     setMemberOrigin(origin)
+                    if (origin === "INTERNAL") setInviteOpen(false)
                     if (data.process.processTypeCategory === "FULL_PROFESSOR") {
                       setMemberRole(origin === "INTERNAL" ? "PRESIDENT" : "MEMBER")
                     }
@@ -459,6 +576,121 @@ export default function SpecialCommissionPage() {
               </ActionButton>
             </form>
           )}
+
+          {editable && inviteOpen && memberOrigin === "EXTERNAL" && (
+            <form
+              onSubmit={inviteMember}
+              aria-labelledby="commission-invite-title"
+              className="space-y-3 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4"
+            >
+              <div>
+                <h3 id="commission-invite-title" className="text-sm font-semibold text-[var(--text-primary)]">
+                  Convidar avaliador externo e reservar a vaga
+                </h3>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  <span className="break-all font-medium text-[var(--text-primary)]">{memberEmail}</span> ainda não tem cadastro aprovado.
+                  O convite vale por sete dias. Depois que o avaliador se cadastrar, aprove o cadastro em{" "}
+                  <Link href="/cppd/convites" className="font-semibold underline">Convites de acesso</Link>{" "}
+                  e ele entra nesta comissão automaticamente, como {memberRoleLabel(memberRole).toLowerCase()}.
+                </p>
+              </div>
+              <label className="block text-sm text-[var(--text-primary)]">
+                Nome completo do avaliador
+                <FormInput
+                  required
+                  maxLength={120}
+                  className={inputClass}
+                  value={inviteName}
+                  onChange={event => setInviteName(event.target.value)}
+                  disabled={busy}
+                  disabledReason={busy ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}
+                  aria-label="Nome completo do avaliador"
+                />
+              </label>
+              <label className="flex items-start gap-2 text-sm text-[var(--text-primary)]">
+                <FormInput
+                  type="checkbox"
+                  className="mt-1"
+                  checked={inviteInstitutional}
+                  onChange={event => setInviteInstitutional(event.target.checked)}
+                  disabled={busy}
+                  aria-label="Conferi que o e-mail pertence à instituição do avaliador"
+                />
+                Conferi que o e-mail pertence à instituição do avaliador. Obrigatório quando o endereço não é de um domínio aceito pelo campus.
+              </label>
+              <div className="flex flex-wrap justify-end gap-3">
+                <ActionButton
+                  type="button"
+                  onClick={() => setInviteOpen(false)}
+                  disabled={busy}
+                  className="rounded-md border border-[var(--btn-secondary-border)] px-4 py-2 text-sm font-semibold text-[var(--btn-secondary-text)] disabled:opacity-50"
+                  disabledReason={busy ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}
+                >
+                  Cancelar
+                </ActionButton>
+                <ActionButton
+                  disabled={busy || !inviteName.trim() || !memberEmail.trim()}
+                  className="rounded-md bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-50"
+                  disabledReason={busy ? "Aguarde a operação em andamento terminar." : "Informe o e-mail e o nome do avaliador."}
+                >
+                  Convidar e reservar vaga
+                </ActionButton>
+              </div>
+            </form>
+          )}
+
+          {data.commission?.pendingInvites?.length ? (
+            <div className="space-y-3">
+              {data.commission.pendingInvites.map(invite => (
+                <div
+                  key={`invite-${invite.idSpecialCommissionInvite}`}
+                  className="space-y-2 rounded-2xl border border-dashed border-[var(--border-subtle)] bg-[var(--surface-bg)] p-4"
+                >
+                  <div className="min-w-0 space-y-1">
+                    <span className="block break-words text-sm font-semibold text-[var(--text-primary)]">
+                      {invite.name} <span className="font-normal text-[var(--text-secondary)]">· vaga reservada</span>
+                    </span>
+                    <span className="block break-all text-xs text-[var(--text-secondary)]">{invite.email}</span>
+                    <span className="block text-xs text-[var(--text-secondary)]">
+                      Externo · {memberRoleLabel(invite.role)} · {inviteStatusLabel(invite)}
+                    </span>
+                    {invite.deliveryError && (
+                      <span className="block text-xs text-[var(--state-danger-text)]">{invite.deliveryError}</span>
+                    )}
+                  </div>
+                  {editable && (
+                    <div className="flex flex-wrap gap-4">
+                      {invite.accessStatus === "AWAITING_APPROVAL" && (
+                        <Link href="/cppd/convites" className="text-xs font-semibold text-[var(--text-primary)] hover:underline">
+                          Conferir e aprovar cadastro
+                        </Link>
+                      )}
+                      {(invite.accessStatus === "AWAITING_REGISTRATION" || invite.accessStatus === "EXPIRED") && (
+                        <ActionButton
+                          type="button"
+                          onClick={() => resendInvite(invite.accessInvitationId)}
+                          disabled={busy}
+                          className="text-xs font-semibold text-[var(--text-primary)] hover:underline disabled:opacity-50"
+                          disabledReason={busy ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}
+                        >
+                          Reenviar convite
+                        </ActionButton>
+                      )}
+                      <ActionButton
+                        type="button"
+                        onClick={() => removeInvite(invite.idSpecialCommissionInvite)}
+                        disabled={busy}
+                        className="text-xs font-semibold text-[var(--state-danger-text)] hover:underline disabled:opacity-50"
+                        disabledReason={busy ? "Aguarde a operação em andamento terminar." : "Este controle está indisponível na etapa atual."}
+                      >
+                        Remover vaga
+                      </ActionButton>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : null}
 
           {data.commission?.members.length ? (
             <div className="space-y-3">
@@ -518,7 +750,7 @@ export default function SpecialCommissionPage() {
                 </details>
               ))}
             </div>
-          ) : (
+          ) : data.commission?.pendingInvites?.length ? null : (
             <p className="border-y border-[var(--border-subtle)] py-6 text-center text-sm text-[var(--text-secondary)]">
               Nenhum membro adicionado.
             </p>

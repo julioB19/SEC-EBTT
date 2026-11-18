@@ -131,8 +131,8 @@ enum IndividualEvaluationResult {
 }
 
 model User {
-  campusId Int?
-  campus Campus? @relation(fields: [campusId], references: [idCampus], onDelete: SetNull)
+  campusId     Int?
+  campus       Campus?   @relation(fields: [campusId], references: [idCampus], onDelete: SetNull)
   idUser       Int       @id @default(autoincrement())
   name         String    @db.VarChar(120)
   email        String    @unique @db.VarChar(180)
@@ -191,18 +191,18 @@ model UserRole {
 }
 
 model Campus {
-  users User[]
-  emailDomains CampusEmailDomain[]
+  users             User[]
+  emailDomains      CampusEmailDomain[]
   accessInvitations AccessInvitation[]
-  accessAttempts AccessAttempt[]
-  idCampus    Int       @id @default(autoincrement())
-  name        String    @db.VarChar(120)
-  acronym     String?   @unique @db.VarChar(20)
-  cppdEmail   String?   @db.VarChar(180)
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedDate DateTime?
+  accessAttempts    AccessAttempt[]
+  idCampus          Int                 @id @default(autoincrement())
+  name              String              @db.VarChar(120)
+  acronym           String?             @unique @db.VarChar(20)
+  cppdEmail         String?             @db.VarChar(180)
+  active            Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  deletedDate       DateTime?
 
   docentes        DocenteProfile[]
   processes       CareerProcess[]
@@ -233,9 +233,9 @@ model Person {
 }
 
 model ExternalEvaluatorProfile {
-  siape               String? @db.VarChar(30)
-  evaluationCity      String? @db.VarChar(120)
-  workUnit            String? @db.VarChar(180)
+  siape               String?   @db.VarChar(30)
+  evaluationCity      String?   @db.VarChar(120)
+  workUnit            String?   @db.VarChar(180)
   idExternalEvaluator Int       @id @default(autoincrement())
   userId              Int       @unique
   title               String?   @db.VarChar(120)
@@ -781,9 +781,42 @@ model SpecialCommission {
 
   process CareerProcess             @relation(fields: [processId], references: [idProcess], onDelete: Cascade)
   members SpecialCommissionMember[]
+  invites SpecialCommissionInvite[]
 
   @@index([processId])
   @@map("special_commission")
+}
+
+enum SpecialCommissionInviteStatus {
+  WAITING
+  CONVERTED
+  CANCELED
+}
+
+// Vaga reservada para um avaliador externo que ainda não possui cadastro aprovado.
+// Ao aprovar o cadastro do convite de acesso, a vaga vira membro da comissão.
+model SpecialCommissionInvite {
+  idSpecialCommissionInvite Int                           @id @default(autoincrement())
+  specialCommissionId       Int
+  accessInvitationId        String
+  email                     String                        @db.VarChar(180)
+  name                      String                        @db.VarChar(120)
+  origin                    SpecialCommissionMemberOrigin @default(EXTERNAL)
+  role                      SpecialCommissionMemberRole   @default(MEMBER)
+  sortOrder                 Int                           @default(0)
+  status                    SpecialCommissionInviteStatus @default(WAITING)
+  memberId                  Int?
+  createdById               Int
+  createdAt                 DateTime                      @default(now())
+  updatedAt                 DateTime                      @updatedAt
+  deletedDate               DateTime?
+
+  specialCommission SpecialCommission @relation(fields: [specialCommissionId], references: [idSpecialCommission], onDelete: Cascade)
+  accessInvitation  AccessInvitation  @relation(fields: [accessInvitationId], references: [id], onDelete: Cascade)
+
+  @@index([specialCommissionId, status])
+  @@index([accessInvitationId, status])
+  @@map("special_commission_invite")
 }
 
 model SpecialCommissionMember {
@@ -901,9 +934,9 @@ model PasswordResetCode {
 }
 
 model ProcessCompliance {
-  titularAdmissionDate        DateTime?     @db.Date
-  titularWorkRegime           String?       @db.VarChar(120)
-  titularCompetitionArea      String?       @db.VarChar(180)
+  titularAdmissionDate         DateTime?     @db.Date
+  titularWorkRegime            String?       @db.VarChar(120)
+  titularCompetitionArea       String?       @db.VarChar(180)
   deletedDate                  DateTime?
   nomineesValidatedAt          DateTime?
   processId                    Int           @id
@@ -931,17 +964,17 @@ model ProcessNominee {
   idNominee                Int                           @id @default(autoincrement())
   processId                Int
   name                     String                        @db.VarChar(120)
-  email                    String                        @db.VarChar(180)
-  phone                    String                        @db.VarChar(30)
+  email                    String?                       @db.VarChar(180)
+  phone                    String?                       @db.VarChar(30)
   origin                   SpecialCommissionMemberOrigin
   membership               CommissionMembershipType
-  doctorateTitle           String                        @db.VarChar(180)
-  institution              String                        @db.VarChar(180)
+  doctorateTitle           String?                       @db.VarChar(180)
+  institution              String?                       @db.VarChar(180)
   federalInstitution       Boolean
   careerLevel              String                        @db.VarChar(80)
-  knowledgeArea            String                        @db.VarChar(180)
+  knowledgeArea            String?                       @db.VarChar(180)
   relatedAreaJustification String?                       @db.VarChar(500)
-  priorConsentAt           DateTime
+  priorConsentAt           DateTime?
   createdAt                DateTime                      @default(now())
   process                  CareerProcess                 @relation(fields: [processId], references: [idProcess], onDelete: Restrict)
 
@@ -1030,14 +1063,14 @@ model RscAppeal {
 }
 
 model GoogleIdentity {
-  id           String    @id @default(cuid())
-  provider     String    @default("GOOGLE") @db.VarChar(20)
-  subject      String    @db.VarChar(255)
-  email        String    @db.VarChar(180)
-  userId       Int
-  createdAt    DateTime  @default(now())
-  deletedDate  DateTime?
-  user         User      @relation(fields: [userId], references: [idUser], onDelete: Restrict)
+  id          String    @id @default(cuid())
+  provider    String    @default("GOOGLE") @db.VarChar(20)
+  subject     String    @db.VarChar(255)
+  email       String    @db.VarChar(180)
+  userId      Int
+  createdAt   DateTime  @default(now())
+  deletedDate DateTime?
+  user        User      @relation(fields: [userId], references: [idUser], onDelete: Restrict)
 
   @@unique([provider, subject])
   @@unique([provider, userId])
@@ -1052,52 +1085,53 @@ enum AccessInvitationStatus {
 }
 
 model AccessInvitation {
-  campusId Int?
-  campus Campus? @relation(fields: [campusId], references: [idCampus], onDelete: SetNull)
-  id                    String                 @id @default(cuid())
-  email                 String                 @unique @db.VarChar(180)
-  name                  String                 @db.VarChar(120)
+  campusId              Int?
+  campus                Campus?                   @relation(fields: [campusId], references: [idCampus], onDelete: SetNull)
+  id                    String                    @id @default(cuid())
+  email                 String                    @unique @db.VarChar(180)
+  name                  String                    @db.VarChar(120)
   roles                 Json
-  institutionalExternal Boolean                @default(false)
-  status                AccessInvitationStatus @default(PENDING)
-  tokenHash             String?                @unique @db.VarChar(64)
+  institutionalExternal Boolean                   @default(false)
+  status                AccessInvitationStatus    @default(PENDING)
+  tokenHash             String?                   @unique @db.VarChar(64)
   expiresAt             DateTime
   createdById           Int
   userId                Int?
   reviewedById          Int?
   reviewedAt            DateTime?
-  deliveryError         String?                @db.VarChar(255)
+  deliveryError         String?                   @db.VarChar(255)
   deliveredAt           DateTime?
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
   deletedDate           DateTime?
   attempts              AccessAttempt[]
+  commissionInvites     SpecialCommissionInvite[]
 
   @@index([status, createdAt])
   @@map("access_invitation")
 }
 
 model AccessAttempt {
-  campusId Int?
-  campus Campus? @relation(fields: [campusId], references: [idCampus], onDelete: SetNull)
-  id                String            @id @default(cuid())
-  secretHash        String            @unique @db.VarChar(64)
-  email             String            @db.VarChar(180)
-  nonce             String            @db.VarChar(64)
-  invitationId      String?
-  userId            Int?
-  googleSubject     String?           @db.VarChar(255)
-  googleEmail       String?           @db.VarChar(180)
-  emailVerifiedAt   DateTime?
-  codeHash          String?           @db.VarChar(64)
-  codeAttempts      Int               @default(0)
-  codeSentAt        DateTime?
-  purpose           String            @default("LOGIN") @db.VarChar(20)
-  expiresAt         DateTime
-  consumedAt        DateTime?
-  createdAt         DateTime          @default(now())
-  deletedDate       DateTime?
-  invitation        AccessInvitation? @relation(fields: [invitationId], references: [id], onDelete: Restrict)
+  campusId        Int?
+  campus          Campus?           @relation(fields: [campusId], references: [idCampus], onDelete: SetNull)
+  id              String            @id @default(cuid())
+  secretHash      String            @unique @db.VarChar(64)
+  email           String            @db.VarChar(180)
+  nonce           String            @db.VarChar(64)
+  invitationId    String?
+  userId          Int?
+  googleSubject   String?           @db.VarChar(255)
+  googleEmail     String?           @db.VarChar(180)
+  emailVerifiedAt DateTime?
+  codeHash        String?           @db.VarChar(64)
+  codeAttempts    Int               @default(0)
+  codeSentAt      DateTime?
+  purpose         String            @default("LOGIN") @db.VarChar(20)
+  expiresAt       DateTime
+  consumedAt      DateTime?
+  createdAt       DateTime          @default(now())
+  deletedDate     DateTime?
+  invitation      AccessInvitation? @relation(fields: [invitationId], references: [id], onDelete: Restrict)
 
   @@index([expiresAt])
   @@map("access_attempt")
@@ -1113,17 +1147,18 @@ model AccessRateLimit {
 }
 
 model CampusEmailDomain {
-  id String @id @default(cuid())
-  campusId Int
-  domain String @db.VarChar(253)
-  includeSubdomains Boolean @default(true)
-  active Boolean @default(true)
-  createdById Int?
-  updatedById Int?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedDate DateTime?
-  campus Campus @relation(fields: [campusId], references: [idCampus], onDelete: Restrict)
+  id                String    @id @default(cuid())
+  campusId          Int
+  domain            String    @db.VarChar(253)
+  includeSubdomains Boolean   @default(true)
+  active            Boolean   @default(true)
+  createdById       Int?
+  updatedById       Int?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedDate       DateTime?
+  campus            Campus    @relation(fields: [campusId], references: [idCampus], onDelete: Restrict)
+
   @@unique([campusId, domain])
   @@index([campusId, active])
   @@map("campus_email_domain")

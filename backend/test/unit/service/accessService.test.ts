@@ -148,6 +148,22 @@ describe("Acesso autorizado e primeiro acesso", () => {
     expect(await service.status(monitor)).toMatchObject({ stage: "AUTHENTICATED", session: { selectedRole: RoleName.EXTERNAL_EVALUATOR } })
     await expect(service.status(monitor)).rejects.toMatchObject({ status: 401 })
   })
+  test("convite pela comissão reaproveita convite pendente e aprovação aciona a conversão da vaga", async () => {
+    const hook = jest.fn(async (_invitationId: string, _actorId: number) => 1)
+    const withHook = new AccessService(db, { verify }, async mail => { messages.push({ to: mail.to, text: mail.text ?? "" }) }, hook)
+    const first = await withHook.inviteExternalForCommission(cppd, { name: external.name, email: external.email, institutionalExternal: true, campusId: 1 })
+    expect(first).toMatchObject({ delivered: true, reused: false })
+    const again = await withHook.inviteExternalForCommission(cppd, { name: external.name, email: " Avaliador@Outra.edu.br ", campusId: 1 })
+    expect(again).toMatchObject({ id: first.id, reused: true })
+    expect(messages).toHaveLength(1)
+
+    const raw = messages.at(-1)!.text.match(/#convite=([a-f0-9]{64})/)![1]
+    const attempt = await withHook.start({ invitationToken: raw }, "test-client")
+    await withHook.completeGoogle(attempt.secret, "credential")
+    await withHook.completeRegistration(attempt.secret, profile)
+    await expect(withHook.approve(cppd, first.id)).resolves.toEqual({ approved: true, commissionSeats: 1 })
+    expect(hook).toHaveBeenCalledWith(first.id, cppd.id)
+  })
   test("duas conclusões simultâneas geram um usuário e um vínculo", async () => {
     const { attempt } = await registration()
     const result = await Promise.allSettled([service.completeRegistration(attempt.secret, profile), service.completeRegistration(attempt.secret, profile)])

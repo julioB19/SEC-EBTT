@@ -1,8 +1,8 @@
 import { describe, expect, jest, test, beforeEach } from "@jest/globals"
 import { prisma } from "../../../src/infra/prismaClient"
-import { assertSignedDecisionDocuments, assertTitularReady, validateNominees, CaseComplianceService } from "../../../src/service/caseComplianceService"
+import { assertSignedDecisionDocuments, assertTitularReady, validateNominees, validateNomineeDraft, CaseComplianceService, titularDocumentsFor } from "../../../src/service/caseComplianceService"
 
-jest.mock("../../../src/infra/prismaClient", () => ({ prisma: { signedProcessArtifact: { findMany: jest.fn() }, careerProcess: { findUnique: jest.fn(), findFirst: jest.fn() }, user: { findMany: jest.fn() } } }))
+jest.mock("../../../src/infra/prismaClient", () => ({ prisma: { processScore: { count: jest.fn() }, signedProcessArtifact: { findMany: jest.fn() }, careerProcess: { findUnique: jest.fn(), findFirst: jest.fn() }, user: { findMany: jest.fn() } } }))
 function nominees() {
   return Array.from({length:7},(_,i)=>({ name:`Indicado ${i}`,email:`indicado${i}@instituicao.edu.br`,phone:"55999999999",origin:i<5?"EXTERNAL":"INTERNAL",membership:i<3||i===5?"PRIMARY":"SUBSTITUTE",doctorateTitle:"Doutor em Educação",institution:"Instituição Federal",federalInstitution:true,careerLevel:"C4",knowledgeArea:"Educação",sameKnowledgeArea:true,priorConsentAt:"2026-01-01" }))
 }
@@ -34,7 +34,7 @@ describe("Indicados e documentos que autorizam a decisão",()=>{
   await expect(assertSignedDecisionDocuments(1,"FULL_PROFESSOR",commission)).rejects.toThrow("presidente")
  })
  test("Titular não pode seguir sem desempenho, indicação e validação pela CPPD",async()=>{
-  const process:any={fullProfessorDetail:{evaluationMode:"MEMORIAL",doctorateDegree:{countryCode:"BR",evidenceFileId:1,degreeType:"DOCTORATE",teacherId:1}},nominees:nominees(),user:{email:"docente@iffarroupilha.edu.br",docente:{idDocente:1}},compliance:{performanceFileId:1,claimedPerformancePoints:120,titularAdmissionDate:new Date("2015-01-01"),titularWorkRegime:"Dedicação exclusiva",titularCompetitionArea:"Educação"}}
+  const process:any={fullProfessorDetail:{evaluationMode:"MEMORIAL",doctorateDegree:{countryCode:"BR",evidenceFileId:1,degreeType:"DOCTORATE",teacherId:1}},nominees:nominees(),user:{email:"docente@iffarroupilha.edu.br",docente:{idDocente:1}},compliance:{titularAdmissionDate:new Date("2015-01-01"),titularWorkRegime:"Dedicação exclusiva",titularCompetitionArea:"Educação"}}
   ;(prisma.careerProcess.findUnique as jest.Mock).mockResolvedValue(process as never)
   await expect(assertTitularReady(1,"SUBMIT")).resolves.toEqual(process)
   await expect(assertTitularReady(1,"ACTIVATE")).rejects.toThrow("CPPD")
@@ -42,6 +42,16 @@ describe("Indicados e documentos que autorizam a decisão",()=>{
   await expect(assertTitularReady(1,"ACTIVATE")).resolves.toEqual(process)
   process.fullProfessorDetail.doctorateDegree.countryCode="PT"
   await expect(assertTitularReady(1,"SUBMIT")).rejects.toThrow("reconhecimento")
+ })
+ test("Titular sem dados do requerimento não segue; o desempenho vem da planilha de pontuação",async()=>{
+  const process:any={fullProfessorDetail:{evaluationMode:"MEMORIAL",doctorateDegree:{countryCode:"BR",evidenceFileId:1,degreeType:"DOCTORATE",teacherId:1}},nominees:nominees(),user:{email:"docente@iffarroupilha.edu.br",docente:{idDocente:1}},compliance:null}
+  ;(prisma.careerProcess.findUnique as jest.Mock).mockResolvedValue(process as never)
+  await expect(assertTitularReady(1,"SUBMIT")).rejects.toThrow("dados do requerimento")
+ })
+ test("docente gera apenas requerimento e lista de indicados; pareceres e atas ficam com CPPD e banca",()=>{
+  expect(titularDocumentsFor("APPLICANT","MEMORIAL",false)).toEqual(["APPLICATION","NOMINEES"])
+  expect(titularDocumentsFor("APPLICANT","THESIS",true)).toEqual(["APPLICATION","NOMINEES","THESIS_ORIGINALITY","TITULAR_APPEAL"])
+  expect(titularDocumentsFor("STAFF","MEMORIAL",false)).toEqual(["APPLICATION","NOMINEES","CPPD_ELIGIBILITY_OPINION","PRESIDENT_OPINION","CONSOLIDATED_OPINION","MEMORIAL_DEFENSE_MINUTES"])
  })
  test("avaliador sem aceite não acessa o processo e suas assinaturas",async()=>{
   (prisma.careerProcess.findFirst as jest.Mock).mockResolvedValue({idProcess:1,userId:1,specialCommissions:[{status:"ACTIVE",members:[{acceptanceStatus:"PENDING",person:{users:[{idUser:2,active:true}]}}]}]} as never)
@@ -79,9 +89,35 @@ describe("Responsáveis no histórico documental", () => {
     jest.spyOn(service, "context").mockResolvedValue({ ...processWithAudits(), audits: [],
       processTypeConfig: { category: "FULL_PROFESSOR" }, fullProfessorDetail: { evaluationMode },
     } as never)
+    ;(prisma.processScore.count as jest.Mock).mockResolvedValue(3 as never)
     const data = await service.get(15, { userId: 4, role: "DOCENTE" })
-    expect(data.documents).toContain(evaluationMode === "THESIS" ? "THESIS_DEFENSE_MINUTES" : "MEMORIAL_DEFENSE_MINUTES")
-    expect(data.documents).not.toContain(evaluationMode === "THESIS" ? "MEMORIAL_DEFENSE_MINUTES" : "THESIS_DEFENSE_MINUTES")
+    expect(data.hasScores).toBe(true)
+    // O docente não gera atas nem pareceres; só o que ele mesmo assina.
+    expect(data.documents).not.toContain("THESIS_DEFENSE_MINUTES")
+    expect(data.documents).not.toContain("MEMORIAL_DEFENSE_MINUTES")
     expect(data.documents.includes("THESIS_ORIGINALITY")).toBe(evaluationMode === "THESIS")
+    const staff = titularDocumentsFor("STAFF", evaluationMode, false)
+    expect(staff).toContain(evaluationMode === "THESIS" ? "THESIS_DEFENSE_MINUTES" : "MEMORIAL_DEFENSE_MINUTES")
+    expect(staff).not.toContain(evaluationMode === "THESIS" ? "MEMORIAL_DEFENSE_MINUTES" : "THESIS_DEFENSE_MINUTES")
   })
+})
+
+describe("Rascunho da lista de indicados",()=>{
+ test("salva só os indicados já iniciados, mesmo incompletos",()=>{
+  const values:any[]=nominees().map((value,i)=>i===0?value:i===3?{origin:value.origin,membership:value.membership,name:"Fulana",email:"",careerLevel:"C4",sameKnowledgeArea:true,priorConsentAt:""}:{origin:value.origin,membership:value.membership,name:"",email:"",careerLevel:"C4",sameKnowledgeArea:true,priorConsentAt:""})
+  const saved=validateNomineeDraft(values)
+  expect(saved).toHaveLength(2)
+  expect(saved[1]).toMatchObject({name:"Fulana",email:null,phone:null,priorConsentAt:null,membership:"SUBSTITUTE"})
+ })
+ test("exige nome e mantém as regras de e-mail, data e composição",()=>{
+  expect(()=>validateNomineeDraft([{origin:"EXTERNAL",membership:"PRIMARY",name:"",email:"a@b.br"}])).toThrow("nome")
+  expect(()=>validateNomineeDraft([{origin:"EXTERNAL",membership:"PRIMARY",name:"A",email:"req@b.br"}],"req@b.br")).toThrow()
+  expect(()=>validateNomineeDraft([{origin:"EXTERNAL",membership:"PRIMARY",name:"A",priorConsentAt:"2999-01-01"}])).toThrow()
+  expect(()=>validateNomineeDraft([1,2].map(i=>({origin:"INTERNAL",membership:"PRIMARY",name:`A${i}`})))).toThrow("3+2+1+1")
+ })
+ test("a lista parcial não passa na validação completa exigida no envio",()=>{
+  const partial=nominees().map((value,i)=>i===6?{...value,phone:null,priorConsentAt:null}:value)
+  expect(()=>validateNominees(partial)).toThrow()
+  expect(()=>validateNominees(nominees().slice(0,6))).toThrow("Complete a lista")
+ })
 })

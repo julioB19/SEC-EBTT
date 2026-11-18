@@ -4,7 +4,7 @@ import { clientFetch as fetch } from "@/lib/clientFetch"
 import FormInput from "@/components/ui/FormInput"
 import ActionButton from "@/components/ui/ActionButton"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 
 export type ProcessEvidenceFile = {
   idEvidenceFile: number
@@ -52,7 +52,6 @@ type DocumentKind =
   | "RSC_REPORT"
   | "FULL_PROFESSOR_MEMORIAL"
   | "FULL_PROFESSOR_THESIS"
-  | "DOCTORATE_DEGREE"
 
 function formatFileSize(size: number | null) {
   if (!size) return ""
@@ -89,16 +88,6 @@ export default function SpecificProcessDocuments<TProcess>({
 }: Props<TProcess>) {
   const [files, setFiles] = useState<Partial<Record<DocumentKind, File>>>({})
   const [uploading, setUploading] = useState<DocumentKind | null>(null)
-  const [course, setCourse] = useState("")
-  const [institution, setInstitution] = useState("")
-  const [conclusionDate, setConclusionDate] = useState("")
-
-  useEffect(() => {
-    const degree = fullProfessorDetails?.doctorateDegree
-    setCourse(degree?.course ?? "")
-    setInstitution(degree?.institution ?? "")
-    setConclusionDate(degree?.conclusionDate?.slice(0, 10) ?? "")
-  }, [fullProfessorDetails?.doctorateDegree])
 
   if (category !== "RSC" && category !== "FULL_PROFESSOR") return null
 
@@ -113,25 +102,8 @@ export default function SpecificProcessDocuments<TProcess>({
       return
     }
 
-    if (
-      kind === "DOCTORATE_DEGREE" &&
-      (!course.trim() || !institution.trim() || !conclusionDate)
-    ) {
-      notify({
-        title: "Dados incompletos",
-        message: "Informe o curso, a instituição e a data de conclusão do doutorado.",
-        variant: "error"
-      })
-      return
-    }
-
     const formData = new FormData()
     formData.append("file", file)
-    if (kind === "DOCTORATE_DEGREE") {
-      formData.append("course", course.trim())
-      formData.append("institution", institution.trim())
-      formData.append("conclusionDate", conclusionDate)
-    }
 
     setUploading(kind)
     try {
@@ -244,50 +216,23 @@ export default function SpecificProcessDocuments<TProcess>({
             }
           />
 
-          <div className="border-t border-[var(--border-subtle)] pt-4 space-y-3">
-            <div>
-              <h3 className="text-sm font-medium text-[var(--text-primary)]">
-                Doutorado
-              </h3>
-              <p className="text-xs text-[var(--text-muted)]">
-                O diploma e a data de conclusão são obrigatórios para o envio.
-              </p>
-            </div>
-            <div className="grid md:grid-cols-3 gap-3">
-              <label className="flex flex-col gap-1 text-xs text-[var(--text-secondary)]">
-                Curso
-                <FormInput
-                  value={course}
-                  onChange={event => setCourse(event.target.value)}
-                  disabled={!editable}
-                  className="rounded-md border border-[var(--input-border)] bg-[var(--input-bg)] p-2 text-sm text-[var(--text-primary)] disabled:opacity-70"
-                 disabledReason={(!editable) ? "Os dados só podem ser alterados enquanto o processo estiver em rascunho ou devolvido." : "Este controle está indisponível na etapa atual."}  aria-label="Curso" />
-              </label>
-              <label className="flex flex-col gap-1 text-xs text-[var(--text-secondary)]">
-                Instituição
-                <FormInput
-                  value={institution}
-                  onChange={event => setInstitution(event.target.value)}
-                  disabled={!editable}
-                  className="rounded-md border border-[var(--input-border)] bg-[var(--input-bg)] p-2 text-sm text-[var(--text-primary)] disabled:opacity-70"
-                 disabledReason={(!editable) ? "Os dados só podem ser alterados enquanto o processo estiver em rascunho ou devolvido." : "Este controle está indisponível na etapa atual."}  aria-label="Instituição" />
-              </label>
-              <label className="flex flex-col gap-1 text-xs text-[var(--text-secondary)]">
-                Conclusão
-                <FormInput
-                  type="date"
-                  value={conclusionDate}
-                  onChange={event => setConclusionDate(event.target.value)}
-                  disabled={!editable}
-                  className="rounded-md border border-[var(--input-border)] bg-[var(--input-bg)] p-2 text-sm text-[var(--text-primary)] disabled:opacity-70"
-                 disabledReason={(!editable) ? "Os dados só podem ser alterados enquanto o processo estiver em rascunho ou devolvido." : "Este controle está indisponível na etapa atual."}  aria-label="Conclusão" />
-              </label>
-            </div>
-            <UploadControl
-              kind="DOCTORATE_DEGREE"
-              label="Diploma de doutorado"
-              currentFile={fullProfessorDetails.doctorateDegree?.evidenceFile ?? null}
-            />
+          <div className="border-t border-[var(--border-subtle)] pt-4 space-y-1">
+            <h3 className="text-sm font-medium text-[var(--text-primary)]">
+              Doutorado
+            </h3>
+            <p className="text-xs text-[var(--text-muted)]">
+              O doutorado é escolhido em Avaliação de desempenho e doutorado, a partir das titulações do perfil.
+            </p>
+            {fullProfessorDetails.doctorateDegree ? (
+              <div className="text-sm text-[var(--text-secondary)]">
+                {fullProfessorDetails.doctorateDegree.course}
+                {fullProfessorDetails.doctorateDegree.institution ? ` · ${fullProfessorDetails.doctorateDegree.institution}` : ""}
+                {" · "}
+                <FileLink file={fullProfessorDetails.doctorateDegree.evidenceFile} />
+              </div>
+            ) : (
+              <span className="text-xs text-[var(--text-muted)]">Nenhum doutorado selecionado.</span>
+            )}
           </div>
         </div>
       )}

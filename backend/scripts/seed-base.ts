@@ -351,7 +351,7 @@ export async function seedBase(client: PrismaClient, options: { preserveExisting
       code: "FULL_PROFESSOR",
       name: "Full Professor",
       category: ProcessTypeCategory.FULL_PROFESSOR,
-      requiresScoring: false,
+      requiresScoring: true,
       requiresCommittee: true
     }
   ]

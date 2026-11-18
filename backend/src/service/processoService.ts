@@ -716,10 +716,13 @@ export class ProcessoService {
     processTypeCode: string,
   ): ScoringTablePurpose {
     if (processTypeCode === "RSC") return ScoringTablePurpose.RSC;
-    if (processTypeCode === "FULL_PROFESSOR") {
-      return ScoringTablePurpose.FULL_PROFESSOR_EVALUATION;
-    }
-    if (processTypeCode === "PROGRESSION" || processTypeCode === "PROMOTION") {
+    // A CPPD/IFFar publica a mesma planilha para Progressão/Promoção e para o
+    // formulário de avaliação de desempenho da Classe Titular (mínimo de 120 pontos).
+    if (
+      processTypeCode === "PROGRESSION" ||
+      processTypeCode === "PROMOTION" ||
+      processTypeCode === "FULL_PROFESSOR"
+    ) {
       return ScoringTablePurpose.PROGRESSION_PROMOTION;
     }
 

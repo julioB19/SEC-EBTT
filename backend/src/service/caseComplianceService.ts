@@ -16,7 +16,7 @@ const finalStatuses = new Set(["APPROVED", "REJECTED", "FINALIZED"])
 const signedKinds = new Set(["INDIVIDUAL_OPINION", "CONSOLIDATED_OPINION", "PRESIDENT_OPINION", "MEMORIAL_DEFENSE_MINUTES", "THESIS_DEFENSE_MINUTES", "THESIS_ORIGINALITY", "CPPD_ELIGIBILITY_OPINION", "CPRSC_DECISION"])
 
 export function validateNominees(values: any[], applicantEmail?: string) {
-  if (!Array.isArray(values) || values.length !== 7) throw new BusinessRuleError("Indique exatamente sete docentes: 3 externos titulares, 2 externos suplentes, 1 interno titular e 1 interno suplente")
+  if (!Array.isArray(values) || values.length !== 7) throw new BusinessRuleError("Complete a lista com exatamente sete indicados: 3 externos titulares, 2 externos suplentes, 1 interno titular e 1 interno suplente")
   const seen = new Set<string>()
   const counts: Record<string, number> = {}
   return values.map(value => {
@@ -29,13 +29,61 @@ export function validateNominees(values: any[], applicantEmail?: string) {
     counts[`${origin}_${membership}`] = (counts[`${origin}_${membership}`] ?? 0) + 1
     if (!value.doctorateTitle || value.federalInstitution !== true || !["C4", "D1", "EQUIVALENT_TITULAR"].includes(value.careerLevel)) throw new BusinessRuleError("Cada indicado deve ser doutor, vinculado a instituição federal e ocupar nível elegível da carreira")
     if (!value.knowledgeArea?.trim() || (value.sameKnowledgeArea !== true && !value.relatedAreaJustification?.trim())) throw new BusinessRuleError("Informe a área de conhecimento e justifique eventual área afim")
-    const priorConsentAt = new Date(value.priorConsentAt)
-    if (!Number.isFinite(priorConsentAt.getTime()) || priorConsentAt > new Date()) throw new BusinessRuleError("Registre a ciência prévia de todos os indicados")
+    const priorConsentAt = new Date(value.priorConsentAt ?? "")
+    if (!value.priorConsentAt || !Number.isFinite(priorConsentAt.getTime()) || priorConsentAt > new Date()) throw new BusinessRuleError("Registre a ciência prévia de todos os indicados")
     for (const key of ["name", "phone", "institution"]) if (!String(value[key] ?? "").trim()) throw new BusinessRuleError("Informe nome, telefone e instituição de todos os indicados")
     return { name: String(value.name).trim(), email, phone: String(value.phone).trim(), origin, membership, doctorateTitle: String(value.doctorateTitle).trim(), institution: String(value.institution).trim(), federalInstitution: true, careerLevel: value.careerLevel, knowledgeArea: String(value.knowledgeArea).trim(), relatedAreaJustification: value.sameKnowledgeArea === true ? null : String(value.relatedAreaJustification).trim(), priorConsentAt }
   }).filter((value, index, values) => {
     if (index === values.length - 1 && (counts.EXTERNAL_PRIMARY !== 3 || counts.EXTERNAL_SUBSTITUTE !== 2 || counts.INTERNAL_PRIMARY !== 1 || counts.INTERNAL_SUBSTITUTE !== 1)) throw new BusinessRuleError("A composição dos sete indicados deve respeitar 3+2+1+1")
     return Boolean(value)
+  })
+}
+
+/**
+ * Documentos de Classe Titular que cada perfil pode gerar. O docente gera apenas o requerimento e a lista
+ * dos sete indicados (a planilha de pontuação e os comprovantes vêm da tela de pontuação), além dos
+ * documentos que ele próprio assina (declaração de ineditismo da tese e requerimento de recurso). Pareceres
+ * e atas do rito são gerados pela CPPD ou pela comissão especial.
+ */
+export const applicantTitularDocuments = new Set(["APPLICATION", "NOMINEES", "THESIS_ORIGINALITY", "TITULAR_APPEAL"])
+export function titularDocumentsFor(audience: "APPLICANT" | "STAFF", evaluationMode: string | null | undefined, includeAppeal: boolean) {
+  const all = ["APPLICATION", "NOMINEES", "CPPD_ELIGIBILITY_OPINION", "PRESIDENT_OPINION", "CONSOLIDATED_OPINION",
+    ...(evaluationMode === "THESIS" ? ["THESIS_DEFENSE_MINUTES", "THESIS_ORIGINALITY"] : ["MEMORIAL_DEFENSE_MINUTES"]),
+    ...(includeAppeal ? ["TITULAR_APPEAL"] : [])]
+  return audience === "APPLICANT" ? all.filter(kind => applicantTitularDocuments.has(kind)) : all
+}
+
+const nomineeSlots: Record<string, number> = { EXTERNAL_PRIMARY: 3, EXTERNAL_SUBSTITUTE: 2, INTERNAL_PRIMARY: 1, INTERNAL_SUBSTITUTE: 1 }
+const nomineeTextFields: [string, number, string][] = [["name", 120, "nome"], ["email", 180, "e-mail"], ["phone", 30, "telefone"], ["doctorateTitle", 180, "título de doutorado"], ["institution", 180, "instituição"], ["knowledgeArea", 180, "área de conhecimento"], ["relatedAreaJustification", 500, "justificativa da área afim"]]
+
+/** Rascunho da lista: aceita indicados ainda incompletos; a lista completa é exigida por validateNominees no envio e na conferência. */
+export function validateNomineeDraft(values: any[], applicantEmail?: string) {
+  if (!Array.isArray(values) || values.length > 7) throw new BusinessRuleError("A lista comporta no máximo sete indicados")
+  const seen = new Set<string>()
+  const counts: Record<string, number> = {}
+  const text = (value: any, key: string) => String(value?.[key] ?? "").trim()
+  return values.filter(value => nomineeTextFields.some(([key]) => key !== "relatedAreaJustification" && text(value, key)) || String(value?.priorConsentAt ?? "").trim()).map(value => {
+    const origin = value.origin
+    const membership = value.membership
+    if (!["INTERNAL", "EXTERNAL"].includes(origin) || !["PRIMARY", "SUBSTITUTE"].includes(membership)) throw new BusinessRuleError("Origem ou titularidade inválida")
+    const slot = `${origin}_${membership}`
+    counts[slot] = (counts[slot] ?? 0) + 1
+    if (counts[slot] > nomineeSlots[slot]) throw new BusinessRuleError("A composição dos sete indicados deve respeitar 3+2+1+1")
+    for (const [key, limit, label] of nomineeTextFields) if (text(value, key).length > limit) throw new BusinessRuleError(`Informe ${label} com até ${limit} caracteres`)
+    const name = text(value, "name")
+    if (!name) throw new BusinessRuleError("Informe ao menos o nome de cada indicado que deseja salvar")
+    const email = text(value, "email").toLowerCase()
+    if (email && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || seen.has(email) || email === applicantEmail?.toLowerCase())) throw new BusinessRuleError("Os indicados devem ter e-mails válidos, distintos e diferentes do requerente")
+    if (email) seen.add(email)
+    const careerLevel = value.careerLevel || "C4"
+    if (!["C4", "D1", "EQUIVALENT_TITULAR"].includes(careerLevel)) throw new BusinessRuleError("Posição na carreira inválida")
+    let priorConsentAt: Date | null = null
+    if (String(value.priorConsentAt ?? "").trim()) {
+      priorConsentAt = new Date(value.priorConsentAt)
+      if (!Number.isFinite(priorConsentAt.getTime()) || priorConsentAt > new Date()) throw new BusinessRuleError("A data da ciência prévia deve ser uma data válida que já ocorreu")
+    }
+    const optional = (key: string) => text(value, key) || null
+    return { name, email: email || null, phone: optional("phone"), origin, membership, doctorateTitle: optional("doctorateTitle"), institution: optional("institution"), federalInstitution: value.federalInstitution === true, careerLevel, knowledgeArea: optional("knowledgeArea"), relatedAreaJustification: value.sameKnowledgeArea === false ? optional("relatedAreaJustification") : null, priorConsentAt }
   })
 }
 
@@ -79,15 +127,14 @@ export class CaseComplianceService {
       processId, category: process.processTypeConfig?.category, status: process.status,
       evaluationMode: process.fullProfessorDetail?.evaluationMode, financialEffectsAt: process.financialEffectsAt, compliance: process.compliance,
       members: process.specialCommissions.filter(value => value.status !== "CANCELED").slice(0, 1).flatMap(value => value.members.map(member => ({ id: member.idSpecialCommissionMember, name: member.person.name, result: member.individualEvaluations[0]?.result, evaluationStatus: member.individualEvaluations[0]?.status ?? null }))),
-      doctorate: process.fullProfessorDetail?.doctorateDegree ? { id: process.fullProfessorDetail.doctorateDegree.idTeacherDegree, course: process.fullProfessorDetail.doctorateDegree.course, countryCode: process.fullProfessorDetail.doctorateDegree.countryCode } : null,
+      doctorate: process.fullProfessorDetail?.doctorateDegree ? { id: process.fullProfessorDetail.doctorateDegree.idTeacherDegree, course: process.fullProfessorDetail.doctorateDegree.course, institution: process.fullProfessorDetail.doctorateDegree.institution, conclusionDate: process.fullProfessorDetail.doctorateDegree.conclusionDate, countryCode: process.fullProfessorDetail.doctorateDegree.countryCode, evidenceFileId: process.fullProfessorDetail.doctorateDegree.evidenceFileId, recognitionFileId: process.fullProfessorDetail.doctorateDegree.recognitionFileId } : null,
+      hasScores: process.processTypeConfig?.category === "FULL_PROFESSOR" ? await prisma.processScore.count({ where: { processId, deletedDate: null } }) > 0 : false,
       nominees: applicant || reviewer ? process.nominees : [],
       signatures: process.signedArtifacts.map(({ evidenceFile, ...artifact }) => ({ ...artifact, fileName: evidenceFile.originalName })),
       appeals: applicant || reviewer ? process.rscAppeals : [], audits: auditEvents.map(event => ({ ...event, actor: actorsById.get(event.actorId) ?? null })),
       canEdit: applicant && ["DRAFT", "RETURNED"].includes(process.status), canReview: reviewer && !finalStatuses.has(process.status),
       documents: process.processTypeConfig?.category === "CAREER" ? [] : process.processTypeConfig?.category === "FULL_PROFESSOR"
-        ? ["APPLICATION", "PERFORMANCE", "NOMINEES", "CPPD_ELIGIBILITY_OPINION", "PRESIDENT_OPINION", "CONSOLIDATED_OPINION",
-          ...(process.fullProfessorDetail?.evaluationMode === "THESIS" ? ["THESIS_DEFENSE_MINUTES", "THESIS_ORIGINALITY"] : ["MEMORIAL_DEFENSE_MINUTES"]),
-          ...((applicant || reviewer) && process.fullProfessorDetail?.appealSubmittedAt ? ["TITULAR_APPEAL"] : [])]
+        ? titularDocumentsFor(applicant && !reviewer ? "APPLICANT" : "STAFF", process.fullProfessorDetail?.evaluationMode, (applicant || reviewer) && Boolean(process.fullProfessorDetail?.appealSubmittedAt))
         : ["APPLICATION", "PERFORMANCE", "CONSOLIDATED_OPINION"]
     }
   }
@@ -99,7 +146,7 @@ export class CaseComplianceService {
     const applicant = actor.role === RoleName.DOCENTE && process.userId === actor.userId
     const editing = applicant && ["DRAFT", "RETURNED"].includes(process.status)
     const changes: Prisma.ProcessComplianceUncheckedUpdateInput = {}
-    let nominees: ReturnType<typeof validateNominees> | undefined
+    let nominees: ReturnType<typeof validateNomineeDraft> | undefined
     let selectedDoctorate: number | undefined
     switch (input.action) {
       case "SAVE_TITULAR_APPLICATION": {
@@ -118,34 +165,27 @@ export class CaseComplianceService {
         if (!editing || !process.fullProfessorDetail) throw new BusinessRuleError("Selecione o diploma no rascunho de Classe Titular")
         const degree = await prisma.teacherDegree.findFirst({ where: { idTeacherDegree: Number(input.degreeId), teacher: { userId: actor.userId }, degreeType: { in: ["DOCTORATE", "DOUTORADO"] } } })
         if (!degree?.evidenceFileId) throw new BusinessRuleError("Doutorado comprovado do docente não encontrado")
+        if (!degree.conclusionDate) throw new BusinessRuleError("Informe a data de conclusão do doutorado no perfil antes de selecioná-lo")
         selectedDoctorate = degree.idTeacherDegree
         changes.doctorateValidatedAt = null
         break
       }
       case "SAVE_NOMINEES":
         if (!editing || process.processTypeConfig?.category !== "FULL_PROFESSOR") throw new BusinessRuleError("A lista de indicados só pode ser alterada pelo docente no rascunho")
-        nominees = validateNominees(input.nominees, process.user.email)
+        nominees = validateNomineeDraft(input.nominees, process.user.email)
         changes.nomineesValidatedAt = null
         break
       case "DECLARE_ORIGINALITY":
         if (!editing || process.fullProfessorDetail?.evaluationMode !== "THESIS" || input.accepted !== true) throw new BusinessRuleError("Confirme a declaração de ineditismo da tese no rascunho")
         changes.thesisOriginalityDeclaredAt = new Date()
         break
-      case "SET_PERFORMANCE_CLAIM": {
-        if (!editing || process.processTypeConfig?.category !== "FULL_PROFESSOR") throw new BusinessRuleError("Informe o desempenho no rascunho da Classe Titular")
-        const points = Number(input.points)
-        if (!Number.isFinite(points) || points < 120) throw new BusinessRuleError("A avaliação de desempenho exige pelo menos 120 pontos")
-        const file = await this.ownedPdf(Number(input.evidenceFileId), actor.userId)
-        changes.claimedPerformancePoints = points
-        changes.performanceFileId = file.idEvidenceFile
-        changes.performanceApprovedAt = null
-        break
-      }
       case "REVIEW_ELIGIBILITY": {
         if (!reviewer || process.processTypeConfig?.category !== "FULL_PROFESSOR" || !["SUBMITTED", "UNDER_REVIEW", "AWAITING_EVALUATOR_ACCEPTANCE", "AWAITING_ORDINANCE"].includes(process.status)) throw new BusinessRuleError("A análise prévia deve ser registrada pela CPPD antes da ativação da comissão")
         const points = Number(input.points)
         const date = this.pastDate(input.requirementsMetAt, "Data de cumprimento dos requisitos de desempenho")
-        if (!process.compliance?.performanceFileId || !Number.isFinite(points) || points < 120 || !input.opinion?.trim()) throw new BusinessRuleError("Analise o documento de desempenho, registre ao menos 120 pontos e emita o parecer")
+        // A avaliação de desempenho é a planilha de pontuação (a mesma de Progressão/Promoção) enviada com o processo.
+        const hasPerformanceEvidence = Boolean(process.compliance?.performanceFileId) || await prisma.processScore.count({ where: { processId, deletedDate: null } }) > 0
+        if (!hasPerformanceEvidence || !Number.isFinite(points) || points < 120 || !input.opinion?.trim()) throw new BusinessRuleError("Analise a planilha de pontuação do desempenho, registre ao menos 120 pontos e emita o parecer")
         const degree = process.fullProfessorDetail?.doctorateDegree
         if (!degree?.evidenceFileId || !degree.conclusionDate || (degree.countryCode !== "BR" && !degree.recognitionFileId)) throw new BusinessRuleError("Valide o diploma e, quando estrangeiro, seu reconhecimento nacional")
         if (input.doctorateApproved !== true) throw new BusinessRuleError("A CPPD precisa aprovar o título de doutor")
@@ -178,7 +218,7 @@ export class CaseComplianceService {
       if (selectedDoctorate) await tx.fullProfessorProcessDetail.update({ where: { processId }, data: { doctorateDegreeId: selectedDoctorate } })
       if (nominees) {
         await tx.$executeRaw`DELETE FROM process_nominee WHERE processId = ${processId}`
-        await tx.processNominee.createMany({ data: nominees.map(value => ({ ...value, processId })) })
+        if (nominees.length) await tx.processNominee.createMany({ data: nominees.map(value => ({ ...value, processId })) })
       }
       await tx.processCompliance.upsert({ where: { processId }, create: { processId, ...changes } as Prisma.ProcessComplianceUncheckedCreateInput, update: changes })
       await tx.processAudit.create({ data: { processId, actorId: actor.userId, action: input.action, details: { previousCompliance: process.compliance ? JSON.parse(JSON.stringify(process.compliance)) : null, previousNominees: nominees ? JSON.parse(JSON.stringify(process.nominees)) : undefined, ...input } } })
@@ -289,7 +329,8 @@ export async function assertTitularReady(processId: number, phase: "SUBMIT" | "A
   const process = await prisma.careerProcess.findUnique({ where: { idProcess: processId }, include: { compliance: true, nominees: { where: { deletedDate: null } }, user: { include: { docente: true } }, fullProfessorDetail: { include: { doctorateDegree: true } }, signedArtifacts: true } })
   if (!process?.fullProfessorDetail) throw new BusinessRuleError("Processo de Classe Titular incompleto")
   const compliance = process.compliance
-  if (!compliance?.performanceFileId || Number(compliance.claimedPerformancePoints) < 120) throw new BusinessRuleError("Anexe a avaliação de desempenho com pelo menos 120 pontos antes do envio")
+  // O mínimo de 120 pontos da avaliação de desempenho é conferido pela planilha de pontuação no envio.
+  if (!compliance) throw new BusinessRuleError("Preencha os dados do requerimento: data de admissão, regime de trabalho e área de concurso")
   if (phase === "SUBMIT" && (!compliance.titularAdmissionDate || !compliance.titularWorkRegime || !compliance.titularCompetitionArea)) {
     throw new BusinessRuleError("Preencha os dados do requerimento: data de admissão, regime de trabalho e área de concurso")
   }

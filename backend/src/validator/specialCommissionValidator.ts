@@ -11,6 +11,13 @@ export const addSpecialCommissionMemberSchema = Joi.object({
   role: Joi.string().valid("PRESIDENT", "MEMBER", "PRIMARY", "SUBSTITUTE").default("MEMBER")
 })
 
+export const inviteSpecialCommissionMemberSchema = Joi.object({
+  email: Joi.string().trim().lowercase().email().max(180).required(),
+  name: Joi.string().trim().min(3).max(120).required(),
+  role: Joi.string().valid("MEMBER", "PRIMARY").default("MEMBER"),
+  institutionalExternal: Joi.boolean().default(false)
+})
+
 export const updateSpecialCommissionStatusSchema = Joi.object({
   status: Joi.string().valid("ACTIVE", "COMPLETED", "CANCELED").required()
 })

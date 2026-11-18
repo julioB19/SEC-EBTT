@@ -5,10 +5,13 @@ import {
   ProcessTypeCategory,
   RoleName,
   SpecialCommissionMemberOrigin,
+  SpecialCommissionInviteStatus,
   SpecialCommissionMemberRole,
   SpecialCommissionType
 } from "@prisma/client"
 import { SpecialCommissionRepository } from "../repository/specialCommissionRepository"
+import { AccessService } from "./accessService"
+import { AccessError } from "../util/accessPolicy"
 import { BusinessRuleError, NotFoundError } from "./processoService"
 import { FullProfessorProcedureService } from "./fullProfessorProcedureService"
 import { assertTitularReady, assertSignedDecisionDocuments, calculateTitularEffects } from "./caseComplianceService"
@@ -17,6 +20,7 @@ import { addCalendarDaysFromDateLabel } from "../util/proceduralDeadline"
 import {
   AddSpecialCommissionMemberDto,
   FinalizeSpecialCommissionDecisionDto,
+  InviteSpecialCommissionMemberDto,
   RespondSpecialCommissionInvitationDto,
   SaveSpecialCommissionDto,
   UpdateSpecialCommissionStatusDto
@@ -38,7 +42,19 @@ export class SpecialCommissionService {
 
   async getForProcess(processId: number) {
     const process = await this.getEligibleProcess(processId)
-    const commission = await this.repository.findCurrentByProcess(processId)
+    let commission = await this.repository.findCurrentByProcess(processId)
+    // Recupera conversões que não ocorreram no momento da aprovação do cadastro.
+    const approved = (commission?.invites ?? []).filter((invite: any) => invite.accessInvitation?.status === "ACCEPTED")
+    if (approved.length) {
+      for (const invite of approved) {
+        try {
+          await this.convertInvite({ ...invite, specialCommission: commission }, invite.createdById)
+        } catch (error) {
+          console.error(`Falha ao converter a vaga reservada ${invite.idSpecialCommissionInvite}:`, error)
+        }
+      }
+      commission = await this.repository.findCurrentByProcess(processId)
+    }
     return this.mapProcessResult(process, commission)
   }
 
@@ -75,47 +91,24 @@ export class SpecialCommissionService {
 
     const email = dto.email.trim().toLowerCase()
     const origin = dto.origin ?? SpecialCommissionMemberOrigin.EXTERNAL
+    const role = dto.role ?? SpecialCommissionMemberRole.MEMBER
     const evaluator = origin === SpecialCommissionMemberOrigin.INTERNAL
       ? await this.repository.findInternalEvaluatorByEmail(email)
       : await this.repository.findExternalEvaluatorByEmail(email)
     if (!evaluator?.personId || !evaluator.person) {
-      throw new NotFoundError(
-        origin === SpecialCommissionMemberOrigin.INTERNAL
-          ? "Avaliador interno não encontrado para o e-mail informado"
-          : "Avaliador externo não encontrado para o e-mail informado"
-      )
+      if (origin === SpecialCommissionMemberOrigin.EXTERNAL) {
+        this.assertNoWaitingInvite(commission, email)
+        // O código permite que a tela ofereça o convite com reserva de vaga.
+        throw new BusinessRuleError(
+          "Avaliador externo sem cadastro aprovado para o e-mail informado. Você pode convidá-lo e reservar a vaga",
+          { code: "EVALUATOR_NOT_FOUND", email }
+        )
+      }
+      throw new NotFoundError("Avaliador interno não encontrado para o e-mail informado")
     }
+    this.assertNoWaitingInvite(commission, email)
+    await this.assertSeatRules(process, commission, { origin, role, email, personIds: [evaluator.personId] })
 
-    if (
-      process.processTypeConfig?.category === ProcessTypeCategory.RSC ||
-      process.processTypeConfig?.category === ProcessTypeCategory.FULL_PROFESSOR
-    ) {
-      if (evaluator.personId === process.user.personId) {
-        throw new BusinessRuleError("O docente interessado não pode integrar a própria comissão")
-      }
-      if (commission.members.length >= 4) {
-        throw new BusinessRuleError("A comissão especial possui exatamente quatro membros")
-      }
-    }
-
-    if (process.processTypeConfig?.category === ProcessTypeCategory.FULL_PROFESSOR) {
-      if (origin === SpecialCommissionMemberOrigin.INTERNAL && dto.role !== SpecialCommissionMemberRole.PRESIDENT) {
-        throw new BusinessRuleError("O membro interno deve ser indicado como presidente da comissão")
-      }
-      if (origin === SpecialCommissionMemberOrigin.EXTERNAL && dto.role === SpecialCommissionMemberRole.PRESIDENT) {
-        throw new BusinessRuleError("A presidência da comissão deve ser exercida pelo membro interno")
-      }
-    }
-
-    const appeal = await prisma.rscAppeal.findFirst({ where: { processId, status: "SUBMITTED", newCommissionId: commission.idSpecialCommission } })
-    if (appeal?.originalCommissionId) {
-      const previousMember = await prisma.specialCommissionMember.findFirst({ where: { specialCommissionId: appeal.originalCommissionId, personId: evaluator.personId } })
-      if (previousMember) throw new BusinessRuleError("A comissão de recurso deve ter membros diferentes da comissão original")
-    }
-    if (process.processTypeConfig?.category === ProcessTypeCategory.FULL_PROFESSOR) {
-      const nominee = await prisma.processNominee.findFirst({ where: { processId, email, membership: "PRIMARY", origin } })
-      if (!nominee) throw new BusinessRuleError("O avaliador deve constar entre os titulares da lista validada de indicados")
-    }
     const existing = await this.repository.findActiveMember(commission.idSpecialCommission, evaluator.personId)
     if (existing) throw new BusinessRuleError("Este avaliador já pertence à comissão")
 
@@ -126,8 +119,8 @@ export class SpecialCommissionService {
         commissionType: commission.type,
         personId: evaluator.personId,
         origin,
-        role: dto.role ?? SpecialCommissionMemberRole.MEMBER,
-        sortOrder: commission.members.length,
+        role,
+        sortOrder: commission.members.length + (commission.invites?.length ?? 0),
         changedById: currentUserId
       })
     } catch (error: any) {
@@ -138,6 +131,194 @@ export class SpecialCommissionService {
     }
 
     return this.getForProcess(processId)
+  }
+
+  /**
+   * Convida um avaliador externo sem cadastro e reserva sua vaga na comissão.
+   * A vaga vira membro quando a CPPD aprovar o cadastro do convite de acesso.
+   */
+  async inviteExternalMember(
+    processId: number,
+    actor: { id: number; role: RoleName; campusIds?: number[] },
+    dto: InviteSpecialCommissionMemberDto,
+    access: Pick<AccessService, "inviteExternalForCommission"> = new AccessService()
+  ) {
+    const process = await this.getManageableProcess(processId)
+    if (!process.campusId) {
+      throw new BusinessRuleError("O processo não possui campus vinculado; não é possível enviar o convite")
+    }
+    let commission = await this.repository.findCurrentByProcess(processId)
+    if (!commission) {
+      commission = await this.repository.create(processId, this.commissionTypeForProcess(process))
+    }
+    if (commission.status !== CommissionStatus.DRAFT) {
+      throw new BusinessRuleError("Não é possível adicionar membros após a ativação da comissão")
+    }
+
+    const email = dto.email.trim().toLowerCase()
+    const role = dto.role ?? SpecialCommissionMemberRole.MEMBER
+    if (await this.repository.findExternalEvaluatorByEmail(email)) {
+      throw new BusinessRuleError("Este avaliador já tem cadastro aprovado. Use Adicionar para incluí-lo")
+    }
+    this.assertNoWaitingInvite(commission, email)
+    const personIds = await this.repository.findPersonIdsByEmail(email)
+    if (commission.members.some((member: any) => personIds.includes(member.personId))) {
+      throw new BusinessRuleError("Este avaliador já pertence à comissão")
+    }
+    await this.assertSeatRules(process, commission, {
+      origin: SpecialCommissionMemberOrigin.EXTERNAL, role, email, personIds
+    })
+
+    let invitation: { id: string; delivered: boolean; reused: boolean }
+    try {
+      invitation = await access.inviteExternalForCommission(actor, {
+        name: dto.name, email, institutionalExternal: dto.institutionalExternal === true, campusId: process.campusId
+      })
+    } catch (error) {
+      if (error instanceof AccessError) throw new BusinessRuleError(error.message)
+      throw error
+    }
+
+    await this.repository.createInvite({
+      specialCommissionId: commission.idSpecialCommission,
+      accessInvitationId: invitation.id,
+      email,
+      name: dto.name.trim(),
+      role,
+      sortOrder: commission.members.length + (commission.invites?.length ?? 0),
+      createdById: actor.id
+    })
+
+    return {
+      ...(await this.getForProcess(processId)),
+      invite: { delivered: invitation.delivered, reused: invitation.reused }
+    }
+  }
+
+  async removeInvite(processId: number, inviteId: number) {
+    await this.getManageableProcess(processId)
+    const invite = await this.repository.findInvite(inviteId)
+    if (!invite || invite.specialCommission.processId !== processId || invite.status !== SpecialCommissionInviteStatus.WAITING) {
+      throw new NotFoundError("Vaga reservada não encontrada")
+    }
+    if (invite.specialCommission.status !== CommissionStatus.DRAFT) {
+      throw new BusinessRuleError("Não é possível remover vagas após a ativação da comissão")
+    }
+    await this.repository.cancelInvite(inviteId)
+    return this.getForProcess(processId)
+  }
+
+  /** Converte em membros as vagas reservadas para um convite de acesso já aprovado. */
+  async convertInvitesForAccessInvitation(accessInvitationId: string, actorId?: number) {
+    const invites = await this.repository.findWaitingInvitesByAccessInvitation(accessInvitationId)
+    let converted = 0
+    for (const invite of invites) {
+      try {
+        if (await this.convertInvite(invite, actorId ?? invite.createdById)) converted++
+      } catch (error) {
+        console.error(`Falha ao converter a vaga reservada ${invite.idSpecialCommissionInvite}:`, error)
+      }
+    }
+    return converted
+  }
+
+  private async convertInvite(invite: any, actorId: number) {
+    if (invite.specialCommission.status !== CommissionStatus.DRAFT) {
+      await this.repository.cancelInvite(invite.idSpecialCommissionInvite)
+      return false
+    }
+    const evaluator = await this.repository.findExternalEvaluatorByEmail(invite.email)
+    if (!evaluator?.personId) return false
+    const process = await this.repository.findProcess(invite.specialCommission.processId)
+    if (!process || !manageableProcessStatuses.includes(process.status)) return false
+
+    const existing = await this.repository.findActiveMember(invite.specialCommissionId, evaluator.personId)
+    if (!(await this.repository.claimInvite(invite.idSpecialCommissionInvite))) return false
+    if (existing) {
+      await this.repository.finishInvite(invite.idSpecialCommissionInvite, existing.idSpecialCommissionMember)
+      return true
+    }
+
+    try {
+      // A vaga já foi marcada como convertida, então a conferência não a conta duas vezes.
+      const commission = await this.repository.findCurrentByProcess(process.idProcess)
+      if (!commission || commission.idSpecialCommission !== invite.specialCommissionId) {
+        throw new BusinessRuleError("A comissão da vaga reservada não é mais a comissão vigente")
+      }
+      await this.assertSeatRules(process, commission, {
+        origin: invite.origin, role: invite.role, email: invite.email, personIds: [evaluator.personId]
+      })
+      const member = await this.repository.addExternalMember({
+        processId: process.idProcess,
+        specialCommissionId: invite.specialCommissionId,
+        commissionType: commission.type,
+        personId: evaluator.personId,
+        origin: invite.origin,
+        role: invite.role,
+        sortOrder: invite.sortOrder,
+        changedById: actorId
+      })
+      await this.repository.finishInvite(invite.idSpecialCommissionInvite, member.idSpecialCommissionMember)
+      return true
+    } catch (error) {
+      await this.repository.releaseInvite(invite.idSpecialCommissionInvite)
+      throw error
+    }
+  }
+
+  private assertNoWaitingInvite(commission: any, email: string) {
+    if ((commission.invites ?? []).some((invite: any) => invite.email === email)) {
+      throw new BusinessRuleError("Este e-mail já tem vaga reservada nesta comissão, aguardando cadastro")
+    }
+  }
+
+  /** Regras de composição comuns a membros e vagas reservadas. */
+  private async assertSeatRules(
+    process: any,
+    commission: any,
+    candidate: { origin: SpecialCommissionMemberOrigin; role: SpecialCommissionMemberRole; email: string; personIds: number[] }
+  ) {
+    const category = process.processTypeConfig?.category
+    if (category === ProcessTypeCategory.RSC || category === ProcessTypeCategory.FULL_PROFESSOR) {
+      const isTeacher =
+        (process.user.personId && candidate.personIds.includes(process.user.personId)) ||
+        (process.user.email && process.user.email.toLowerCase() === candidate.email)
+      if (isTeacher) {
+        throw new BusinessRuleError("O docente interessado não pode integrar a própria comissão")
+      }
+      if (commission.members.length + (commission.invites?.length ?? 0) >= 4) {
+        throw new BusinessRuleError("A comissão especial possui exatamente quatro membros, contando as vagas reservadas")
+      }
+    }
+
+    if (category === ProcessTypeCategory.FULL_PROFESSOR) {
+      if (candidate.origin === SpecialCommissionMemberOrigin.INTERNAL && candidate.role !== SpecialCommissionMemberRole.PRESIDENT) {
+        throw new BusinessRuleError("O membro interno deve ser indicado como presidente da comissão")
+      }
+      if (candidate.origin === SpecialCommissionMemberOrigin.EXTERNAL && candidate.role === SpecialCommissionMemberRole.PRESIDENT) {
+        throw new BusinessRuleError("A presidência da comissão deve ser exercida pelo membro interno")
+      }
+    }
+
+    const appeal = await prisma.rscAppeal.findFirst({ where: { processId: process.idProcess, status: "SUBMITTED", newCommissionId: commission.idSpecialCommission } })
+    if (appeal?.originalCommissionId) {
+      const previousMember = await prisma.specialCommissionMember.findFirst({
+        where: {
+          specialCommissionId: appeal.originalCommissionId,
+          OR: [
+            ...(candidate.personIds.length ? [{ personId: { in: candidate.personIds } }] : []),
+            { person: { email: candidate.email } }
+          ]
+        }
+      })
+      if (previousMember) throw new BusinessRuleError("A comissão de recurso deve ter membros diferentes da comissão original")
+    }
+    if (category === ProcessTypeCategory.FULL_PROFESSOR) {
+      const nominee = await prisma.processNominee.findFirst({
+        where: { processId: process.idProcess, email: candidate.email, membership: "PRIMARY", origin: candidate.origin }
+      })
+      if (!nominee) throw new BusinessRuleError("O avaliador deve constar entre os titulares da lista validada de indicados")
+    }
   }
 
   async removeMember(processId: number, memberId: number) {
@@ -162,6 +343,11 @@ export class SpecialCommissionService {
     if (dto.status === CommissionStatus.ACTIVE) {
       if (commission.status !== CommissionStatus.DRAFT) {
         throw new BusinessRuleError("Somente comissões em rascunho podem ser ativadas")
+      }
+      if (commission.invites?.length) {
+        throw new BusinessRuleError(
+          "Há vagas reservadas aguardando cadastro ou aprovação do avaliador. Aprove os cadastros ou remova as vagas antes de ativar"
+        )
       }
       if (!commission.ordinance || !commission.ordinanceDate) {
         throw new BusinessRuleError("Informe a portaria e a data da portaria antes de ativar a comissão")
@@ -461,6 +647,15 @@ export class SpecialCommissionService {
     }
   }
 
+  private inviteAccessStatus(invitation: { status: string; expiresAt: Date } | null | undefined) {
+    if (!invitation || invitation.status === "CANCELLED") return "CANCELLED"
+    if (invitation.status === "PENDING") {
+      return new Date(invitation.expiresAt).getTime() <= Date.now() ? "EXPIRED" : "AWAITING_REGISTRATION"
+    }
+    if (invitation.status === "REVIEW") return "AWAITING_APPROVAL"
+    return "APPROVED"
+  }
+
   private mapProcessResult(process: any, commission: any) {
     const submittedEvaluations = commission
       ? commission.members
@@ -531,6 +726,17 @@ export class SpecialCommissionService {
                     submittedAt: member.individualEvaluations[0].submittedAt
                   }
                 : null
+            })),
+            pendingInvites: (commission.invites ?? []).map((invite: any) => ({
+              idSpecialCommissionInvite: invite.idSpecialCommissionInvite,
+              name: invite.name,
+              email: invite.email,
+              origin: invite.origin,
+              role: invite.role,
+              accessInvitationId: invite.accessInvitationId,
+              accessStatus: this.inviteAccessStatus(invite.accessInvitation),
+              expiresAt: invite.accessInvitation?.expiresAt ?? null,
+              deliveryError: invite.accessInvitation?.deliveryError ?? null
             })),
             consolidation: {
               totalMembers: commission.members.length,
