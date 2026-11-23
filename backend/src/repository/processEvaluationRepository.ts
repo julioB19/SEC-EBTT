@@ -24,7 +24,7 @@ export class ProcessEvaluationRepository {
   async findProcessWithUserAndTable(processId: number) {
     return prisma.careerProcess.findUnique({
       where: { idProcess: processId },
-      include: { user: { include: { docente: true } }, table: true }
+      include: { user: { include: { docente: true } }, table: true, processTypeConfig: true }
     })
   }
 

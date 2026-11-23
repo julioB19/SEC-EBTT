@@ -898,35 +898,47 @@ export class ProcessEvaluationService {
       ProcessStatus.RETURNED
     ])
 
-    if (!allowed.has(process.status)) {
-      throw new BusinessRuleError("Process is not available for CPPD view")
+    // A Classe Titular usa a planilha de Progressão/Promoção como avaliação de desempenho:
+    // a CPPD consulta essa planilha (somente leitura) durante todo o rito, depois do envio.
+    const isFullProfessor = (process as any).processTypeConfig?.category === "FULL_PROFESSOR"
+    if (isFullProfessor) {
+      if (process.status === ProcessStatus.DRAFT) {
+        throw new BusinessRuleError("Process is not available for CPPD view")
+      }
+      if (!process.scoringTableId || !process.table) {
+        throw new BusinessRuleError("O processo de Classe Titular não tem planilha de pontuação vinculada.")
+      }
+    } else {
+      if (!allowed.has(process.status)) {
+        throw new BusinessRuleError("Process is not available for CPPD view")
+      }
+      assertScoredCareerProcess(process)
     }
 
-    assertScoredCareerProcess(process)
-
-    const scoringTableId = process.scoringTableId
+    const scoringTableId = process.scoringTableId!
 
     const { nodes, items, scores, nodeScores } =
       await this.repository.findEvaluationData(processId, scoringTableId, true)
 
+    const table = process.table!
     const minRequiredPoints =
-      process.table.minRequiredPoints !== null && process.table.minRequiredPoints !== undefined
-        ? decimalToNumber(process.table.minRequiredPoints)
+      table.minRequiredPoints !== null && table.minRequiredPoints !== undefined
+        ? decimalToNumber(table.minRequiredPoints)
         : null
 
     return {
       process: {
         idProcess: process.idProcess,
-        type: process.type,
+        type: (isFullProfessor ? "FULL_PROFESSOR" : process.type) as any,
         status: process.status,
         campus: process.campus,
         cidadeUF: process.cidadeUF,
-        intersticeStart: process.intersticeStart.toISOString(),
-        intersticeEnd: process.intersticeEnd.toISOString(),
-        classeOrigem: process.classeOrigem,
-        nivelOrigem: process.nivelOrigem,
-        classeDestino: process.classeDestino,
-        nivelDestino: process.nivelDestino,
+        intersticeStart: process.intersticeStart?.toISOString() ?? "",
+        intersticeEnd: process.intersticeEnd?.toISOString() ?? "",
+        classeOrigem: isFullProfessor ? "C" : process.classeOrigem!,
+        nivelOrigem: isFullProfessor ? "4" : process.nivelOrigem!,
+        classeDestino: isFullProfessor ? "D" : process.classeDestino!,
+        nivelDestino: isFullProfessor ? "1" : process.nivelDestino!,
         teacherName: process.user.name,
         scoringTableMinRequiredPoints: minRequiredPoints
       },

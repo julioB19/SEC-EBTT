@@ -17,7 +17,7 @@ type ProcessStatus =
   | "REJECTED"
   | "RETURNED"
 
-type ProcessType = "PROGRESSAO" | "PROMOCAO"
+type ProcessType = "PROGRESSAO" | "PROMOCAO" | "FULL_PROFESSOR"
 
 const PROCESS_STATUS_LABEL: Record<ProcessStatus, string> = {
   DRAFT: "Rascunho",
@@ -30,7 +30,8 @@ const PROCESS_STATUS_LABEL: Record<ProcessStatus, string> = {
 
 const PROCESS_TYPE_LABEL: Record<ProcessType, string> = {
   PROGRESSAO: "Progressão",
-  PROMOCAO: "Promoção"
+  PROMOCAO: "Promoção",
+  FULL_PROFESSOR: "Classe Titular (avaliação de desempenho)"
 }
 
 function statusLabel(status: ProcessStatus) {
@@ -757,7 +758,7 @@ export default function CppdAvaliacaoVisualizarPage() {
             <p className="text-xs text-[var(--text-secondary)] mt-2">
               {locationLine}
               {locationLine ? " · " : ""}
-              Interstício {formatDateISOToBr(process.intersticeStart)} a {formatDateISOToBr(process.intersticeEnd)} ·{" "}
+              {process.intersticeStart ? <>Interstício {formatDateISOToBr(process.intersticeStart)} a {formatDateISOToBr(process.intersticeEnd)} ·{" "}</> : null}
               {process.classeOrigem}
               {process.nivelOrigem} → {process.classeDestino}
               {process.nivelDestino}

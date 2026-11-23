@@ -1,6 +1,6 @@
 # Manual de uso do SEC EBTT
 
-Progressão, Promoção, RSC e Classe Titular. Edição de 7 de novembro de 2026.
+Progressão, Promoção, RSC e Classe Titular. Revisão para o orientador · 23 de novembro de 2026.
 
 Roteiro ilustrado para uso pelo orientador e pelos participantes dos processos. Os prints mostram dados fictícios de uma cópia da base demonstrativa. As credenciais e os pontos de partida estão nos dois últimos capítulos.
 
@@ -722,7 +722,7 @@ A área Rito da Classe Titular apresenta as ações de agendamento e registro co
 1. Quando Agendar defesa estiver disponível, selecione uma data e hora futuras, informe o endereço da sala virtual e confirme o agendamento.
 2. Após a realização, abra o registro da sessão. Informe a data e hora realizadas e o endereço da gravação.
 3. Preencha o Registro da ata. Na reavaliação do Memorial, registre também o resultado da defesa. Na Tese, os pareceres individuais compõem o resultado do rito.
-4. Clique em Registrar sessão e confira o histórico. Gere a ata da modalidade, providencie a assinatura e registre o PDF assinado para conferência.
+4. Clique em Registrar sessão. Confira no histórico a data e o resultado da sessão. Gere a ata da modalidade, confira seu conteúdo e encaminhe o PDF para assinatura e conferência.
 5. Se persistir resultado desfavorável, observe o prazo e o formulário de recurso. Se o rito estiver concluído, avance para a decisão final e seus documentos.
 
 **Resultado esperado:** A sessão e seus documentos ficam vinculados ao processo e o rito avança à próxima etapa.
@@ -739,7 +739,7 @@ A decisão final da CPPD acompanha o resultado do rito e depende dos documentos 
 ### Como fazer
 
 1. Se o rito apresentar Aguardando recurso, o docente preenche os fundamentos e usa Apresentar recurso dentro do prazo de dois dias úteis disponibilizado pelo sistema.
-2. A CPPD registra o resultado do recurso e a decisão fundamentada. Quando cabível, pode encerrar um prazo vencido sem manifestação pela ação específica da tela.
+2. Após enviar o recurso, gere o requerimento do Anexo X. A CPPD registra a decisão fundamentada e confere a ata da sessão. Mesmo com recurso deferido, a ata conserva o resultado da defesa.
 3. Confira a conclusão do rito e os quatro pareceres enviados. Para deferimento, o docente precisa completar 24 meses em C4 e cumprir os demais requisitos.
 4. Confira as versões assinadas e validadas de todos os documentos da tabela abaixo. Se algum requisito mudar, revise também a versão documental afetada.
 5. Na área Decisão da CPPD, preencha o consolidado e registre o resultado compatível com o rito. Confirme a decisão e confira situação, fundamentação e efeitos financeiros no acompanhamento.
