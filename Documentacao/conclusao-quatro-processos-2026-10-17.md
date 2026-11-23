@@ -9,7 +9,7 @@ Atualização: 17/10/2026. Escopo confirmado: Progressão, Promoção, RSC e Pro
 | Progressão | Preparação limitada à janela de 60 dias, origem funcional compatível, interstício completo para deferimento, mínimo de 120 pontos reconhecidos, planilha, dossiê e decisão da CPPD. A data financeira respeita o cumprimento de todos os requisitos. |
 | Promoção | Mesmos controles de carreira, incluindo 36 meses para A1→B1 e 24 meses nas demais movimentações permitidas. C4→D1 exige o processo próprio de Classe Titular. |
 | RSC | Critérios oficiais e regra 60/36, comissão com um interno e três externos, quatro pareceres e três votos favoráveis para deferimento. Requerimento, planilha própria, dossiê com memorial, parecer consolidado e documentos assinados. Recursos à CPPD e CPRSC com preservação das provas e da comissão anterior. |
-| Classe Titular | C4 e janelas de 12/24 meses, desempenho mínimo de 120 pontos conferido pela CPPD, diploma próprio com reconhecimento nacional quando estrangeiro, sete indicados qualificados na composição 3+2+1+1, memorial ou tese e declaração de ineditismo. Comissão, defesa, reavaliação, recurso, documentos e cálculo dos efeitos financeiros. |
+| Classe Titular | C4 e janelas de 12/24 meses, desempenho mínimo de 120 pontos na planilha de Progressão/Promoção, conferido pela CPPD, diploma próprio com reconhecimento nacional quando estrangeiro, sete indicados qualificados na composição 3+2+1+1, memorial ou tese e declaração de ineditismo. Comissão, defesa, reavaliação, recurso, documentos e cálculo dos efeitos financeiros. |
 
 ## Controles compartilhados
 
@@ -26,7 +26,7 @@ Atualização: 17/10/2026. Escopo confirmado: Progressão, Promoção, RSC e Pro
 ## Como usar as funções acrescentadas
 
 1. **Administrador ou CPPD Central:** abrir “Calendário e documentos”; cadastrar períodos do calendário institucional, versões dos modelos e documentos exigidos. Para alterar exigências de um tipo já utilizado, criar sua próxima versão.
-2. **Docente:** cadastrar diplomas em “Meu perfil”. Para diploma estrangeiro, informar o país e anexar o reconhecimento nacional. Na Classe Titular, selecionar o doutorado, informar o desempenho, preencher os sete indicados e declarar o ineditismo quando a modalidade for tese.
+2. **Docente:** cadastrar diplomas em “Meu perfil”. Para diploma estrangeiro, informar o país e anexar o reconhecimento nacional. Na Classe Titular, selecionar o doutorado do perfil, lançar o desempenho em Preencher pontuação (mesma tabela da Promoção), preencher os sete indicados e declarar o ineditismo quando a modalidade for tese.
 3. **CPPD:** na página da comissão, conferir desempenho, doutorado e indicados antes da ativação. Gerar os pareceres e atas na etapa correspondente.
 4. **Avaliadores:** aceitar o convite com declaração de ausência de conflito, avaliar os itens e emitir seu parecer individual. A CPPD também pode registrar o PDF assinado recebido pelo procedimento institucional.
 5. **Assinaturas:** assinar os PDFs na plataforma institucional e reenviá-los. A CPPD registra sua conferência. Na decisão, o sistema exige as versões pertinentes validadas dos pareceres e, na Classe Titular, dos documentos específicos da modalidade.

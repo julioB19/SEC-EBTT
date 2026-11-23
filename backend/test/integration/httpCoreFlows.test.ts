@@ -1223,6 +1223,13 @@ describe("API HTTP - fluxos funcionais de processos", () => {
     await reviewTitular(processId, cppd.accessToken)
     expect(submission.data.data).toMatchObject({ processId, status: "SUBMITTED" })
     expect(Number(submission.data.data.totalPoints)).toBeGreaterThanOrEqual(120)
+    expect((await prisma.processCompliance.findUniqueOrThrow({ where: { processId } })).performanceApprovedAt).not.toBeNull()
+    // Reenvio após devolução: a planilha pode ter mudado, então a CPPD confere o desempenho de novo.
+    await prisma.careerProcess.update({ where: { idProcess: processId }, data: { status: "RETURNED" } })
+    const resubmission = await request(`/processos/${processId}/enviar`, { method: "POST", token: teacherLogin.accessToken })
+    expect(resubmission.status).toBe(200)
+    expect((await prisma.processCompliance.findUniqueOrThrow({ where: { processId } })).performanceApprovedAt).toBeNull()
+    await reviewTitular(processId, cppd.accessToken)
 
     const savedCommission = await request(`/processes/${processId}/special-commission`, {
       method: "PUT",

@@ -2,7 +2,7 @@
 
 Roteiro de validação manual de Progressão, Promoção, RSC e Classe Titular. Use este documento para executar as etapas, comparar o resultado esperado e registrar evidências antes de considerar o sistema homologado.
 
-Edição baseada no sistema verificado em 17 de outubro de 2026. Preparado para Julio e para a conferência funcional com docentes, CPPD e avaliadores.
+Edição baseada no sistema verificado em 17 de outubro de 2026, revisada em 23 de novembro de 2026. A revisão cobre os ajustes da Classe Titular: avaliação de desempenho pela planilha de Progressão/Promoção, doutorado escolhido no perfil, documentos gerados por perfil e lista de indicados salva em rascunho. Também cobre o convite de avaliador externo sem cadastro. Preparado para Julio e para a conferência funcional com docentes, CPPD e avaliadores.
 
 | Etapa | O que você vai verificar |
 |---|---|
@@ -83,7 +83,7 @@ A comissão especial de um processo é diferente da comissão local da CPPD. A p
 
 Cadastre os externos como Avaliador externo ativo e complete o perfil exigido. Para o interno de teste, prefira uma conta com Docente e Avaliador externo, com o perfil avaliador selecionável. Ela não pode ser a conta do próprio requerente. Use os mesmos e-mails do cadastro e da indicação na Classe Titular.
 
-- Prepare PDFs legíveis: comprovante de atividade, relatório ou memorial RSC, memorial Titular, tese, diploma nacional, diploma estrangeiro, reconhecimento nacional e avaliação de desempenho.
+- Prepare PDFs legíveis: comprovante de atividade, relatório ou memorial RSC, memorial Titular, tese, diploma nacional, diploma estrangeiro, reconhecimento nacional e comprovantes das atividades pontuadas na avaliação de desempenho.
 - Use conteúdo fictício identificado como teste. Mantenha arquivos pequenos para o percurso normal. Guarde também um arquivo que não seja PDF e outro acima do limite para os testes de rejeição.
 - Documentos específicos e comprovantes usuais: até 5 MB. PDFs assinados no painel próprio: até 20 MB. Confira o limite mostrado no campo correspondente.
 - As assinaturas são feitas fora do SEC-EBTT. Para a conferência institucional, utilize PDFs realmente assinados e verifique-os na plataforma emissora; um nome escrito no PDF não comprova assinatura.
@@ -427,6 +427,14 @@ Confirme: A composição fica protegida após a ativação. Os quatro avaliadore
 
 Registro: [ ] A [ ] R [ ] B [ ] NT | Evidência: ____________________
 
+## R16 Convidar avaliador externo sem cadastro   CRÍTICO
+
+Faça: Em Membros, informe o e-mail de um avaliador externo que ainda não tem cadastro aprovado. No quadro Convidar avaliador externo e reservar a vaga, informe o nome e, se o domínio não for aceito pelo campus, confirme o vínculo institucional. Tente ativar a comissão com a vaga reservada; depois conclua o cadastro, aprove-o como administrador e confira a comissão.
+
+Confirme: A vaga reservada conta na composição, mas a ativação fica bloqueada enquanto ela aguardar cadastro ou aprovação. Após a aprovação, a pessoa ocupa a vaga como membro e recebe o convite de aceite. Um avaliador com conta ativa e elegível entra direto, sem reserva.
+
+Registro: [ ] A [ ] R [ ] B [ ] NT | Evidência: ____________________
+
 Se o interno não conseguir abrir o módulo de avaliação, confira os perfis da conta de teste. A conta com Docente e Avaliador externo preparada neste roteiro permite selecionar o módulo de avaliação; origem interna e perfil de acesso são informações diferentes.
 
 # 13 Avaliar e concluir o RSC
@@ -515,7 +523,7 @@ Registro: [ ] A [ ] R [ ] B [ ] NT | Evidência: ____________________
 
 Faça: No perfil do próprio docente, abra Titulações e diplomas. Cadastre curso, instituição, conclusão, país e PDF. Selecione esse diploma no processo e recarregue.
 
-Confirme: É usado o doutorado do requerente. A seleção atualiza os detalhes imediatamente e persiste após recarga. Uma titulação de outra pessoa não pode ser vinculada.
+Confirme: É usado o doutorado do requerente. A seleção atualiza curso, instituição, conclusão e link do diploma imediatamente e persiste após recarga. Uma titulação de outra pessoa ou sem data de conclusão não pode ser vinculada. O processo não pede o diploma de novo: em Documentação específica o doutorado aparece apenas para conferência.
 
 Registro: [ ] A [ ] R [ ] B [ ] NT | Evidência: ____________________
 
@@ -529,9 +537,9 @@ Registro: [ ] A [ ] R [ ] B [ ] NT | Evidência: ____________________
 
 ## T04 Conferir avaliação de desempenho   CRÍTICO
 
-Faça: Informe 119 pontos e tente salvar ou avançar; depois informe pelo menos 120 com PDF. Na CPPD, confira o documento, os pontos, a data e o parecer de desempenho e doutorado.
+Faça: Em Avaliação de desempenho e doutorado, clique em Preencher pontuação. Lance itens com comprovantes até ficar abaixo de 120 pontos e tente enviar; depois complete até pelo menos 120 e envie. Gere a planilha e os comprovantes pelos botões do resumo de pontuação. Na CPPD, abra a planilha pelo painel e registre os pontos reconhecidos, a data e o parecer de desempenho e doutorado. Em outro processo, devolva ao docente depois da aprovação, altere a planilha e reenvie.
 
-Confirme: O mínimo é 120. A declaração do docente não substitui a aprovação da CPPD. Sem desempenho, doutorado e indicados conferidos, a comissão não pode ser ativada.
+Confirme: A tabela usada é a mesma de Progressão/Promoção. Abaixo de 120 pontos o envio é bloqueado com o total atual. O total do docente não substitui a aprovação da CPPD. Ao reenviar um processo devolvido, a aprovação anterior do desempenho deixa de valer e a CPPD confere de novo. Sem desempenho, doutorado e indicados conferidos, a comissão não pode ser ativada.
 
 Registro: [ ] A [ ] R [ ] B [ ] NT | Evidência: ____________________
 
@@ -549,9 +557,9 @@ Docente > processo > Documentos e requisitos > Cadastrar os sete indicados. Prep
 
 ## T05 Exigir a composição completa da indicação   CRÍTICO
 
-Faça: Preencha sete pessoas na composição acima. Tente salvar com seis, com e-mail duplicado ou com o e-mail do requerente.
+Faça: Salve primeiro uma lista parcial, com alguns indicados só com o nome, e recarregue. Tente enviar o processo com a lista incompleta. Depois complete os sete na composição acima e tente salvar com e-mail duplicado, com o e-mail do requerente ou com mais pessoas do que a composição permite.
 
-Confirme: A lista completa é aceita; quantidade ou composição incorreta, duplicidade e indicação do interessado são recusadas. São sete indicados, mas quatro integrantes votantes.
+Confirme: O rascunho parcial é salvo, cada indicado mostra o que falta e o resumo separa completos de em preenchimento. O envio exige os sete completos. Duplicidade, indicação do interessado e composição acima de 3+2+1+1 são recusadas. São sete indicados, mas quatro integrantes votantes.
 
 Registro: [ ] A [ ] R [ ] B [ ] NT | Evidência: ____________________
 
@@ -571,7 +579,7 @@ Confirme: A banca corresponde aos titulares validados; o presidente é interno. 
 
 Registro: [ ] A [ ] R [ ] B [ ] NT | Evidência: ____________________
 
-Se desempenho, diploma ou lista forem substituídos antes da decisão, confira se a aprovação anterior pertinente foi invalidada e se a CPPD precisa fazer nova conferência. A simples existência de uma marcação antiga não deve liberar dados substituídos.
+Se a planilha de desempenho, o doutorado selecionado ou a lista forem alterados antes da decisão, confira se a aprovação anterior pertinente foi invalidada e se a CPPD precisa fazer nova conferência. A simples existência de uma marcação antiga não deve liberar dados substituídos.
 
 # 17 Concluir Classe Titular por memorial
 
@@ -581,7 +589,7 @@ Use T MEM. O percurso de aprovação inicial é diferente do percurso de reavali
 
 Faça: Escolha Memorial, anexe o arquivo correto e conclua diploma, desempenho e sete indicados. Envie; na CPPD, valide os requisitos, forme a banca, obtenha quatro aceites e ative.
 
-Confirme: O arquivo exigido é o memorial da modalidade. Não se usa a tese nem a pontuação comum de Progressão como substituto da avaliação de desempenho.
+Confirme: O arquivo exigido é o memorial da modalidade, não a tese. A avaliação de desempenho é a planilha de pontuação de Progressão/Promoção preenchida no próprio processo e enviada com ele, com pelo menos 120 pontos.
 
 Registro: [ ] A [ ] R [ ] B [ ] NT | Evidência: ____________________
 
@@ -702,6 +710,14 @@ Registro: [ ] A [ ] R [ ] B [ ] NT | Evidência: ____________________
 Faça: Envie um arquivo não PDF no campo de assinados, tente arquivo acima de 20 MB e compare com PDF válido. Consulte histórico e metadados da versão salva.
 
 Confirme: Inválidos são recusados. O arquivo válido preserva versão, signatário, data, identificação de integridade e registro de conferência. Isso não substitui a validação externa da assinatura.
+
+Registro: [ ] A [ ] R [ ] B [ ] NT | Evidência: ____________________
+
+## D05 Restringir os documentos gerados pelo docente na Classe Titular   CRÍTICO
+
+Faça: Como docente de T MEM, abra Gerar documentos para conferência e assinatura. Repita em T TESE. Tente baixar, pelo endereço direto, um parecer ou uma ata do mesmo processo. Depois abra o mesmo painel como CPPD e como membro da comissão.
+
+Confirme: O docente vê só Requerimento e Lista dos sete indicados, além da declaração de ineditismo na modalidade tese e do requerimento de recurso quando houver recurso. A planilha e os comprovantes saem pelos botões do resumo de pontuação. O acesso direto a parecer ou ata é recusado ao docente. A CPPD e a comissão continuam gerando pareceres e atas.
 
 Registro: [ ] A [ ] R [ ] B [ ] NT | Evidência: ____________________
 

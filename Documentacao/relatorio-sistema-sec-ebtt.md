@@ -53,7 +53,7 @@ RSC e Classe Titular usam o processo-base comum com detalhes específicos. Isso 
 
 - categoria e detalhes próprios;
 - escolha entre memorial e tese;
-- doutorado/diploma e mínimo de 120 pontos para envio;
+- doutorado selecionado no perfil e mínimo de 120 pontos na planilha de Progressão/Promoção para envio;
 - comissão final de um presidente interno e três externos;
 - quatro avaliações e regra de três votos favoráveis;
 - rito modelado de reavaliação, defesa e recurso.

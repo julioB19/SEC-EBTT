@@ -211,6 +211,17 @@ export class ProcessoService {
       }
     }
 
+    if (
+      category === ProcessTypeCategory.FULL_PROFESSOR &&
+      careerProcess.status === ProcessStatus.RETURNED
+    ) {
+      // A planilha de desempenho pode ter mudado durante a devolução: a CPPD confere de novo.
+      await prisma.processCompliance.updateMany({
+        where: { processId, performanceApprovedAt: { not: null } },
+        data: { performanceApprovedAt: null },
+      });
+    }
+
     const updated = await this.processRepo.updateStatus(
       processId,
       ProcessStatus.SUBMITTED,

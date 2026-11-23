@@ -21,7 +21,7 @@ São 22 contas: administrador, CPPD Central, CPPD local, doze docentes requerent
 
 São doze processos, três de cada tipo: Progressão, Promoção, RSC e Classe Titular. Cada tipo tem um rascunho, um enviado à CPPD e um com avaliação pendente. Nos dois processos de carreira, a análise foi iniciada e um item foi conferido. Nos processos avançados de RSC e Classe Titular, a comissão está ativa com um interno e três externos, aceites e declarações de ausência de conflito. Os avaliadores ainda precisam emitir seus pareceres.
 
-Os processos RSC exemplificam RSC-I, RSC-II e RSC-III, respectivamente. A Classe Titular usa memorial, diploma de doutorado e sete indicados na composição 3+2+1+1. Os documentos fictícios exibem a identificação de demonstração; não há assinaturas simuladas nem decisões finais previamente aprovadas.
+Os processos RSC exemplificam RSC-I, RSC-II e RSC-III, respectivamente. A Classe Titular usa memorial, diploma de doutorado, sete indicados na composição 3+2+1+1 e a avaliação de desempenho lançada na mesma tabela de carreira da Promoção. Os documentos fictícios exibem a identificação de demonstração; não há assinaturas simuladas nem decisões finais previamente aprovadas.
 
 A pontuação de carreira usa o recorte da seed de desenvolvimento, sua fórmula de docência e os nove itens de equivalência Qualis já usados no material do projeto. Não é a transcrição integral da tabela institucional. O catálogo RSC contém os 82 critérios oficiais, com seus fatores, pesos, tetos e regra de 60 pontos totais e 36 no nível pretendido. Classe Titular usa avaliação de desempenho e pareceres, conforme o fluxo atual, sem inventar uma tabela adicional.
 

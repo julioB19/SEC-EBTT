@@ -509,7 +509,7 @@ A geração, a assinatura externa e a conferência administrativa são etapas di
 
 ### Como fazer
 
-1. Abra Gerar documentos para conferência e assinatura e gere o documento disponível para a etapa. Revise os dados antes de assinar.
+1. Abra Gerar documentos para conferência e assinatura e gere o documento disponível para a etapa. Revise os dados antes de assinar. Na Classe Titular, o docente vê apenas o Requerimento e a Lista dos sete indicados, além da declaração de ineditismo (modalidade tese) e do requerimento de recurso, quando houver. Os pareceres e as atas são gerados pela CPPD ou pela comissão especial.
 2. O signatário assina o PDF na plataforma institucional. Depois, em Documentos assinados e conferência, selecione o tipo do documento e o avaliador quando for um parecer individual.
 3. Informe signatário, plataforma e data da assinatura. Selecione o PDF assinado e clique em Enviar documento assinado.
 4. A CPPD confere a assinatura na origem e registra onde e como realizou a conferência no campo obrigatório.
@@ -652,8 +652,8 @@ A conferência prévia antecede a ativação da Comissão Especial.
 ### Como fazer
 
 1. Em Processos, abra Comissão na solicitação de Classe Titular. Expanda Análise prévia da CPPD.
-2. Abra a avaliação de desempenho, registre os pontos reconhecidos e a data de cumprimento dos requisitos. Escreva a fundamentação da análise.
-3. Confira o diploma e seu reconhecimento, quando necessário, e confirme a aprovação do doutorado.
+2. Clique em Abrir planilha de pontuação do desempenho e confira os itens e os comprovantes enviados pelo docente. A planilha é a mesma de Progressão/Promoção. Depois registre os pontos reconhecidos (mínimo de 120) e a data de cumprimento dos requisitos e escreva a fundamentação da análise.
+3. Use Abrir diploma de doutorado e, para título estrangeiro, Abrir reconhecimento do diploma. Confira os dados e confirme a aprovação do doutorado.
 4. Clique em Aprovar desempenho e doutorado. Depois confira títulos, vínculos, área, elegibilidade e ciência dos sete indicados e registre essa confirmação.
 5. Constitua a comissão com o interno titular como presidente e os três externos titulares. Registre a portaria, obtenha todos os aceites e ative a comissão.
 
@@ -792,7 +792,7 @@ As configurações determinam os critérios vigentes, os prazos e os documentos 
 
 ### Como fazer
 
-1. Em Tabelas de pontuação, confira finalidade, situação e vigência. O processo usa a tabela fixada na sua abertura.
+1. Em Tabelas de pontuação, confira finalidade, situação e vigência. O processo usa a tabela fixada na sua abertura. A Classe Titular usa a tabela de Progressão/Promoção, porque a CPPD publica a mesma planilha como Formulário de avaliação de desempenho.
 2. Para preparar critérios, trabalhe em rascunho. Estruturas de tabelas ativas ficam protegidas; faça a nova versão necessária antes de mudar os critérios usados em solicitações.
 3. Em Calendário e documentos, cadastre feriados, férias e recessos com descrição, fonte, campus e intervalo correto.
 4. Em Versões dos modelos, informe documento, nome, versão e conteúdo e salve a nova versão.

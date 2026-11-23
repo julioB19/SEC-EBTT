@@ -71,12 +71,13 @@ As contas temporárias desses testes são excluídas logicamente ao final, mas o
 ## Testar Promoção à Classe Titular
 
 1. Use um docente em C4, com doutorado e os períodos mínimos exigidos.
-2. Abra o processo escolhendo memorial ou tese, anexe o PDF da modalidade e o diploma de doutorado.
-3. Preencha a avaliação até o mínimo de 120 pontos e envie.
-4. Na CPPD, forme a comissão com um presidente interno e três externos, registre portaria e aguarde todos os aceites sem conflito.
-5. Na modalidade memorial, envie quatro pareceres; na modalidade tese, agende e registre também a defesa oral antes dos pareceres.
-6. Conclua a comissão com pelo menos três votos favoráveis e registre a decisão final.
-7. Confirme que o procedimento ficou `COMPLETED`/`APPROVED` e que o perfil funcional passou para D1.
+2. Cadastre o doutorado em Titulações e diplomas, no perfil. Abra o processo escolhendo memorial ou tese, anexe o PDF da modalidade e selecione o doutorado do perfil.
+3. Em Preencher pontuação, lance a avaliação de desempenho na mesma tabela de Progressão/Promoção até o mínimo de 120 pontos. Preencha os dados do requerimento e a lista de sete indicados e envie.
+4. Na CPPD, abra a planilha pelo painel do processo e aprove desempenho, doutorado e indicados na análise prévia.
+5. Na CPPD, forme a comissão com um presidente interno e três externos, registre portaria e aguarde todos os aceites sem conflito.
+6. Na modalidade memorial, envie quatro pareceres; na modalidade tese, agende e registre também a defesa oral antes dos pareceres.
+7. Conclua a comissão com pelo menos três votos favoráveis e registre a decisão final.
+8. Confirme que o procedimento ficou `COMPLETED`/`APPROVED` e que o perfil funcional passou para D1.
 
 ## Regressões importantes
 
@@ -87,6 +88,8 @@ As contas temporárias desses testes são excluídas logicamente ao final, mas o
 - Um processo enviado não pode ser editado pelo docente.
 - Um avaliador não aceito não pode ler documentos do processo.
 - A CPPD local deve ver apenas o campus autorizado; a CPPD Central pode ver todos.
+- Na Classe Titular, o docente gera só requerimento, lista de indicados (e o que ele assina); pareceres e atas são da CPPD e da comissão.
+- Reenviar uma Classe Titular devolvida anula a aprovação anterior do desempenho.
 
 ## Observação
 

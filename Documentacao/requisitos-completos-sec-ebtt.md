@@ -1,15 +1,15 @@
 # Requisitos completos do SEC-EBTT
 
-**Versão:** 1.4 — revisão do TCC II
-**Atualizado em:** 17/11/2026
-**Referência técnica:** revisão 4572155 do repositório julioB19/SEC-EBTT, que inclui a correção da ata.
+**Versão:** 1.5 — revisão do TCC II
+**Atualizado em:** 23/11/2026
+**Referência técnica:** revisão d3d630f do repositório julioB19/SEC-EBTT e ajustes de 23/11/2026. A versão 1.4 referia-se à revisão 4572155, que inclui a correção da ata.
 **Escopo descrito:** Progressão/Promoção, RSC, Classe Titular, administração, autenticação e avaliações.
 
 ## 1. Objetivo
 
 O SEC-EBTT deve apoiar a abertura, instrução, avaliação, decisão e auditoria de processos funcionais docentes do IFFar, respeitando o papel ativo do usuário, a legislação aplicável e os documentos oficiais da CPPD.
 
-Este documento consolida os requisitos. A versão 1.4 acrescenta os requisitos de acesso, administração e proteção de dados já implementados que não constavam da versão anterior (RF-GER-09 a RF-GER-14, RF-ADM-03 a RF-ADM-06 e RNF-11). O quadro da seção 12 indica as evidências e os limites dos pontos revisados para o TCC II. A numeração mantém os identificadores usados no artigo e nos registros de teste.
+Este documento consolida os requisitos. A versão 1.4 acrescenta os requisitos de acesso, administração e proteção de dados já implementados que não constavam da versão anterior (RF-GER-09 a RF-GER-14, RF-ADM-03 a RF-ADM-06 e RNF-11). A versão 1.5 incorpora os ajustes pedidos na revisão do orientador para a Classe Titular: avaliação de desempenho pela planilha de Progressão/Promoção (RF-TIT-04), doutorado escolhido no perfil (RF-TIT-05), lista de indicados em rascunho (RF-TIT-08) e documentos gerados por perfil (RF-TIT-23). Acrescenta também o convite de avaliador externo sem cadastro (RF-RSC-30). O quadro da seção 12 indica as evidências e os limites dos pontos revisados para o TCC II. A numeração mantém os identificadores usados no artigo e nos registros de teste.
 
 O levantamento inicial, `Documento_Requisitos_CPPD_RSC_Titular_v2.docx`, usa identificadores próprios. Sua exigência RF-043, que reúne portaria, defesa, reavaliação e recurso, aparece aqui em RF-TIT-11 e RF-TIT-16 a RF-TIT-20. O requisito condicional RF-003 do levantamento trata do acesso pelo Google, cujo alcance de validação é indicado na seção 12.
 
@@ -39,7 +39,7 @@ O levantamento inicial, `Documento_Requisitos_CPPD_RSC_Titular_v2.docx`, usa ide
 - **RF-ADM-05:** cadastrar o calendário institucional, com feriados, férias e recessos aplicados aos prazos.
 - **RF-ADM-06:** manter modelos de documentos e exigências documentais por categoria de processo, com versões que preservam os registros já utilizados.
 - **RF-TAB-01:** criar tabelas de pontuação em rascunho.
-- **RF-TAB-02:** separar tabelas destinadas à carreira das tabelas destinadas ao RSC.
+- **RF-TAB-02:** separar tabelas destinadas à carreira das tabelas destinadas ao RSC. A Classe Titular usa a tabela de carreira, porque a CPPD publica a mesma planilha para Progressão/Promoção e como formulário de avaliação de desempenho da Titular.
 - **RF-TAB-03:** organizar tabelas em blocos, sub-blocos e itens.
 - **RF-TAB-04:** configurar ponto-base, quantidade máxima, peso, fator, teto e fórmulas.
 - **RF-TAB-05:** impedir alterações estruturais depois da ativação.
@@ -96,17 +96,18 @@ O levantamento inicial, `Documento_Requisitos_CPPD_RSC_Titular_v2.docx`, usa ide
 - **RF-RSC-27:** permitir recurso à CPPD em até 45 dias, com nova comissão e sem provas novas.
 - **RF-RSC-28:** permitir recurso final à CPRSC em até dez dias após o indeferimento da CPPD.
 - **RF-RSC-29:** registrar decisão final e preservar toda a trilha de auditoria.
+- **RF-RSC-30:** permitir à CPPD convidar para a comissão especial, de RSC ou de Classe Titular, um avaliador externo ainda sem cadastro aprovado, reservando a vaga. A vaga reservada conta na composição, mas a ativação fica bloqueada até o cadastro ser aprovado e a pessoa ocupar a vaga.
 
 ## 6. Promoção à Classe Titular
 
 - **RF-TIT-01:** manter processo próprio de Classe Titular, separado de Promoção comum.
 - **RF-TIT-02:** exigir cadastro funcional em C4 e título de doutor.
 - **RF-TIT-03:** permitir abertura após 12 meses em C4 e exigir 24 meses para a concessão.
-- **RF-TIT-04:** exigir avaliação de desempenho aprovada com pelo menos 120 pontos.
-- **RF-TIT-05:** exigir diploma de doutorado e reconhecimento nacional quando obtido no exterior.
+- **RF-TIT-04:** exigir avaliação de desempenho com pelo menos 120 pontos, lançada pelo docente na mesma tabela de pontuação de Progressão/Promoção, com comprovante por item, enviada junto com o processo e aprovada pela CPPD na análise prévia. O reenvio de processo devolvido anula a aprovação anterior do desempenho.
+- **RF-TIT-05:** exigir diploma de doutorado e reconhecimento nacional quando obtido no exterior. O doutorado é selecionado entre as titulações do próprio docente (RF-GER-13), com data de conclusão, sem novo envio do diploma no processo.
 - **RF-TIT-06:** permitir escolha entre memorial descritivo e tese acadêmica inédita.
 - **RF-TIT-07:** exigir memorial e comprovantes em arquivo PDF único ou tese e declaração de ineditismo.
-- **RF-TIT-08:** registrar lista de sete indicados: 3 externos titulares, 2 externos suplentes, 1 interno titular e 1 interno suplente.
+- **RF-TIT-08:** registrar lista de sete indicados: 3 externos titulares, 2 externos suplentes, 1 interno titular e 1 interno suplente. A lista pode ser salva em rascunho, com indicados incompletos; a lista completa é exigida no envio e na conferência da CPPD.
 - **RF-TIT-09:** validar doutorado, posição na carreira, instituição, área ou área afim e ciência prévia.
 - **RF-TIT-10:** constituir a Comissão Especial ordinária com três membros externos e um interno na presidência. A hipótese de quatro membros externos prevista no art. 5º, §7º, está fora do fluxo implementado e depende de validação da CPPD.
 - **RF-TIT-11:** registrar portaria da Comissão e interlocutor da CPPD.
@@ -121,6 +122,7 @@ O levantamento inicial, `Documento_Requisitos_CPPD_RSC_Titular_v2.docx`, usa ide
 - **RF-TIT-20:** gerar documentos de apoio correspondentes aos Anexos IV, V, VII, IX e X do Regulamento. A ata deve registrar o resultado da sessão da modalidade correspondente. Um eventual recurso acrescenta uma decisão própria ao histórico.
 - **RF-TIT-21:** calcular efeitos financeiros pela data em que doutorado, desempenho, memorial/tese e interstício estiverem cumpridos.
 - **RF-TIT-22:** atualizar a classe para D1 somente após deferimento e quando os requisitos temporais permitirem.
+- **RF-TIT-23:** restringir os documentos gerados pelo docente ao requerimento, à lista de indicados, à planilha de pontuação e aos comprovantes, além dos documentos que ele próprio assina (declaração de ineditismo e requerimento de recurso). Pareceres e atas são gerados pela CPPD ou pela Comissão Especial, inclusive no acesso direto pelo servidor.
 
 ## 7. Regras oficiais de pontuação do RSC
 
@@ -185,6 +187,7 @@ Um fluxo é considerado concluído quando:
 | RF-TIT-17, RF-TIT-18, RF-TIT-20 e RNF-06 | O teste da ata de reavaliação registra defesa reprovada, recurso aprovado e compara o resultado das atas geradas nas duas etapas. O modelo lógico registra os eventos separadamente do estado corrente. |
 | RF-RSC-24 e RF-TIT-15 | As verificações técnicas exercitaram o envio, o registro de metadados, a integridade do PDF e a conferência administrativa com dados fictícios. A conferência da assinatura na plataforma competente faz parte do procedimento institucional. |
 | RNF-02 | O requisito mantém o alvo de 80% para o backend. Os 88,06% de linhas e instruções da rodada de 03/11 referem-se aos seis arquivos do núcleo regulatório. A evidência citada tem esse alcance. |
+| RF-TIT-04, RF-TIT-05, RF-TIT-08 e RF-TIT-23 | Ajustes de 23/11/2026, após a revisão do orientador. Os testes de integração preenchem a planilha de Progressão/Promoção até 120 pontos, geram a planilha em PDF e conferem a lista de documentos do docente e o bloqueio do parecer da CPPD. A equivalência com o formulário oficial segue a mesma ressalva da tabela de carreira. |
 | RNF-05 | Os cenários isolados verificaram arquivo privado, processo alheio e abrangência da CPPD por campus. |
 
 A autenticação pelo Google e a entrega de e-mail foram exercitadas com serviços simulados nos testes citados. A validação institucional dos fluxos e dos documentos gerados permanece pendente.
