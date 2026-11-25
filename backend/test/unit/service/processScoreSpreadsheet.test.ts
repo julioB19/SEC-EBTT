@@ -23,3 +23,14 @@ describe("Exportação da planilha RSC", () => {
     await expect(service.gerarPlanilhaPontuacao(1, 9)).rejects.toThrow("não encontrado")
   })
 })
+
+describe("Período avaliado da planilha de desempenho", () => {
+  const service: any = new ProcessScoreService({} as any, {} as any, {} as any, {} as any, {} as any)
+  test("Progressão/Promoção usa o interstício e a Classe Titular usa o período informado pelo docente", () => {
+    const career = { processTypeConfig: { category: "CAREER" }, intersticeStart: new Date("2023-01-01"), intersticeEnd: new Date("2024-12-31") }
+    expect(service.periodoAvaliado(career)).toBe("01/01/2023 a 31/12/2024")
+    const titular = { processTypeConfig: { category: "FULL_PROFESSOR" }, intersticeStart: null, intersticeEnd: null, compliance: { titularPerformancePeriodStart: new Date("2024-11-01"), titularPerformancePeriodEnd: new Date("2026-10-31") } }
+    expect(service.periodoAvaliado(titular)).toBe("01/11/2024 a 31/10/2026")
+    expect(service.periodoAvaliado({ ...titular, compliance: null })).toBe("")
+  })
+})

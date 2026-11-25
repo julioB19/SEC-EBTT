@@ -386,7 +386,8 @@ export class ProcessScoreService {
     for (const item of items) { const score = byId.get(item.idScoringItem); sheet.addRow({ code: item.formulaKey || item.idScoringItem, description: item.description, unit: item.unit, points: Number(item.points), quantity: score?.quantity ?? 0, score: Number(score?.awardedPoints ?? 0) }) }
     sheet.eachRow(row => { row.alignment = { wrapText: true, vertical: "middle" }; row.height = 42 })
     sheet.pageSetup = { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: "1:1" }
-    sheet.headerFooter.oddHeader = `${careerProcess.user.name} - ${careerProcess.table.name}`
+    const periodo = this.periodoAvaliado(careerProcess)
+    sheet.headerFooter.oddHeader = `${careerProcess.user.name} - ${careerProcess.table.name}${periodo ? ` - Período avaliado: ${periodo}` : ""}`
     sheet.headerFooter.oddFooter = "Página &P de &N"
     const raw = await workbook.xlsx.writeBuffer()
     return { fileName: `pontuacao_${careerProcess.idProcess}.pdf`, fileBuffer: await this.converterXlsxBufferParaPdfBuffer(Buffer.from(raw), `pontuacao_${careerProcess.idProcess}`) }
@@ -485,6 +486,14 @@ export class ProcessScoreService {
     return Buffer.from(bytes)
   }
 
+  // A Classe Titular não tem interstício: o docente informa o período avaliado no processo.
+  private periodoAvaliado(careerProcess: any) {
+    const titular = careerProcess.processTypeConfig?.category === "FULL_PROFESSOR"
+    const inicio = titular ? careerProcess.compliance?.titularPerformancePeriodStart : careerProcess.intersticeStart
+    const fim = titular ? careerProcess.compliance?.titularPerformancePeriodEnd : careerProcess.intersticeEnd
+    return inicio && fim ? `${formatDateBR(inicio)} a ${formatDateBR(fim)}` : ""
+  }
+
   private montarTagsIdentificacao(careerProcess: any) {
     const user = careerProcess.user
     const docente = careerProcess.user?.docente
@@ -505,7 +514,7 @@ export class ProcessScoreService {
     const cargoFuncao = docente?.role ?? ""
     const chefiaImediata = docente?.immediate_supervisor ?? ""
 
-    const periodoAvaliado = `${formatDateBR(careerProcess.intersticeStart)} a ${formatDateBR(careerProcess.intersticeEnd)}`
+    const periodoAvaliado = this.periodoAvaliado(careerProcess)
 
     const dataProgressao =
       careerProcess.type === ProcessType.PROGRESSAO

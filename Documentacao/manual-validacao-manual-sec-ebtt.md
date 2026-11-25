@@ -537,9 +537,9 @@ Registro: [ ] A [ ] R [ ] B [ ] NT | Evidência: ____________________
 
 ## T04 Conferir avaliação de desempenho   CRÍTICO
 
-Faça: Em Avaliação de desempenho e doutorado, clique em Preencher pontuação. Lance itens com comprovantes até ficar abaixo de 120 pontos e tente enviar; depois complete até pelo menos 120 e envie. Gere a planilha e os comprovantes pelos botões do resumo de pontuação. Na CPPD, abra a planilha pelo painel e registre os pontos reconhecidos, a data e o parecer de desempenho e doutorado. Em outro processo, devolva ao docente depois da aprovação, altere a planilha e reenvie.
+Faça: Em Avaliação de desempenho e doutorado, tente salvar o período avaliado com o fim anterior ao início; depois informe um período válido e salve. Clique em Preencher pontuação. Lance itens com comprovantes até ficar abaixo de 120 pontos e tente enviar; depois complete até pelo menos 120 e envie. Gere a planilha e os comprovantes pelos botões do resumo de pontuação. Na CPPD, abra a planilha pelo painel e registre os pontos reconhecidos, a data e o parecer de desempenho e doutorado. Em outro processo, devolva ao docente depois da aprovação, altere a planilha e reenvie.
 
-Confirme: A tabela usada é a mesma de Progressão/Promoção. Abaixo de 120 pontos o envio é bloqueado com o total atual. O total do docente não substitui a aprovação da CPPD. Ao reenviar um processo devolvido, a aprovação anterior do desempenho deixa de valer e a CPPD confere de novo. Sem desempenho, doutorado e indicados conferidos, a comissão não pode ser ativada.
+Confirme: O período invertido é recusado e o válido aparece em "Atual". Sem período avaliado o envio é bloqueado, e a planilha gerada mostra as datas informadas. A tabela usada é a mesma de Progressão/Promoção. Abaixo de 120 pontos o envio é bloqueado com o total atual. O total do docente não substitui a aprovação da CPPD. Ao reenviar um processo devolvido, a aprovação anterior do desempenho deixa de valer e a CPPD confere de novo. Sem desempenho, doutorado e indicados conferidos, a comissão não pode ser ativada.
 
 Registro: [ ] A [ ] R [ ] B [ ] NT | Evidência: ____________________
 

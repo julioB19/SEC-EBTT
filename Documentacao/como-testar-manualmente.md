@@ -72,7 +72,7 @@ As contas temporárias desses testes são excluídas logicamente ao final, mas o
 
 1. Use um docente em C4, com doutorado e os períodos mínimos exigidos.
 2. Cadastre o doutorado em Titulações e diplomas, no perfil. Abra o processo escolhendo memorial ou tese, anexe o PDF da modalidade e selecione o doutorado do perfil.
-3. Em Preencher pontuação, lance a avaliação de desempenho na mesma tabela de Progressão/Promoção até o mínimo de 120 pontos. Preencha os dados do requerimento e a lista de sete indicados e envie.
+3. Em Avaliação de desempenho e doutorado, informe o período avaliado e salve. Em Preencher pontuação, lance a avaliação de desempenho na mesma tabela de Progressão/Promoção até o mínimo de 120 pontos. Preencha os dados do requerimento e a lista de sete indicados e envie.
 4. Na CPPD, abra a planilha pelo painel do processo e aprove desempenho, doutorado e indicados na análise prévia.
 5. Na CPPD, forme a comissão com um presidente interno e três externos, registre portaria e aguarde todos os aceites sem conflito.
 6. Na modalidade memorial, envie quatro pareceres; na modalidade tese, agende e registre também a defesa oral antes dos pareceres.

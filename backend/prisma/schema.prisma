@@ -937,6 +937,8 @@ model ProcessCompliance {
   titularAdmissionDate         DateTime?     @db.Date
   titularWorkRegime            String?       @db.VarChar(120)
   titularCompetitionArea       String?       @db.VarChar(180)
+  titularPerformancePeriodStart DateTime?    @db.Date
+  titularPerformancePeriodEnd   DateTime?     @db.Date
   deletedDate                  DateTime?
   nomineesValidatedAt          DateTime?
   processId                    Int           @id

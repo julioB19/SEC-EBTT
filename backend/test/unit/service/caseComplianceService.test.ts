@@ -34,7 +34,7 @@ describe("Indicados e documentos que autorizam a decisão",()=>{
   await expect(assertSignedDecisionDocuments(1,"FULL_PROFESSOR",commission)).rejects.toThrow("presidente")
  })
  test("Titular não pode seguir sem desempenho, indicação e validação pela CPPD",async()=>{
-  const process:any={fullProfessorDetail:{evaluationMode:"MEMORIAL",doctorateDegree:{countryCode:"BR",evidenceFileId:1,degreeType:"DOCTORATE",teacherId:1}},nominees:nominees(),user:{email:"docente@iffarroupilha.edu.br",docente:{idDocente:1}},compliance:{titularAdmissionDate:new Date("2015-01-01"),titularWorkRegime:"Dedicação exclusiva",titularCompetitionArea:"Educação"}}
+  const process:any={fullProfessorDetail:{evaluationMode:"MEMORIAL",doctorateDegree:{countryCode:"BR",evidenceFileId:1,degreeType:"DOCTORATE",teacherId:1}},nominees:nominees(),user:{email:"docente@iffarroupilha.edu.br",docente:{idDocente:1}},compliance:{titularAdmissionDate:new Date("2015-01-01"),titularWorkRegime:"Dedicação exclusiva",titularCompetitionArea:"Educação",titularPerformancePeriodStart:new Date("2024-01-01"),titularPerformancePeriodEnd:new Date("2025-12-31")}}
   ;(prisma.careerProcess.findUnique as jest.Mock).mockResolvedValue(process as never)
   await expect(assertTitularReady(1,"SUBMIT")).resolves.toEqual(process)
   await expect(assertTitularReady(1,"ACTIVATE")).rejects.toThrow("CPPD")
@@ -47,6 +47,18 @@ describe("Indicados e documentos que autorizam a decisão",()=>{
   const process:any={fullProfessorDetail:{evaluationMode:"MEMORIAL",doctorateDegree:{countryCode:"BR",evidenceFileId:1,degreeType:"DOCTORATE",teacherId:1}},nominees:nominees(),user:{email:"docente@iffarroupilha.edu.br",docente:{idDocente:1}},compliance:null}
   ;(prisma.careerProcess.findUnique as jest.Mock).mockResolvedValue(process as never)
   await expect(assertTitularReady(1,"SUBMIT")).rejects.toThrow("dados do requerimento")
+ })
+ test("Titular sem período avaliado do desempenho não pode ser enviada",async()=>{
+  const process:any={fullProfessorDetail:{evaluationMode:"MEMORIAL",doctorateDegree:{countryCode:"BR",evidenceFileId:1,degreeType:"DOCTORATE",teacherId:1}},nominees:nominees(),user:{email:"docente@iffarroupilha.edu.br",docente:{idDocente:1}},compliance:{titularAdmissionDate:new Date("2015-01-01"),titularWorkRegime:"Dedicação exclusiva",titularCompetitionArea:"Educação",titularPerformancePeriodStart:null,titularPerformancePeriodEnd:null}}
+  ;(prisma.careerProcess.findUnique as jest.Mock).mockResolvedValue(process as never)
+  await expect(assertTitularReady(1,"SUBMIT")).rejects.toThrow("período avaliado")
+ })
+ test("período avaliado exige datas reais, já ocorridas e em ordem",()=>{
+  const service=new CaseComplianceService()
+  expect(service.calendarDate("2025-02-28","Início do período avaliado").toISOString().slice(0,10)).toBe("2025-02-28")
+  expect(()=>service.calendarDate("2025-02-30","Início do período avaliado")).toThrow("data válida")
+  expect(()=>service.calendarDate("28/02/2025","Início do período avaliado")).toThrow("data válida")
+  expect(()=>service.calendarDate("2999-01-01","Fim do período avaliado")).toThrow("já ocorreu")
  })
  test("docente gera apenas requerimento e lista de indicados; pareceres e atas ficam com CPPD e banca",()=>{
   expect(titularDocumentsFor("APPLICANT","MEMORIAL",false)).toEqual(["APPLICATION","NOMINEES"])

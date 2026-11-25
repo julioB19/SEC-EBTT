@@ -161,6 +161,15 @@ export class CaseComplianceService {
         changes.titularCompetitionArea = this.requiredText(input.competitionArea, 180, "a área de concurso")
         break
       }
+      case "SAVE_PERFORMANCE_PERIOD": {
+        if (!editing || !process.fullProfessorDetail) throw new BusinessRuleError("O período avaliado só pode ser alterado pelo docente enquanto o processo estiver editável")
+        const start = this.calendarDate(input.periodStart, "Início do período avaliado")
+        const end = this.calendarDate(input.periodEnd, "Fim do período avaliado")
+        if (end < start) throw new BusinessRuleError("O fim do período avaliado não pode ser anterior ao início")
+        changes.titularPerformancePeriodStart = start
+        changes.titularPerformancePeriodEnd = end
+        break
+      }
       case "SELECT_DOCTORATE": {
         if (!editing || !process.fullProfessorDetail) throw new BusinessRuleError("Selecione o diploma no rascunho de Classe Titular")
         const degree = await prisma.teacherDegree.findFirst({ where: { idTeacherDegree: Number(input.degreeId), teacher: { userId: actor.userId }, degreeType: { in: ["DOCTORATE", "DOUTORADO"] } } })
@@ -317,6 +326,12 @@ export class CaseComplianceService {
     if (!Number.isFinite(date.getTime()) || date > new Date()) throw new BusinessRuleError(`${label} deve ser uma data válida que já ocorreu`)
     return date
   }
+  calendarDate(value: unknown, label: string) {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new BusinessRuleError(`Informe ${label.toLowerCase()} com uma data válida`)
+    const date = this.pastDate(value, label)
+    if (date.toISOString().slice(0, 10) !== value) throw new BusinessRuleError(`Informe ${label.toLowerCase()} com uma data válida`)
+    return date
+  }
   requiredText(value: unknown, limit: number, label: string) {
     const text = String(value ?? "").trim()
     if (!text || text.length > limit) throw new BusinessRuleError(`Informe ${label} com até ${limit} caracteres`)
@@ -333,6 +348,9 @@ export async function assertTitularReady(processId: number, phase: "SUBMIT" | "A
   if (!compliance) throw new BusinessRuleError("Preencha os dados do requerimento: data de admissão, regime de trabalho e área de concurso")
   if (phase === "SUBMIT" && (!compliance.titularAdmissionDate || !compliance.titularWorkRegime || !compliance.titularCompetitionArea)) {
     throw new BusinessRuleError("Preencha os dados do requerimento: data de admissão, regime de trabalho e área de concurso")
+  }
+  if (phase === "SUBMIT" && (!compliance.titularPerformancePeriodStart || !compliance.titularPerformancePeriodEnd)) {
+    throw new BusinessRuleError("Informe o período avaliado da avaliação de desempenho")
   }
   validateNominees(process.nominees.map(value => ({ ...value, sameKnowledgeArea: !value.relatedAreaJustification })), process.user.email)
   const degree = process.fullProfessorDetail.doctorateDegree

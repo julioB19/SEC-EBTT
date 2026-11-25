@@ -1,6 +1,6 @@
 # Manual de uso do SEC EBTT
 
-Progressão, Promoção, RSC e Classe Titular. Revisão para o orientador · 23 de novembro de 2026.
+Progressão, Promoção, RSC e Classe Titular. Revisão para o orientador · 25 de novembro de 2026.
 
 Roteiro ilustrado para uso pelo orientador e pelos participantes dos processos. Os prints mostram dados fictícios de uma cópia da base demonstrativa. As credenciais e os pontos de partida estão nos dois últimos capítulos.
 
@@ -604,10 +604,10 @@ Nos detalhes, expanda as seções de dados do requerimento e de avaliação de d
 ### Como fazer
 
 1. Em Dados do requerimento de Classe Titular, informe data de admissão, regime de trabalho e área de concurso. Clique em Salvar dados do requerimento.
-2. Em Avaliação de desempenho e doutorado, clique em Preencher pontuação. A avaliação de desempenho usa a mesma planilha da Promoção, que a CPPD publica como Formulário de avaliação de desempenho, com mínimo de 120 pontos. Anexe os comprovantes e informe as quantidades de cada item, como descrito no capítulo 5.
+2. Em Avaliação de desempenho e doutorado, informe o início e o fim do período avaliado e clique em Salvar período avaliado. Como a Classe Titular não tem interstício, esse período preenche o campo Período avaliado da planilha e aparece no requerimento. Depois, clique em Preencher pontuação. A avaliação de desempenho usa a mesma planilha da Promoção, que a CPPD publica como Formulário de avaliação de desempenho, com mínimo de 120 pontos. Anexe os comprovantes e informe as quantidades de cada item, como descrito no capítulo 5.
 3. Ainda nessa seção, selecione o doutorado cadastrado em Titulações e diplomas, no perfil. O sistema mostra curso, instituição, conclusão e o link do diploma. Para corrigir algum dado ou incluir o reconhecimento nacional de diploma estrangeiro, edite a titulação no perfil e selecione-a de novo.
 4. Em Documentação específica, anexe o memorial ou a tese da modalidade selecionada. O doutorado aparece ali apenas para conferência; não é preciso anexar o diploma outra vez.
-5. A planilha e os comprovantes seguem junto com o processo no envio, que só é liberado com pelo menos 120 pontos.
+5. A planilha e os comprovantes seguem junto com o processo no envio, que só é liberado com o período avaliado informado e pelo menos 120 pontos.
 
 **Resultado esperado:** O requerimento, a planilha de desempenho e o título estão disponíveis para a análise prévia da CPPD.
 

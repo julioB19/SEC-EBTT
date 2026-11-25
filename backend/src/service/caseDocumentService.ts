@@ -51,7 +51,8 @@ export class CaseDocumentService {
         if (detail) lines.splice(lines.length - 2, 0,
           `Data de admissão: ${date(compliance?.titularAdmissionDate)}.`,
           `Regime de trabalho: ${compliance?.titularWorkRegime ?? "Não registrado"}.`,
-          `Área de concurso: ${compliance?.titularCompetitionArea ?? "Não registrada"}.`)
+          `Área de concurso: ${compliance?.titularCompetitionArea ?? "Não registrada"}.`,
+          `Período avaliado no desempenho: ${compliance?.titularPerformancePeriodStart && compliance.titularPerformancePeriodEnd ? `${date(compliance.titularPerformancePeriodStart)} a ${date(compliance.titularPerformancePeriodEnd)}` : "Não registrado"}.`)
         break
       case "TITULAR_APPEAL":
         if (!(actor.role === RoleName.DOCENTE && actor.userId === process.userId) &&

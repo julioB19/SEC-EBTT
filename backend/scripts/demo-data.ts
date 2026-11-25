@@ -159,6 +159,7 @@ export async function seedDemo(prisma: PrismaClient) {
       if (kind === "FULL_PROFESSOR") {
         const actor = { userId: user.idUser, role: RoleName.DOCENTE }
         await api.compliance.save(processId, actor, { action: "SAVE_TITULAR_APPLICATION", admissionDate: addMonthsClamped(now, -180).toISOString().slice(0, 10), workRegime: "Dedicação exclusiva", competitionArea: "Educação - DEMONSTRAÇÃO" })
+        await api.compliance.save(processId, actor, { action: "SAVE_PERFORMANCE_PERIOD", periodStart: addMonthsClamped(now, -24).toISOString().slice(0, 10), periodEnd: now.toISOString().slice(0, 10) })
         await api.compliance.save(processId, actor, { action: "SAVE_NOMINEES", nominees: evaluators.map((evaluator, position) => ({
           name: evaluator.user.name, email: evaluator.user.email, phone: "55999990000", institution: "Instituição Federal - DEMONSTRAÇÃO", doctorateTitle: "Doutorado em Educação - DEMO",
           federalInstitution: true, careerLevel: "D1", knowledgeArea: "Educação", sameKnowledgeArea: true, priorConsentAt: now.toISOString(),
